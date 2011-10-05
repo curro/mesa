@@ -48,7 +48,7 @@ tags:
 	etags `find . -name \*.[ch]` `find $(TOP)/src/gallium/include -name \*.h`
 
 # Remove .o and backup files
-clean:
+clean: $(CLEAN_DEPS)
 	rm -f $(OBJECTS) $(GENERATED_SOURCES) $(PROGS) lib$(LIBNAME).a depend depend.bak $(CLEAN_EXTRA)
 
 # Dummy target

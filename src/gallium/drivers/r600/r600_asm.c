@@ -1055,8 +1055,14 @@ static int merge_inst_groups(struct r600_bytecode *bc, struct r600_bytecode_alu 
 					return 0;
 				have_mova = 1;
 			}
+			/* check for reduction instructions in the previous group*/
+			if (is_alu_reduction_inst(bc, prev[i]))
+				return 0;
 			num_once_inst += is_alu_once_inst(bc, prev[i]);
 		}
+		/* check for reduction instructions in this group */
+		if (slots[i] && is_alu_reduction_inst(bc, slots[i]))
+			return 0;
 		if (slots[i] && r600_bytecode_alu_nliterals(bc, slots[i], literal, &nliteral))
 			return 0;
 
