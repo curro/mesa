@@ -7,6 +7,7 @@
 #include "util/u_format.h"
 #include "util/u_format_s3tc.h"
 #include "util/u_string.h"
+#include "util/u_hash_table.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -130,9 +131,27 @@ nouveau_screen_bo_unmap(struct pipe_screen *pscreen, struct nouveau_bo *bo)
 	nouveau_bo_unmap(bo);
 }
 
+static enum pipe_error
+find_bo_handle(void *key, void *value, void *data)
+{
+	if (value == *(void **)data) {
+		*(void **)data = key;
+		return PIPE_ERROR;
+	}
+	return PIPE_OK;
+}
+
+
 void
 nouveau_screen_bo_release(struct pipe_screen *pscreen, struct nouveau_bo *bo)
 {
+	struct nouveau_screen *screen = nouveau_screen(pscreen);
+	void *data = bo;
+
+	if (util_hash_table_foreach(screen->bo_handles, find_bo_handle, &data)
+	    != PIPE_OK)
+		util_hash_table_remove(screen->bo_handles, data);
+
 	nouveau_bo_ref(NULL, &bo);
 }
 
@@ -165,9 +184,18 @@ nouveau_screen_bo_from_handle(struct pipe_screen *pscreen,
 			      struct winsys_handle *whandle,
 			      unsigned *out_stride)
 {
-	struct nouveau_device *dev = nouveau_screen(pscreen)->device;
-	struct nouveau_bo *bo = 0;
+	struct nouveau_screen *screen = nouveau_screen(pscreen);
+	struct nouveau_device *dev = screen->device;
+	struct nouveau_bo *bo;
 	int ret;
+
+	bo = util_hash_table_get(screen->bo_handles,
+				 (void *)(uintptr_t)whandle->handle);
+	if (bo) {
+		struct nouveau_bo *bo_ret = NULL;
+		nouveau_bo_ref(bo, &bo_ret);
+		return bo_ret;
+	}
  
 	ret = nouveau_bo_handle_ref(dev, whandle->handle, &bo);
 	if (ret) {
@@ -175,6 +203,9 @@ nouveau_screen_bo_from_handle(struct pipe_screen *pscreen,
 			     __FUNCTION__, whandle->handle, ret);
 		return NULL;
 	}
+
+	util_hash_table_set(screen->bo_handles,
+			    (void *)(uintptr_t)whandle->handle, bo);
 
 	*out_stride = whandle->stride;
 	return bo;
@@ -197,6 +228,16 @@ nouveau_screen_bo_get_handle(struct pipe_screen *pscreen,
 	} else {
 		return FALSE;
 	}
+}
+
+static unsigned bo_handle_hash(void *key)
+{
+	return (unsigned)((uintptr_t)key);
+}
+
+static int bo_handle_compare(void *key1, void *key2)
+{
+	return ((uint32_t)(uintptr_t)key1) == ((uint32_t)(uintptr_t)key2);
 }
 
 int
@@ -228,6 +269,10 @@ nouveau_screen_init(struct nouveau_screen *screen, struct nouveau_device *dev)
 					    NOUVEAU_BO_GART | NOUVEAU_BO_MAP,
 					    0x000);
 	screen->mm_VRAM = nouveau_mm_create(dev, NOUVEAU_BO_VRAM, 0x000);
+
+	screen->bo_handles = util_hash_table_create(bo_handle_hash,
+						    bo_handle_compare);
+
 	return 0;
 }
 
@@ -235,6 +280,8 @@ void
 nouveau_screen_fini(struct nouveau_screen *screen)
 {
 	struct pipe_winsys *ws = screen->base.winsys;
+
+	util_hash_table_destroy(screen->bo_handles);
 
 	nouveau_mm_destroy(screen->mm_GART);
 	nouveau_mm_destroy(screen->mm_VRAM);

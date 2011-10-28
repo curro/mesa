@@ -8,6 +8,7 @@ typedef uint32_t u32;
 extern int nouveau_mesa_debug;
 
 struct nouveau_bo;
+struct util_hash_table;
 
 struct nouveau_screen {
 	struct pipe_screen base;
@@ -32,6 +33,8 @@ struct nouveau_screen {
 
 	struct nouveau_mman *mm_VRAM;
 	struct nouveau_mman *mm_GART;
+
+	struct util_hash_table *bo_handles;
 };
 
 static INLINE struct nouveau_screen *
