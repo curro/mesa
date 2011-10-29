@@ -54,6 +54,7 @@ const uint8_t Target::operationSrcNr[OP_LAST + 1] =
 
 
 extern Target *getTargetNVC0(unsigned int chipset);
+extern Target *getTargetNV50(unsigned int chipset);
 
 Target *Target::create(unsigned int chipset)
 {
@@ -65,6 +66,7 @@ Target *Target::create(unsigned int chipset)
    case 0x80:
    case 0x90:
    case 0xa0:
+      return getTargetNV50(chipset);
    default:
       ERROR("unsupported target: NV%x\n", chipset);
       return 0;
