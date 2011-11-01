@@ -488,7 +488,7 @@ NV50LoweringPreSSA::handleEXPORT(Instruction *i)
          // TODO: redirect to l[] here, load to GPRs at exit
          return false;
       } else {
-         int id = i->getSrc(0)->reg.data.offset / 2; // in 16 bit units
+         int id = i->getSrc(0)->reg.data.offset / 4; // in 32 bit reg units
 
          i->op = OP_MOV;
          i->src[0].set(i->src[1]);
