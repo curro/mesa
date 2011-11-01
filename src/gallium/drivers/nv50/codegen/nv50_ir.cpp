@@ -267,7 +267,8 @@ LValue::LValue(Function *fn, LValue *lval)
    fn->add(this, this->id);
 }
 
-Value *LValue::clone(Function *func) const
+Value *
+LValue::clone(Function *func) const
 {
    LValue *that = new_LValue(func, reg.file);
 
@@ -276,6 +277,12 @@ Value *LValue::clone(Function *func) const
    that->reg.data = this->reg.data;
 
    return that;
+}
+
+bool
+LValue::isUniform() const
+{
+   return false;
 }
 
 Symbol::Symbol(Program *prog, DataFile f, ubyte fidx)

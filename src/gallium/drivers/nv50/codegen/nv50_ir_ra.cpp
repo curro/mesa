@@ -142,6 +142,7 @@ RegisterSet::assign(Value **def, int nr)
    if (id + (s - 1) > fill[f])
       fill[f] = id + (s - 1);
 
+   id >>= ffs(def[0]->reg.size >> unit[f]) - 1;
    for (i = 0; i < nr; ++i, ++id)
       if (!def[i]->livei.isEmpty()) // XXX: really increased id if empty ?
          def[i]->reg.data.id = id;
@@ -155,6 +156,8 @@ RegisterSet::occupy(const Value *val)
    if (id < 0)
       return;
    unsigned int f = val->reg.file;
+
+   id *= val->reg.size >> unit[f];
 
    uint32_t m = (1 << (val->reg.size >> unit[f])) - 1;
 
@@ -173,6 +176,8 @@ RegisterSet::release(const Value *val)
    if (id < 0)
       return;
    unsigned int f = val->reg.file;
+
+   id *= val->reg.size >> unit[f];
 
    uint32_t m = (1 << (val->reg.size >> unit[f])) - 1;
 

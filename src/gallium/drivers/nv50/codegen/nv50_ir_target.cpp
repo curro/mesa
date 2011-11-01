@@ -75,6 +75,10 @@ void Target::destroy(Target *targ)
    delete targ;
 }
 
+CodeEmitter::CodeEmitter(const Target *target) : targ(target)
+{
+}
+
 void
 CodeEmitter::setCodeLocation(void *ptr, uint32_t size)
 {
@@ -108,6 +112,35 @@ CodeEmitter::prepareEmission(Program *prog)
    }
 }
 
+static void
+replaceExitWithModifier(Function *fn)
+{
+   bool keep_exit = false;
+
+   for (Graph::EdgeIterator ei = fn->cfgExit->incident();
+        !ei.end(); ei.next()) {
+      BasicBlock *bb = BasicBlock::get(ei.getNode());
+      Instruction *i = bb->getExit();
+      if (!i) {
+         keep_exit = true;
+         break;
+      }
+      int s;
+      for (s = 0; i->srcExists(s); ++s)
+         if (i->src[s].getFile() == FILE_IMMEDIATE)
+            break;
+      if (!i->srcExists(s)) {
+         i->exit = 1;
+      } else
+         keep_exit = true;
+   }
+   if (keep_exit)
+      return;
+   BasicBlock *exitBB = BasicBlock::get(fn->cfgExit);
+   delete_Instruction(fn->getProgram(), exitBB->getExit());
+   // exitBB->binSize -= exitBB->getExit()->encSize;
+}
+
 void
 CodeEmitter::prepareEmission(Function *func)
 {
@@ -120,6 +153,9 @@ CodeEmitter::prepareEmission(Function *func)
    for (iter = func->cfg.iteratorCFG(); !iter->end(); iter->next())
       prepareEmission(BasicBlock::get(*iter));
    func->cfg.putIterator(iter);
+
+   if (!targ->isOpSupported(OP_EXIT, TYPE_NONE))
+      replaceExitWithModifier(func);
 }
 
 void
