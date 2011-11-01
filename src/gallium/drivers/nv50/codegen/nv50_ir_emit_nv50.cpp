@@ -618,7 +618,7 @@ CodeEmitterNV50::emitSTORE(const Instruction *i)
    case FILE_SHADER_OUTPUT:
       code[0] = 0x00000001 | ((offset >> 2) << 9);
       code[1] = 0x80c00000;
-      srcId(i->src[1], 32 + 15);
+      srcId(i->src[1], 32 + 14);
       break;
    case FILE_MEMORY_GLOBAL:
       code[0] = 0xd0000000;
