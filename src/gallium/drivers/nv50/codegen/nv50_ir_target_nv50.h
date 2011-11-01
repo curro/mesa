@@ -31,16 +31,18 @@ namespace nv50_ir {
 
 #define NVC0_BUILTIN_COUNT 4
 
-class TargetNVC0 : public Target
+class TargetNV50 : public Target
 {
 public:
-   TargetNVC0(unsigned int chipset);
+   TargetNV50(unsigned int chipset);
 
    virtual CodeEmitter *getCodeEmitter(Program::Type);
 
    virtual bool runLegalizePass(Program *, CGStage stage) const;
 
    virtual void getBuiltinCode(const uint32_t **code, uint32_t *size) const;
+
+   virtual void parseDriverInfo(const struct nv50_ir_prog_info *);
 
    virtual bool insnCanLoad(const Instruction *insn, int s,
                             const Instruction *ld) const;
@@ -63,6 +65,8 @@ public:
 private:
    void initOpInfo();
 
+   uint16_t sysvalLocation[SV_LAST + 1];
+   uint8_t wposMask;
 };
 
 } // namespace nv50_ir

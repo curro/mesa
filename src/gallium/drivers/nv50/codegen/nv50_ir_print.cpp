@@ -484,6 +484,8 @@ void Instruction::print() const
       else
          pos += src[s].get()->print(&buf[pos], BUFSZ - pos, sType);
    }
+   if (exit)
+      PRINT("%s exit", colour[TXT_INSN]);
 
    PRINT("%s", colour[TXT_DEFAULT]);
 

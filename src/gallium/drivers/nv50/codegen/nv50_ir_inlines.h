@@ -45,6 +45,31 @@ static inline bool isTextureOp(operation op)
    return (op >= OP_TEX && op <= OP_TEXCSAA);
 }
 
+static inline unsigned int typeSizeofLog2(DataType ty)
+{
+   switch (ty) {
+   case TYPE_B128:
+   case TYPE_B96:
+      return 4;
+   case TYPE_F64:
+   case TYPE_S64:
+   case TYPE_U64:
+      return 3;
+   case TYPE_F32:
+   case TYPE_S32:
+   case TYPE_U32:
+      return 2;
+   case TYPE_F16:
+   case TYPE_S16:
+   case TYPE_U16:
+      return 1;
+   case TYPE_S8:
+   case TYPE_U8:
+   default:
+      return 0;
+   }
+}
+
 static inline unsigned int typeSizeof(DataType ty)
 {
    switch (ty) {
