@@ -408,21 +408,16 @@ CodeEmitterNV50::setSrc(const Instruction *i, unsigned int s, int slot)
 {
    if (Target::operationSrcNr[i->op] <= s)
       return;
-   unsigned int n;
    const Storage *reg = &i->src[s].rep()->reg;
 
-   if (reg->file == FILE_GPR) {
-      n = reg->data.id;
-      if (reg->size == 4)
-         n >>= 1;
-   } else {
-      // 4 -> 2, 2 -> 1, 1 -> 0
-      n = reg->data.offset >> (reg->size >> 1);
-   }
+   unsigned int id = (reg->file == FILE_GPR) ?
+      reg->data.id :
+      reg->data.offset >> (reg->size >> 1); // no > 4 byte sources here
+
    switch (slot) {
-   case 0: code[0] |= n << 9; break;
-   case 1: code[0] |= n << 16; break;
-   case 2: code[1] |= n << 14; break;
+   case 0: code[0] |= id << 9; break;
+   case 1: code[0] |= id << 16; break;
+   case 2: code[1] |= id << 14; break;
    default:
       assert(0);
       break;
