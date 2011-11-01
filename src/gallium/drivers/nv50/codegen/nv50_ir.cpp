@@ -997,6 +997,7 @@ nv50_ir_generate_code(struct nv50_ir_prog_info *info)
    if (prog->dbgFlags & NV50_IR_DEBUG_VERBOSE)
       prog->print();
 
+   targ->parseDriverInfo(info);
    prog->getTarget()->runLegalizePass(prog, nv50_ir::CG_STAGE_PRE_SSA);
 
    prog->convertToSSA();

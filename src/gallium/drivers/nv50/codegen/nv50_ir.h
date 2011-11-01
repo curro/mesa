@@ -492,6 +492,8 @@ public:
 
    virtual bool equals(const Value *, bool strict = false) const;
    virtual bool interfers(const Value *) const;
+   // check whether this is a uniform value (can be false only for lvalues):
+   virtual bool isUniform() const { return true; }
 
    inline Instruction *getUniqueInsn() const;
    inline Instruction *getInsn() const; // use when uniqueness is certain
@@ -534,6 +536,8 @@ class LValue : public Value
 public:
    LValue(Function *, DataFile file);
    LValue(Function *, LValue *);
+
+   virtual bool isUniform() const;
 
    virtual Value *clone(Function *) const;
 
@@ -636,6 +640,8 @@ public:
    bool setPredicate(CondCode ccode, Value *);
    inline Value *getPredicate() const;
    bool writesPredicate() const;
+
+   inline void setFlagsDef(int d, Value *);
 
    unsigned int defCount(unsigned int mask) const;
    unsigned int srcCount(unsigned int mask) const;
@@ -882,6 +888,10 @@ public:
 
    BasicBlock *idom() const;
 
+   // NOTE: currently does not rebuild the dominator tree
+   BasicBlock *splitBefore(Instruction *, bool attach = true);
+   BasicBlock *splitAfter(Instruction *, bool attach = true);
+
    DLList& getDF() { return df; }
    DLList::Iterator iterDF() { return df.iterator(); }
 
@@ -914,6 +924,8 @@ private:
 private:
    Function *func;
    Program *program;
+
+   void splitCommon(Instruction *, BasicBlock *, bool attach);
 };
 
 class Function
