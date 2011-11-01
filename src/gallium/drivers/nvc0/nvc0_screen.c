@@ -456,7 +456,7 @@ nvc0_screen_create(struct pipe_winsys *ws, struct nouveau_device *dev)
    OUT_RING  (chan, 0);
 
    BEGIN_RING(chan, RING_3D(COND_MODE), 1);
-   OUT_RING  (chan, NVC0_3D_COND_MODE_ALWAYS);
+   OUT_RING  (chan, NVC0_3D_COND_MODE_NEVER);
 
    BEGIN_RING(chan, RING_3D(RT_CONTROL), 1);
    OUT_RING  (chan, 1);

@@ -52,19 +52,19 @@ nvc0_shader_input_address(unsigned sn, unsigned si, unsigned ubase)
 {
    switch (sn) {
    case NV50_SEMANTIC_TESSFACTOR:   return 0x000 + si * 0x4;
-   case TGSI_SEMANTIC_PRIMID:       return 0x060;
-   case TGSI_SEMANTIC_PSIZE:        return 0x06c;
-   case TGSI_SEMANTIC_POSITION:     return 0x070;
-   case TGSI_SEMANTIC_GENERIC:      return ubase + si * 0x10;
-   case TGSI_SEMANTIC_FOG:          return 0x270;
-   case TGSI_SEMANTIC_COLOR:        return 0x280 + si * 0x10;
-   case TGSI_SEMANTIC_BCOLOR:       return 0x2a0 + si * 0x10;
-   case NV50_SEMANTIC_CLIPDISTANCE: return 0x2c0 + si * 0x10;
-   case NV50_SEMANTIC_POINTCOORD:   return 0x2e0;
-   case NV50_SEMANTIC_TESSCOORD:    return 0x2f0;
-   case TGSI_SEMANTIC_INSTANCEID:   return 0x2f8;
-   case NV50_SEMANTIC_VERTEXID:     return 0x2fc;
-   case NV50_SEMANTIC_TEXCOORD:     return 0x300 + si * 0x10;
+   case NV50_SEMANTIC_TESSCOORD:    return 0x000;
+   case TGSI_SEMANTIC_POSITION:     return 0x000;
+   case TGSI_SEMANTIC_PRIMID:       return 0x010;
+   case TGSI_SEMANTIC_PSIZE:        return 0x014;
+   case TGSI_SEMANTIC_INSTANCEID:   return 0x018;
+   case NV50_SEMANTIC_VERTEXID:     return 0x01c;
+   case TGSI_SEMANTIC_COLOR:        return 0x020 + si * 0x10;
+   case TGSI_SEMANTIC_BCOLOR:       return 0x040 + si * 0x10;
+   case NV50_SEMANTIC_CLIPDISTANCE: return 0x060 + si * 0x10;
+   case NV50_SEMANTIC_TEXCOORD:     return 0x080 + si * 0x10;
+   case TGSI_SEMANTIC_GENERIC:      return 0x100 + si * 0x10;
+   case NV50_SEMANTIC_POINTCOORD:   return 0x1e0;
+   case TGSI_SEMANTIC_FOG:          return 0x1f0;
    case TGSI_SEMANTIC_FACE:         return 0x3fc;
    case NV50_SEMANTIC_INVOCATIONID: return ~0;
    default:
@@ -78,17 +78,17 @@ nvc0_shader_output_address(unsigned sn, unsigned si, unsigned ubase)
 {
    switch (sn) {
    case NV50_SEMANTIC_TESSFACTOR:    return 0x000 + si * 0x4;
-   case TGSI_SEMANTIC_PRIMID:        return 0x060;
-   case NV50_SEMANTIC_LAYER:         return 0x064;
-   case NV50_SEMANTIC_VIEWPORTINDEX: return 0x068;
-   case TGSI_SEMANTIC_PSIZE:         return 0x06c;
-   case TGSI_SEMANTIC_POSITION:      return 0x070;
-   case TGSI_SEMANTIC_GENERIC:       return ubase + si * 0x10;
-   case TGSI_SEMANTIC_FOG:           return 0x270;
-   case TGSI_SEMANTIC_COLOR:         return 0x280 + si * 0x10;
-   case TGSI_SEMANTIC_BCOLOR:        return 0x2a0 + si * 0x10;
-   case NV50_SEMANTIC_CLIPDISTANCE:  return 0x2c0 + si * 0x10;
-   case NV50_SEMANTIC_TEXCOORD:      return 0x300 + si * 0x10;
+   case TGSI_SEMANTIC_POSITION:      return 0x000;
+   case TGSI_SEMANTIC_PRIMID:        return 0x010;
+   case NV50_SEMANTIC_LAYER:         return 0x014;
+   case NV50_SEMANTIC_VIEWPORTINDEX: return 0x018;
+   case TGSI_SEMANTIC_PSIZE:         return 0x01c;
+   case TGSI_SEMANTIC_COLOR:         return 0x020 + si * 0x10;
+   case TGSI_SEMANTIC_BCOLOR:        return 0x040 + si * 0x10;
+   case NV50_SEMANTIC_CLIPDISTANCE:  return 0x060 + si * 0x10;
+   case NV50_SEMANTIC_TEXCOORD:      return 0x080 + si * 0x10;
+   case TGSI_SEMANTIC_GENERIC:       return 0x100 + si * 0x10;
+   case TGSI_SEMANTIC_FOG:           return 0x1f0;
    case TGSI_SEMANTIC_EDGEFLAG:      return ~0;
    default:
       assert(!"invalid TGSI output semantic");
@@ -511,7 +511,7 @@ nvc0_program_translate(struct nvc0_program *prog)
       return FALSE;
 
    info->type = prog->type;
-   info->target = 0xc0;
+   info->target = 0x84;
    info->bin.sourceRep = NV50_PROGRAM_IR_TGSI;
    info->bin.source = (void *)prog->pipe.tokens;
 
@@ -540,7 +540,7 @@ nvc0_program_translate(struct nvc0_program *prog)
    prog->max_gpr = MAX2(4, (info->bin.maxGPR + 1));
 
    prog->vp.edgeflag = PIPE_MAX_ATTRIBS;
-
+#if 0
    switch (prog->type) {
    case PIPE_SHADER_VERTEX:
       ret = nvc0_vp_gen_header(prog, info);
@@ -566,6 +566,7 @@ nvc0_program_translate(struct nvc0_program *prog)
       NOUVEAU_ERR("unknown program type: %u\n", prog->type);
       break;
    }
+#endif
    if (ret)
       goto out;
 

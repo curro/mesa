@@ -419,7 +419,7 @@ nvc0_render_condition(struct pipe_context *pipe,
       mode != PIPE_RENDER_COND_BY_REGION_NO_WAIT;
 
    if (!pq) {
-      IMMED_RING(chan, RING_3D(COND_MODE), NVC0_3D_COND_MODE_ALWAYS);
+      IMMED_RING(chan, RING_3D(COND_MODE), NVC0_3D_COND_MODE_NEVER);
       return;
    }
    q = nvc0_query(pq);
