@@ -61,6 +61,8 @@ struct RelocInfo
 class CodeEmitter
 {
 public:
+   CodeEmitter(const Target *);
+
    // returns whether the instruction was encodable and written
    virtual bool emitInstruction(Instruction *) = 0;
 
@@ -82,6 +84,8 @@ public:
    void printBinary() const;
 
 protected:
+   const Target *targ;
+
    uint32_t *code;
    uint32_t codeSize;
    uint32_t codeSizeLimit;
@@ -105,7 +109,7 @@ public:
    // The address chosen is supplied to the relocation routine.
    virtual void getBuiltinCode(const uint32_t **code, uint32_t *size) const = 0;
 
-   virtual void parseDriverInfo(struct nv50_ir_prog_info *info) { }
+   virtual void parseDriverInfo(const struct nv50_ir_prog_info *info) { }
 
    virtual bool runLegalizePass(Program *, CGStage stage) const = 0;
 
@@ -140,6 +144,7 @@ public:
    virtual bool insnCanLoad(const Instruction *insn, int s,
                             const Instruction *ld) const = 0;
    virtual bool isOpSupported(operation, DataType) const = 0;
+   virtual bool isAccessSupported(DataFile, DataType) const = 0;
    virtual bool isModSupported(const Instruction *,
                                int s, Modifier) const = 0;
    virtual bool isSatSupported(const Instruction *) const = 0;
