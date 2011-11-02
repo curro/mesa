@@ -132,16 +132,17 @@ replaceExitWithModifier(Function *fn)
       for (s = 0; i->srcExists(s); ++s)
          if (i->src[s].getFile() == FILE_IMMEDIATE)
             break;
-      if (!i->srcExists(s)) {
+      if (!i->srcExists(s) && i->encSize == 8)
          i->exit = 1;
-      } else
+      else
          keep_exit = true;
    }
-   if (keep_exit)
-      return;
-   BasicBlock *exitBB = BasicBlock::get(fn->cfgExit);
-   delete_Instruction(fn->getProgram(), exitBB->getExit());
-   // exitBB->binSize -= exitBB->getExit()->encSize;
+   if (!keep_exit) {
+      BasicBlock *bb = BasicBlock::get(fn->cfgExit);
+      bb->binSize -= 8;
+      fn->binSize -= 8;
+      delete_Instruction(fn->getProgram(), bb->getExit());
+   }
 }
 
 void
