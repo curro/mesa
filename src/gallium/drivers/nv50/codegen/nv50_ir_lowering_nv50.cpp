@@ -153,6 +153,7 @@ private:
    bool handleSQRT(Instruction *);
    bool handlePOW(Instruction *);
 
+   bool handleSET(Instruction *);
    bool handleSLCT(CmpInstruction *);
    bool handleSELP(Instruction *);
 
@@ -370,6 +371,18 @@ NV50LoweringPreSSA::handleTXD(TexInstruction *i)
 }
 
 bool
+NV50LoweringPreSSA::handleSET(Instruction *i)
+{
+   if (i->dType == TYPE_F32) {
+      bld.setPosition(i, true);
+      i->dType = TYPE_U32;
+      bld.mkOp1(OP_NEG, TYPE_S32, i->getDef(0), i->getDef(0));
+      bld.mkCvt(OP_CVT, TYPE_F32, i->getDef(0), TYPE_S32, i->getDef(0));
+   }
+   return true;
+}
+
+bool
 NV50LoweringPreSSA::handleSLCT(CmpInstruction *i)
 {
    Value *src1 = bld.getSSA();
@@ -552,6 +565,8 @@ NV50LoweringPreSSA::visit(Instruction *i)
       bld.mkOp1(OP_PREEX2, TYPE_F32, i->getDef(0), i->getSrc(0));
       i->setSrc(0, i->getDef(0));
       break;
+   case OP_SET:
+      return handleSET(i);
    case OP_SLCT:
       return handleSLCT(i->asCmp());
    case OP_SELP:
