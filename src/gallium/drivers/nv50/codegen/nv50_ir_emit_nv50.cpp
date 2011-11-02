@@ -25,9 +25,10 @@
 
 namespace nv50_ir {
 
-#define NV50_OP_ENC_LONG  0
-#define NV50_OP_ENC_SHORT 1
-#define NV50_OP_ENC_IMM   2
+#define NV50_OP_ENC_LONG     0
+#define NV50_OP_ENC_SHORT    1
+#define NV50_OP_ENC_IMM      2
+#define NV50_OP_ENC_LONG_ALT 3
 
 class CodeEmitterNV50 : public CodeEmitter
 {
@@ -71,7 +72,8 @@ private:
    void emitForm_MUL(const Instruction *);
    void emitForm_IMM(const Instruction *);
 
-   void emitLoadStoreSize(DataType ty, int pos);
+   void emitLoadStoreSizeLG(DataType ty, int pos);
+   void emitLoadStoreSizeCS(DataType ty);
 
    void roundMode_MAD(const Instruction *);
    void roundMode_CVT(RoundMode);
@@ -131,9 +133,9 @@ void CodeEmitterNV50::srcAddr16(const ValueRef& src, const int pos)
 {
    assert(src.get());
 
-   uint32_t offset = SDATA(src).offset;
+   uint32_t offset = SDATA(src).offset / src.get()->reg.size;
 
-   assert(offset <= 0xffff && (pos % 32) <= 16);
+   assert(offset <= 0x3ffff && (pos % 32) <= 16);
 
    code[pos / 32] |= offset << (pos % 32);
 }
@@ -334,13 +336,14 @@ CodeEmitterNV50::setSrcFileBits(const Instruction *i, int enc)
          break;
       }
    }
+   INFO("mode = %x\n", mode);
    switch (mode) {
    case 0x00: // rrr
       break;
    case 0x01: // arr/grr
       if (progType == Program::TYPE_GEOMETRY) {
          code[0] |= 0x01800000;
-         if (enc == NV50_OP_ENC_LONG)
+         if (enc == NV50_OP_ENC_LONG || enc == NV50_OP_ENC_LONG_ALT)
             code[1] |= 0x00200000;
       } else {
          if (enc == NV50_OP_ENC_SHORT)
@@ -349,6 +352,9 @@ CodeEmitterNV50::setSrcFileBits(const Instruction *i, int enc)
             code[1] |= 0x00200000;
       }
       break;
+   case 0x03: // irr
+      assert(i->op == OP_MOV);
+      return;
    case 0x0c: // rir
       break;
    case 0x0d: // gir
@@ -357,13 +363,13 @@ CodeEmitterNV50::setSrcFileBits(const Instruction *i, int enc)
              progType == Program::TYPE_COMPUTE);
       break;
    case 0x08: // rcr
-      code[0] |= 0x00800000;
+      code[0] |= (enc == NV50_OP_ENC_LONG_ALT) ? 0x01000000 : 0x00800000;
       break;
    case 0x09: // acr/gcr
       if (progType == Program::TYPE_GEOMETRY) {
          code[0] |= 0x01800000;
       } else {
-         code[0] |= 0x00800000;
+         code[0] |= (enc == NV50_OP_ENC_LONG_ALT) ? 0x01000000 : 0x00800000;
          code[1] |= 0x00200000;
       }
       break;
@@ -459,7 +465,7 @@ CodeEmitterNV50::emitForm_ADD(const Instruction *i)
 
    setDst(i, 0);
 
-   setSrcFileBits(i, NV50_OP_ENC_LONG);
+   setSrcFileBits(i, NV50_OP_ENC_LONG_ALT);
    setSrc(i, 0, 0);
    setSrc(i, 1, 2);
 
@@ -502,7 +508,7 @@ CodeEmitterNV50::emitForm_IMM(const Instruction *i)
 }
 
 void
-CodeEmitterNV50::emitLoadStoreSize(DataType ty, int pos)
+CodeEmitterNV50::emitLoadStoreSizeLG(DataType ty, int pos)
 {
    uint8_t enc;
 
@@ -525,6 +531,22 @@ CodeEmitterNV50::emitLoadStoreSize(DataType ty, int pos)
 }
 
 void
+CodeEmitterNV50::emitLoadStoreSizeCS(DataType ty)
+{
+   switch (ty) {
+   case TYPE_U8: break;
+   case TYPE_U16: code[1] |= 0x4000; break;
+   case TYPE_S16: code[1] |= 0x8000; break;
+   case TYPE_F32:
+   case TYPE_S32:
+   case TYPE_U32: code[1] |= 0xc000; break;
+   default:
+      assert(0);
+      break;
+   }
+}
+
+void
 CodeEmitterNV50::emitLOAD(const Instruction *i)
 {
    DataFile sf = i->src[0].getFile();
@@ -540,32 +562,15 @@ CodeEmitterNV50::emitLOAD(const Instruction *i)
       break;
    case FILE_MEMORY_SHARED:
       if (targ->getChipset() >= 0x84) {
-         code[0] = 0x10000001;
-         switch (i->sType) {
-         case TYPE_U16: code[1] = 0x40004000; break;
-         case TYPE_S16: code[1] = 0x40008000; break;
-         case TYPE_F32:
-         case TYPE_S32:
-         case TYPE_U32: code[1] = 0x4000c000; break;
-         default:
-            assert(0);
-            break;
-         }
          assert(offset <= (int32_t)(0x3fff * typeSizeof(i->sType)));
+         code[0] = 0x10000001;
+         code[1] = 0x40000000;
+         emitLoadStoreSizeCS(i->sType);
       } else {
+         assert(offset <= (int32_t)(0x1f * typeSizeof(i->sType)));
          code[0] = 0x10000001;
          code[1] = 0x00200000 | (i->lanes << 14);
-         switch (i->sType) {
-         case TYPE_U16: code[1] |= 0x00004000; break;
-         case TYPE_S16: code[1] |= 0x00008000; break;
-         case TYPE_F32:
-         case TYPE_S32:
-         case TYPE_U32: code[1] |= 0x0000c000; break;
-         default:
-            assert(0);
-            break;
-         }
-         assert(offset <= (int32_t)(0x1f * typeSizeof(i->sType)));
+         emitLoadStoreSizeCS(i->sType);
       }
       break;
    case FILE_MEMORY_CONST:
@@ -573,6 +578,7 @@ CodeEmitterNV50::emitLOAD(const Instruction *i)
       code[1] = 0x20000000 | (i->getSrc(0)->reg.fileIndex << 22);
       if (typeSizeof(i->dType) == 4)
          code[1] |= 0x04000000;
+      emitLoadStoreSizeCS(i->sType);
       break;
    case FILE_MEMORY_LOCAL:
       code[0] = 0xd0000001;
@@ -588,7 +594,7 @@ CodeEmitterNV50::emitLOAD(const Instruction *i)
    }
    if (sf == FILE_MEMORY_LOCAL ||
        sf == FILE_MEMORY_GLOBAL)
-      emitLoadStoreSize(i->sType, 21 + 32);
+      emitLoadStoreSizeLG(i->sType, 21 + 32);
 
    setDst(i, 0);
 
@@ -599,7 +605,7 @@ CodeEmitterNV50::emitLOAD(const Instruction *i)
       srcId(*i->src[0].getIndirect(0), 9);
    } else {
       setAReg16(i, 0);
-      srcAddr16(i->src[0], i->src[0].getFile() == FILE_SHADER_INPUT ? 7 : 9);
+      srcAddr16(i->src[0], 9);
    }
 }
 
@@ -618,12 +624,12 @@ CodeEmitterNV50::emitSTORE(const Instruction *i)
    case FILE_MEMORY_GLOBAL:
       code[0] = 0xd0000000;
       code[1] = 0xa0000000;
-      emitLoadStoreSize(i->dType, 21 + 32);
+      emitLoadStoreSizeLG(i->dType, 21 + 32);
       break;
    case FILE_MEMORY_LOCAL:
       code[0] = 0xd0000001;
       code[1] = 0x60000000;
-      emitLoadStoreSize(i->dType, 21 + 32);
+      emitLoadStoreSizeLG(i->dType, 21 + 32);
       break;
    case FILE_MEMORY_SHARED:
       code[0] = 0x00000001;
@@ -1331,6 +1337,9 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
    case OP_OR:
    case OP_XOR:
       emitLogicOp(insn);
+      break;
+   case OP_SET:
+      emitSET(insn);
       break;
    case OP_MIN:
    case OP_MAX:
