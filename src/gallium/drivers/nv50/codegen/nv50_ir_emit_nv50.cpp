@@ -501,10 +501,13 @@ CodeEmitterNV50::emitForm_IMM(const Instruction *i)
    setDst(i, 0);
 
    setSrcFileBits(i, NV50_OP_ENC_IMM);
-   setSrc(i, 0, 0);
-   setSrc(i, 2, 1);
-   if (Target::operationSrcNr[i->op] > 1)
+   if (Target::operationSrcNr[i->op] > 1) {
+      setSrc(i, 0, 0);
       setImmediate(i, 1);
+      setSrc(i, 2, 1);
+   } else {
+      setImmediate(i, 0);
+   }
 }
 
 void
@@ -1294,8 +1297,6 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
       emitMOV(insn);
       break;
    case OP_EXIT:
-      insn->exit = 1;
-      // fall through
    case OP_NOP:
    case OP_JOIN:
       emitNOP();
@@ -1444,10 +1445,10 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
       ERROR("unknow op\n");
       return false;
    }
-   if (insn->join)
+   if (insn->join || insn->op == OP_JOIN)
       code[1] |= 0x2;
    else
-   if (insn->exit)
+   if (insn->exit || insn->op == OP_EXIT)
       code[1] |= 0x1;
 
    assert((insn->encSize == 8) == (code[0] & 1));
