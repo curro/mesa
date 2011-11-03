@@ -55,7 +55,7 @@ private:
    void emitFlagsRd(const Instruction *);
    void emitFlagsWr(const Instruction *);
 
-   void emitCondCode(CondCode cc, int pos);
+   void emitCondCode(CondCode cc, DataType ty, int pos);
 
    inline void setARegBits(unsigned int);
 
@@ -153,13 +153,9 @@ void CodeEmitterNV50::srcAddr8(const ValueRef& src, const int pos)
 
 void CodeEmitterNV50::defId(const ValueDef& def, const int pos)
 {
-   assert(def.get());
-   int id;
-   if (def.getFile() == FILE_SHADER_OUTPUT)
-      id = DDATA(def).offset / 4;
-   else
-      id = DDATA(def).id;
-   code[pos / 32] |= id << (pos % 32);
+   assert(def.get() && def.getFile() != FILE_SHADER_OUTPUT);
+
+   code[pos / 32] |= DDATA(def).id << (pos % 32);
 }
 
 void
@@ -182,7 +178,7 @@ CodeEmitterNV50::emitMNeg12(const Instruction *i)
    code[1] |= i->src[1].mod.neg() << 27;
 }
 
-void CodeEmitterNV50::emitCondCode(CondCode cc, int pos)
+void CodeEmitterNV50::emitCondCode(CondCode cc, DataType ty, int pos)
 {
    uint8_t enc;
 
@@ -218,6 +214,9 @@ void CodeEmitterNV50::emitCondCode(CondCode cc, int pos)
       assert(!"invalid condition code");
       break;
    }
+   if (ty != TYPE_NONE && !isFloatType(ty))
+      enc &= ~0x8; // unordered only exists for float types
+
    code[pos / 32] |= enc << (pos % 32);
 }
 
@@ -230,7 +229,7 @@ CodeEmitterNV50::emitFlagsRd(const Instruction *i)
 
    if (s >= 0) {
       assert(i->getSrc(s)->reg.file == FILE_FLAGS);
-      emitCondCode(i->cc, 32 + 7);
+      emitCondCode(i->cc, TYPE_NONE, 32 + 7);
       srcId(i->src[s], 32 + 12);
    } else {
       code[1] |= 0x0780;
@@ -242,8 +241,22 @@ CodeEmitterNV50::emitFlagsWr(const Instruction *i)
 {
    assert(!(code[1] & 0x70));
 
-   if (i->flagsDef >= 0)
-      code[1] |= (DDATA(i->def[i->flagsDef]).id << 4) | 0x40;
+   int flagsDef = i->flagsDef;
+
+   // find flags definition and check that it is the last def
+   if (flagsDef < 0) {
+      for (int d = 0; i->defExists(d); ++d)
+         if (i->def[d].getFile() == FILE_FLAGS)
+            flagsDef = d;
+      if (flagsDef >= 0)
+         WARN("Instruction::flagsDef was not set properly");
+   }
+   if (flagsDef == 0 && i->defExists(1))
+      WARN("flags def should not be the primary definition");
+
+   if (flagsDef >= 0)
+      code[1] |= (DDATA(i->def[flagsDef]).id << 4) | 0x40;
+
 }
 
 void
@@ -279,7 +292,7 @@ CodeEmitterNV50::setDst(const Value *dst)
 
    assert(reg->file != FILE_ADDRESS);
 
-   if (reg->data.id < 0) {
+   if (reg->data.id < 0 || reg->file == FILE_FLAGS) {
       code[0] |= (127 << 2) | 1;
       code[1] |= 8;
    } else {
@@ -935,7 +948,7 @@ CodeEmitterNV50::emitSET(const Instruction *i)
    code[0] = 0x30000000;
    code[1] = 0x60000000;
 
-   emitCondCode(i->asCmp()->setCond, 32 + 14);
+   emitCondCode(i->asCmp()->setCond, i->sType, 32 + 14);
 
    switch (i->sType) {
    case TYPE_F32: code[0] |= 0x80000000; break;
