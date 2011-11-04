@@ -199,7 +199,7 @@ Value::coalesce(Value *jval, bool force)
    if (reg.file != jval->reg.file || reg.size != jval->reg.size) {
       if (!force)
          return false;
-      ERROR("forced coalescing of values of different sizes/files");
+      WARN("forced coalescing of values of different sizes/files\n");
    }
 
    if (!force && (repr->reg.data.id != jrep->reg.data.id)) {
@@ -688,9 +688,15 @@ Instruction::cloneBase(Instruction *insn, bool deep) const
 }
 
 unsigned int
-Instruction::defCount(unsigned int mask) const
+Instruction::defCount(unsigned int mask, bool singleFile) const
 {
    unsigned int i, n;
+
+   if (singleFile) {
+      for (i = 1; defExists(i); ++i)
+         if (getDef(i)->reg.file != getDef(0)->reg.file)
+            mask &= ~(1 << i);
+   }
 
    for (n = 0, i = 0; this->defExists(i); ++i, mask >>= 1)
       n += mask & 1;

@@ -253,6 +253,12 @@ void Instruction::setFlagsDef(int d, Value *val)
    }
 }
 
+void Instruction::setFlagsSrc(int s, Value *val)
+{
+   flagsSrc = s;
+   setSrc(flagsSrc, val);
+}
+
 Value *TexInstruction::getIndirectR() const
 {
    return tex.rIndirectSrc >= 0 ? getSrc(tex.rIndirectSrc) : NULL;

@@ -27,6 +27,80 @@
 
 namespace nv50_ir {
 
+// nv50 doesn't support 32 bit integer multiplication
+//
+//       ah al * bh bl = LO32: (al * bh + ah * bl) << 16 + (al * bl)
+// -------------------
+//    al*bh 00           HI32: (al * bh + ah * bl) >> 16 + (ah * bh) +
+// ah*bh 00 00                 (           carry1) << 16 + ( carry2)
+//       al*bl
+//    ah*bl 00
+//
+// fffe0001 + fffe0001
+static bool
+expandIntegerMUL(BuildUtil *bld, Instruction *mul)
+{
+   const bool highResult = mul->subOp == NV50_IR_SUBOP_MUL_HIGH;
+
+   DataType fTy = mul->sType; // full type
+   DataType hTy;
+   switch (fTy) {
+   case TYPE_S32: hTy = TYPE_S16; break;
+   case TYPE_U32: hTy = TYPE_U16; break;
+   case TYPE_U64: hTy = TYPE_U32; break;
+   case TYPE_S64: hTy = TYPE_S32; break;
+   default:
+      return false;
+   }
+   unsigned int fullSize = typeSizeof(fTy);
+   unsigned int halfSize = typeSizeof(hTy);
+
+   Instruction *i[9];
+
+   Value *a[2] = { bld->getSSA(halfSize), bld->getSSA(halfSize) };
+   Value *b[2] = { bld->getSSA(halfSize), bld->getSSA(halfSize) };
+   Value *c[2];
+   Value *t[4];
+   for (int j = 0; j < 4; ++j)
+      t[j] = bld->getSSA(fullSize);
+
+   (i[0] = bld->mkOp1(OP_SPLIT, fTy, a[0], mul->getSrc(0)))->setDef(1, a[1]);
+   (i[1] = bld->mkOp1(OP_SPLIT, fTy, b[0], mul->getSrc(1)))->setDef(1, b[1]);
+
+   i[2] = bld->mkOp2(OP_MUL, fTy, t[0], a[0], b[1]);
+   i[3] = bld->mkOp3(OP_MAD, fTy, t[1], a[1], b[0], t[0]);
+   i[7] = bld->mkOp2(OP_SHL, fTy, t[2], t[1], bld->mkImm(halfSize * 8));
+   i[4] = bld->mkOp3(OP_MAD, fTy, t[3], a[0], b[0], t[2]);
+
+   if (highResult) {
+      Value *r[3];
+      Value *imm = bld->loadImm(NULL, 1 << (halfSize * 8));
+      c[0] = bld->getSSA(1, FILE_FLAGS);
+      c[1] = bld->getSSA(1, FILE_FLAGS);
+      for (int j = 0; j < 3; ++j)
+         r[j] = bld->getSSA(fullSize);
+
+      i[8] = bld->mkOp2(OP_SHR, fTy, r[0], t[1], bld->mkImm(halfSize * 8));
+      i[6] = bld->mkOp2(OP_ADD, fTy, r[1], r[0], imm);
+      bld->mkOp2(OP_UNION, TYPE_U32, r[2], r[1], r[0]);
+      i[5] = bld->mkOp3(OP_MAD, fTy, mul->getDef(0), r[2], a[1], b[1]);
+
+      // set carry defs / sources
+      i[3]->setFlagsDef(1, c[0]);
+      i[4]->setFlagsDef(0, c[1]); // actual result not required, just the carry
+      i[6]->setPredicate(CC_C, c[0]);
+      i[5]->setFlagsSrc(3, c[1]);
+   } else {
+      bld->mkMov(mul->getDef(0), t[3]);
+   }
+   delete_Instruction(bld->getProgram(), mul);
+
+   for (int j = 2; j <= (highResult ? 5 : 4); ++j)
+      i[j]->sType = hTy;
+
+   return true;
+}
+
 #define QOP_ADD  0
 #define QOP_SUBR 1
 #define QOP_SUB  2
@@ -149,6 +223,7 @@ private:
 
    bool handleEXPORT(Instruction *);
 
+   bool handleMUL(Instruction *);
    bool handleDIV(Instruction *);
    bool handleSQRT(Instruction *);
    bool handlePOW(Instruction *);
@@ -424,7 +499,6 @@ bool
 NV50LoweringPreSSA::handleRDSV(Instruction *i)
 {
    Symbol *sym = i->getSrc(0)->asSym();
-   Instruction *ld;
    uint32_t addr = targ->getSVAddress(FILE_SHADER_INPUT, sym);
 
    if (addr >= 0x400) // mov $sreg
@@ -446,11 +520,19 @@ NV50LoweringPreSSA::handleRDSV(Instruction *i)
    }
       break;
    default:
-      ld = bld.mkFetch(i->getDef(0), i->dType,
-                       FILE_SHADER_INPUT, addr, i->getIndirect(0, 0), NULL);
+      bld.mkFetch(i->getDef(0), i->dType,
+                  FILE_SHADER_INPUT, addr, i->getIndirect(0, 0), NULL);
       break;
    }
    bld.getBB()->remove(i);
+   return true;
+}
+
+bool
+NV50LoweringPreSSA::handleMUL(Instruction *i)
+{
+   if (!isFloatType(i->dType) && typeSizeof(i->sType) > 2)
+      return expandIntegerMUL(&bld, i);
    return true;
 }
 
@@ -573,6 +655,8 @@ NV50LoweringPreSSA::visit(Instruction *i)
       return handleSELP(i);
    case OP_POW:
       return handlePOW(i);
+   case OP_MUL:
+      return handleMUL(i);
    case OP_DIV:
       return handleDIV(i);
    case OP_SQRT:

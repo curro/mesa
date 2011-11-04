@@ -641,9 +641,10 @@ public:
    inline Value *getPredicate() const;
    bool writesPredicate() const;
 
+   inline void setFlagsSrc(int s, Value *);
    inline void setFlagsDef(int d, Value *);
 
-   unsigned int defCount(unsigned int mask) const;
+   unsigned int defCount(unsigned int mask, bool singleFile = false) const;
    unsigned int srcCount(unsigned int mask) const;
 
    // save & remove / set indirect[0,1] and predicate source

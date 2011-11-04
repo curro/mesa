@@ -204,6 +204,7 @@ private:
    bool coalesceValues(unsigned int mask);
    bool linearScan();
    bool allocateConstrainedValues();
+   void resolveSplitMerge();
 
 private:
    class PhiMovesPass : public Pass {
@@ -249,6 +250,10 @@ private:
    ArrayList insns;
 
    int sequence; // for manual passes through CFG
+
+   // need to adjust register id for participants of OP_MERGE/SPLIT
+   DLList merges;
+   DLList splits;
 };
 
 Instruction *
@@ -504,10 +509,20 @@ RegAlloc::coalesceValues(unsigned int mask)
             }
          break;
       case OP_UNION:
+      case OP_MERGE:
          if (!(mask & JOIN_MASK_UNION))
             break;
+         if (insn->op == OP_MERGE)
+            merges.insert(insn);
          for (c = 0; insn->srcExists(c); ++c)
             insn->getDef(0)->coalesce(insn->getSrc(c), true);
+         break;
+      case OP_SPLIT:
+         if (!(mask & JOIN_MASK_UNION))
+            break;
+         splits.insert(insn);
+         for (c = 0; insn->defExists(c); ++c)
+            insn->getSrc(0)->coalesce(insn->getDef(c), true);
          break;
       case OP_CONSTRAINT:
          if (!(mask & JOIN_MASK_CONSTRAINT))
@@ -607,7 +622,7 @@ RegAlloc::allocateConstrainedValues()
    for (int n = 0; n < insns.getSize(); ++n) {
       Instruction *i = insnBySerial(n);
 
-      const int vecSize = i->defCount(0xf);
+      const int vecSize = i->defCount(0xf, true);
       if (vecSize < 2)
          continue;
       assert(vecSize <= 4);
@@ -772,6 +787,9 @@ RegAlloc::execFunc()
       goto out;
    switch (prog->getTarget()->getChipset() & 0xf0) {
    case 0x50:
+   case 0x80:
+   case 0x90:
+   case 0xa0:
       ret = coalesceValues(JOIN_MASK_UNION | JOIN_MASK_TEX);
       break;
    case 0xc0:
@@ -801,7 +819,36 @@ out:
         !it.end(); it.next())
       reinterpret_cast<LValue *>(it.get())->livei.clear();
 
+   resolveSplitMerge();
+
    return ret;
+}
+
+// TODO: check if modifying Instruction::join here breaks anything
+void
+RegAlloc::resolveSplitMerge()
+{
+   for (DLList::Iterator it = splits.iterator(); !it.end(); it.next()) {
+      Instruction *split = reinterpret_cast<Instruction *>(it.get());
+      for (int d = 0; d < 2; ++d) {
+         Value *value = split->getDef(d);
+         value->reg.data.id = value->join->reg.data.id * 2 + d;
+         value->join = value;
+      }
+      delete_Instruction(prog, split);
+   }
+   splits.clear();
+
+   for (DLList::Iterator it = merges.iterator(); !it.end(); it.next()) {
+      Instruction *merge = reinterpret_cast<Instruction *>(it.get());
+      for (int s = 0; s < 2; ++s) {
+         Value *value = merge->getSrc(s);
+         value->reg.data.id = value->join->reg.data.id * 2 + s;
+         value->join = value;
+      }
+      delete_Instruction(prog, merge);
+   }
+   merges.clear();
 }
 
 bool Program::registerAllocation()
