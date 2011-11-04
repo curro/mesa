@@ -278,11 +278,16 @@ int LValue::print(char *buf, size_t size, DataType ty) const
    switch (reg.file) {
    case FILE_GPR:
       r = 'r'; col = TXT_GPR;
-      if (reg.size == 8)
+      if (reg.size == 2) {
+         postFix = (idx & 1) ? "h" : "l";
+         idx /= 2;
+      } else
+      if (reg.size == 8) {
          postFix = "d";
-      else
-      if (reg.size == 16)
+      } else
+      if (reg.size == 16) {
          postFix = "q";
+      }
       break;
    case FILE_PREDICATE:
       r = 'p'; col = TXT_REGISTER;
@@ -416,7 +421,7 @@ void Instruction::print() const
       } else {
          PRINT("%s", CondCodeStr[cc]);
       }
-      if (pos > pre + 1)
+      if (pos > pre)
          SPACE();
       pos += src[predSrc].get()->print(&buf[pos], BUFSZ - pos);
       PRINT(" %s", colour[TXT_INSN]);
