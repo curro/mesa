@@ -49,7 +49,7 @@ private:
    inline void srcId(const ValueRef&, const int pos);
    inline void srcId(const ValueRef *, const int pos);
 
-   inline void srcAddr16(const ValueRef&, const int pos);
+   inline void srcAddr16(const ValueRef&, bool adj, const int pos);
    inline void srcAddr8(const ValueRef&, const int pos);
 
    void emitFlagsRd(const Instruction *);
@@ -91,9 +91,10 @@ private:
    void emitUADD(const Instruction *);
    void emitAADD(const Instruction *);
    void emitFADD(const Instruction *);
-   void emitUMUL(const Instruction *);
+   void emitIMUL(const Instruction *);
    void emitFMUL(const Instruction *);
    void emitFMAD(const Instruction *);
+   void emitIMAD(const Instruction *);
 
    void emitMINMAX(const Instruction *);
 
@@ -129,11 +130,13 @@ void CodeEmitterNV50::srcId(const ValueRef *src, const int pos)
    code[pos / 32] |= SDATA(*src).id << (pos % 32);
 }
 
-void CodeEmitterNV50::srcAddr16(const ValueRef& src, const int pos)
+void CodeEmitterNV50::srcAddr16(const ValueRef& src, bool adj, const int pos)
 {
    assert(src.get());
 
-   uint32_t offset = SDATA(src).offset / src.get()->reg.size;
+   uint32_t offset = SDATA(src).offset;
+   if (adj)
+      offset /= src.get()->reg.size;
 
    assert(offset <= 0x3ffff && (pos % 32) <= 16);
 
@@ -349,7 +352,6 @@ CodeEmitterNV50::setSrcFileBits(const Instruction *i, int enc)
          break;
       }
    }
-   INFO("mode = %x\n", mode);
    switch (mode) {
    case 0x00: // rrr
       break;
@@ -533,7 +535,9 @@ CodeEmitterNV50::emitLoadStoreSizeLG(DataType ty, int pos)
    case TYPE_S32: // fall through
    case TYPE_U32:  enc = 0x6; break;
    case TYPE_B128: enc = 0x5; break;
-   case TYPE_F64:  enc = 0x4; break;
+   case TYPE_F64: // fall through
+   case TYPE_S64: // fall through
+   case TYPE_U64:  enc = 0x4; break;
    case TYPE_S16:  enc = 0x3; break;
    case TYPE_U16:  enc = 0x2; break;
    case TYPE_S8:   enc = 0x1; break;
@@ -621,7 +625,7 @@ CodeEmitterNV50::emitLOAD(const Instruction *i)
       srcId(*i->src[0].getIndirect(0), 9);
    } else {
       setAReg16(i, 0);
-      srcAddr16(i->src[0], 9);
+      srcAddr16(i->src[0], i->src[0].getFile() != FILE_MEMORY_LOCAL, 9);
    }
 }
 
@@ -677,7 +681,7 @@ CodeEmitterNV50::emitSTORE(const Instruction *i)
       if (f == FILE_MEMORY_GLOBAL)
          srcId(*i->src[0].getIndirect(0), 9);
       if (f == FILE_MEMORY_LOCAL)
-         srcAddr16(i->src[0], 9);
+         srcAddr16(i->src[0], false, 9);
    }
    if (f != FILE_MEMORY_GLOBAL)
       setAReg16(i, 0);
@@ -885,7 +889,7 @@ CodeEmitterNV50::emitUADD(const Instruction *i)
    } else
    if (i->encSize == 8) {
       code[0] = 0x20000000;
-      code[1] = 0x04000000;
+      code[1] = (typeSizeof(i->dType) == 2) ? 0 : 0x04000000;
       emitForm_ADD(i);
    } else {
       emitForm_MUL(i);
@@ -893,6 +897,14 @@ CodeEmitterNV50::emitUADD(const Instruction *i)
    assert(!(i->src[0].mod.neg() && i->src[1].mod.neg()));
    code[0] |= i->src[0].mod.neg() << 28;
    code[0] |= i->src[1].mod.neg() << 22;
+   assert((code[0] & 0x10400000) != 0x10400000);
+
+   if (i->flagsSrc >= 0) {
+      // addc == sub | subr
+      assert(!(code[0] & 0x10400000) && !i->getPredicate());
+      code[0] |= 0x10400000;
+      srcId(i->src[i->flagsSrc], 32 + 12);
+   }
 }
 
 void
@@ -912,9 +924,12 @@ CodeEmitterNV50::emitAADD(const Instruction *i)
 }
 
 void
-CodeEmitterNV50::emitUMUL(const Instruction *i)
+CodeEmitterNV50::emitIMUL(const Instruction *i)
 {
-   assert(0);
+   code[0] = 0x40000000;
+   code[1] = (i->sType == TYPE_S16) ? (0x8000 | 0x4000) : 0x0000;
+
+   emitForm_MAD(i);
 }
 
 void
@@ -939,6 +954,32 @@ CodeEmitterNV50::emitFMUL(const Instruction *i)
       emitForm_MUL(i);
       if (neg)
          code[0] |= 0x8000;
+   }
+}
+
+void
+CodeEmitterNV50::emitIMAD(const Instruction *i)
+{
+   code[0] = 0x60000000;
+   if (isSignedType(i->sType))
+      code[1] = i->saturate ? 0x20000000 : 0x40000000;
+   else
+      code[1] = 0x00000000;
+
+   int neg1 = i->src[0].mod.neg() ^ i->src[1].mod.neg();
+   int neg2 = i->src[2].mod.neg();
+
+   assert(!(neg1 & neg2));
+   code[1] |= neg1 << 27;
+   code[1] |= neg2 << 26;
+
+   emitForm_MAD(i);
+
+   if (i->flagsSrc >= 0) {
+      // add with carry from $cX
+      assert(!(code[1] & 0x0c000000) && !i->getPredicate());
+      code[1] |= 0xc << 24;
+      srcId(i->src[i->flagsSrc], 32 + 12);
    }
 }
 
@@ -1189,6 +1230,8 @@ CodeEmitterNV50::emitShift(const Instruction *i)
       if (i->src[1].getFile() == FILE_IMMEDIATE) {
          code[1] |= 1 << 20;
          code[0] |= (i->getSrc(1)->reg.data.u32 & 0x7f) << 16;
+         defId(i->def[0], 2);
+         srcId(i->src[0], 9);
          emitFlagsRd(i);
       } else {
          emitForm_MAD(i);
@@ -1340,17 +1383,23 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
       if (isFloatType(insn->dType))
          emitFMUL(insn);
       else
-         emitUMUL(insn);
+         emitIMUL(insn);
       break;
    case OP_MAD:
    case OP_FMA:
-      emitFMAD(insn);
-      break;
+      if (isFloatType(insn->dType))
+         emitFMAD(insn);
+      else
+         emitIMAD(insn);
       break;
    case OP_AND:
    case OP_OR:
    case OP_XOR:
       emitLogicOp(insn);
+      break;
+   case OP_SHL:
+   case OP_SHR:
+      emitShift(insn);
       break;
    case OP_SET:
       emitSET(insn);

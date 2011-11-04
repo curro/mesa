@@ -362,7 +362,7 @@ TargetNV50::isModSupported(const Instruction *insn, int s, Modifier mod) const
 bool
 TargetNV50::mayPredicate(const Instruction *insn, const Value *pred) const
 {
-   if (insn->getPredicate())
+   if (insn->getPredicate() || insn->flagsSrc >= 0)
       return false;
    for (int s = 0; insn->srcExists(s); ++s)
       if (insn->src[s].getFile() == FILE_IMMEDIATE)
