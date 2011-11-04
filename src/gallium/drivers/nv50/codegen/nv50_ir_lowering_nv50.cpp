@@ -83,7 +83,7 @@ expandIntegerMUL(BuildUtil *bld, Instruction *mul)
       i[8] = bld->mkOp2(OP_SHR, fTy, r[0], t[1], bld->mkImm(halfSize * 8));
       i[6] = bld->mkOp2(OP_ADD, fTy, r[1], r[0], imm);
       bld->mkOp2(OP_UNION, TYPE_U32, r[2], r[1], r[0]);
-      i[5] = bld->mkOp3(OP_MAD, fTy, mul->getDef(0), r[2], a[1], b[1]);
+      i[5] = bld->mkOp3(OP_MAD, fTy, mul->getDef(0), a[1], b[1], r[2]);
 
       // set carry defs / sources
       i[3]->setFlagsDef(1, c[0]);
