@@ -101,6 +101,10 @@ struct pipe_screen {
 			   enum pipe_video_profile profile,
 			   enum pipe_video_cap param );
 
+   int (*get_compute_param)(struct pipe_screen *,
+			    enum pipe_compute_cap param,
+			    uint64_t *ret);
+
    struct pipe_context * (*context_create)( struct pipe_screen *,
 					    void *priv );
 

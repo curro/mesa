@@ -43,6 +43,7 @@ struct tgsi_header
 #define TGSI_PROCESSOR_FRAGMENT  0
 #define TGSI_PROCESSOR_VERTEX    1
 #define TGSI_PROCESSOR_GEOMETRY  2
+#define TGSI_PROCESSOR_COMPUTE   3
 
 struct tgsi_processor
 {
@@ -149,7 +150,11 @@ struct tgsi_declaration_dimension
 #define TGSI_SEMANTIC_STENCIL    12
 #define TGSI_SEMANTIC_CLIPDIST   13
 #define TGSI_SEMANTIC_CLIPVERTEX 14
-#define TGSI_SEMANTIC_COUNT      15 /**< number of semantic values */
+#define TGSI_SEMANTIC_GRID_SIZE  15 /**< grid size in blocks */
+#define TGSI_SEMANTIC_BLOCK_ID   16 /**< ID of the current block */
+#define TGSI_SEMANTIC_BLOCK_SIZE 17 /**< block size in threads */
+#define TGSI_SEMANTIC_THREAD_ID  18 /**< block-relative ID of the current thread */
+#define TGSI_SEMANTIC_COUNT      19 /**< number of semantic values */
 
 struct tgsi_declaration_semantic
 {
@@ -160,10 +165,13 @@ struct tgsi_declaration_semantic
 
 struct tgsi_declaration_resource {
    unsigned Resource    : 8; /**< one of TGSI_TEXTURE_ */
-   unsigned ReturnTypeX : 6; /**< one of enum pipe_type */
-   unsigned ReturnTypeY : 6; /**< one of enum pipe_type */
-   unsigned ReturnTypeZ : 6; /**< one of enum pipe_type */
-   unsigned ReturnTypeW : 6; /**< one of enum pipe_type */
+   unsigned Raw 	: 1;
+   unsigned Writable	: 1;
+   unsigned ReturnTypeX : 3; /**< one of enum pipe_type */
+   unsigned ReturnTypeY : 3; /**< one of enum pipe_type */
+   unsigned ReturnTypeZ : 3; /**< one of enum pipe_type */
+   unsigned ReturnTypeW : 3; /**< one of enum pipe_type */
+   unsigned Padding	: 10;
 };
 
 #define TGSI_IMM_FLOAT32   0
@@ -381,7 +389,8 @@ struct tgsi_property_data {
 #define TGSI_OPCODE_IABS                159
 #define TGSI_OPCODE_ISSG                160
 
-#define TGSI_OPCODE_LAST                161
+#define TGSI_OPCODE_STORE               161
+#define TGSI_OPCODE_LAST                162
 
 #define TGSI_SAT_NONE            0  /* do not saturate */
 #define TGSI_SAT_ZERO_ONE        1  /* clamp to [0,1] */
@@ -493,6 +502,11 @@ struct tgsi_instruction_predicate
    unsigned Negate   : 1;  /* BOOL */
    unsigned Padding  : 7;
 };
+
+#define TGSI_RESOURCE_GLOBAL	-1
+#define TGSI_RESOURCE_LOCAL	-2
+#define TGSI_RESOURCE_PRIVATE	-3
+#define TGSI_RESOURCE_INPUT	-4
 
 /**
  * File specifies the register array to access.

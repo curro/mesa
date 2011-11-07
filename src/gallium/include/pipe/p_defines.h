@@ -321,6 +321,8 @@ enum pipe_transfer_usage {
 #define PIPE_BIND_STREAM_OUTPUT        (1 << 11) /* set_stream_output_buffers */
 #define PIPE_BIND_CURSOR               (1 << 16) /* mouse cursor */
 #define PIPE_BIND_CUSTOM               (1 << 17) /* state-tracker/winsys usages */
+#define PIPE_BIND_GLOBAL               (1 << 18) /* set_global_binding */
+#define PIPE_BIND_WRITABLE_VIEW        (1 << 19) /* create_sampler_view */
 
 /* The first two flags above were previously part of the amorphous
  * TEXTURE_USAGE, most of which are now descriptions of the ways a
@@ -363,7 +365,8 @@ enum pipe_transfer_usage {
 #define PIPE_SHADER_VERTEX   0
 #define PIPE_SHADER_FRAGMENT 1
 #define PIPE_SHADER_GEOMETRY 2
-#define PIPE_SHADER_TYPES    3
+#define PIPE_SHADER_COMPUTE  3
+#define PIPE_SHADER_TYPES    4
 
 
 /**
@@ -481,6 +484,7 @@ enum pipe_cap {
    PIPE_CAP_MAX_TEXEL_OFFSET = 51,
    PIPE_CAP_CONDITIONAL_RENDER = 52,
    PIPE_CAP_TEXTURE_BARRIER = 53,
+   PIPE_CAP_COMPUTE = 54,
    PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS = 55,
    PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS = 56,
    PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME = 57,
@@ -488,7 +492,7 @@ enum pipe_cap {
    PIPE_CAP_TGSI_CAN_COMPACT_CONSTANTS = 59, /* temporary */
    PIPE_CAP_VERTEX_COLOR_UNCLAMPED = 60,
    PIPE_CAP_VERTEX_COLOR_CLAMPED = 61,
-   PIPE_CAP_GLSL_FEATURE_LEVEL = 62
+   PIPE_CAP_GLSL_FEATURE_LEVEL = 62,
 };
 
 /**
@@ -535,6 +539,14 @@ enum pipe_shader_cap
    PIPE_SHADER_CAP_OUTPUT_READ = 19
 };
 
+enum pipe_compute_cap
+{
+   PIPE_COMPUTE_CAP_GRID_DIMENSION,
+   PIPE_COMPUTE_CAP_MAX_GRID_SIZE,
+   PIPE_COMPUTE_CAP_MAX_BLOCK_SIZE,
+   PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE,
+   PIPE_COMPUTE_CAP_MAX_SHARED_SIZE,
+};
 
 /**
  * Composite query types

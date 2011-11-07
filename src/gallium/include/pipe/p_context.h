@@ -63,6 +63,7 @@ struct pipe_vertex_element;
 struct pipe_video_buffer;
 struct pipe_video_decoder;
 struct pipe_viewport_state;
+struct pipe_compute_state;
 union pipe_color_union;
 
 /**
@@ -141,6 +142,9 @@ struct pipe_context {
    void   (*bind_geometry_sampler_states)(struct pipe_context *,
                                           unsigned num_samplers,
                                           void **samplers);
+   void   (*bind_compute_sampler_states)(struct pipe_context *,
+                                         unsigned num_samplers,
+                                         void **samplers);
    void   (*delete_sampler_state)(struct pipe_context *, void *);
 
    void * (*create_rasterizer_state)(struct pipe_context *,
@@ -219,6 +223,10 @@ struct pipe_context {
    void (*set_geometry_sampler_views)(struct pipe_context *,
                                       unsigned num_views,
                                       struct pipe_sampler_view **);
+
+   void (*set_compute_sampler_views)(struct pipe_context *,
+                                     unsigned num_views,
+                                     struct pipe_sampler_view **);
 
    void (*set_vertex_buffers)( struct pipe_context *,
                                unsigned num_buffers,
@@ -418,6 +426,51 @@ struct pipe_context {
     */
    struct pipe_video_buffer *(*create_video_buffer)( struct pipe_context *context,
                                                      const struct pipe_video_buffer *templat );
+
+   /**
+    * Compute kernel functionality
+    */
+   /*@{*/
+
+   void *(*create_compute_state)(struct pipe_context *context,
+				 const struct pipe_compute_state *);
+   void (*bind_compute_state)(struct pipe_context *, void *);
+   void (*delete_compute_state)(struct pipe_context *, void *);
+
+   /**
+    * Bind an array of buffers to be mapped inside the address space
+    * of the GLOBAL resource.
+    *
+    * \param shader	shader stage they will be mapped to.
+    * \param n		number of buffers to map.
+    * \param resources	array of pointers to the buffers to map, should
+    *			contain at least \a n elements.
+    * \param handle     array of pointers to the memory locations that
+    *			will be filled with the respective base
+    *			address each buffer will be mapped to,
+    *			should contain at least \a n elements.
+    */
+   void (*set_global_binding)(struct pipe_context *context, int n,
+			      struct pipe_resource **resources,
+			      uint32_t **handles);
+
+   /**
+    * Launch the compute kernel starting at the instruction \a pc of
+    * the currently bound compute program.
+    *
+    * \a grid_layout and \a block_layout are arrays of size \a
+    * PIPE_COMPUTE_CAP_GRID_DIMENSION and determine the layout of the
+    * grid (in block units) and working block (in thread units) to be
+    * used, respectively.
+    *
+    * \a input will be used to initialize the INPUT resource, and it
+    * should be at least \a pipe_compute_state::req_input_mem bytes
+    * long.
+    */
+   void (*launch_grid)(struct pipe_context *context,
+                       const uint *block_layout, const uint *grid_layout,
+                       uint32_t pc, const void *input);
+   /*@}*/
 };
 
 

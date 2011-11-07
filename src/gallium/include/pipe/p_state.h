@@ -377,6 +377,7 @@ struct pipe_sampler_view
    unsigned swizzle_g:3;         /**< PIPE_SWIZZLE_x for green component */
    unsigned swizzle_b:3;         /**< PIPE_SWIZZLE_x for blue component */
    unsigned swizzle_a:3;         /**< PIPE_SWIZZLE_x for alpha component */
+   unsigned writable:1;          /**< are writes to this resource allowed? */
 };
 
 
@@ -577,6 +578,13 @@ struct pipe_resolve_info
    unsigned mask; /**< PIPE_MASK_RGBA, Z, S or ZS */
 };
 
+struct pipe_compute_state
+{
+   const struct tgsi_token *tokens;
+   unsigned req_local_mem;
+   unsigned req_private_mem;
+   unsigned req_input_mem;
+};
 
 #ifdef __cplusplus
 }
