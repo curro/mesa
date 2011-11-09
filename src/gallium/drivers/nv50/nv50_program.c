@@ -37,9 +37,9 @@ static int
 nv50_vertprog_assign_slots(struct nv50_ir_prog_info *info)
 {
    struct nv50_program *prog = (struct nv50_program *)info->driverPriv;
-   unsigned i, c;
-   unsigned n = 0;
+   unsigned i, n, c;
 
+   n = 0;
    for (i = 0; i < info->numInputs; ++i) {
       switch (info->in[i].sn) {
       case TGSI_SEMANTIC_INSTANCEID:
@@ -52,6 +52,8 @@ nv50_vertprog_assign_slots(struct nv50_ir_prog_info *info)
          break;
       }
       prog->in[i].id = i;
+      prog->in[i].sn = info->in[i].sn;
+      prog->in[i].si = info->in[i].si;
       prog->in[i].hw = n;
       prog->in[i].mask = info->in[i].mask;
 
@@ -77,8 +79,9 @@ nv50_vertprog_assign_slots(struct nv50_ir_prog_info *info)
    }
    /* TODO: communicate slots for InstanceID and VertexID */
 
+   n = 0;
    for (i = 0; i < info->numOutputs; ++i) {
-      switch (info->in[i].sn) {
+      switch (info->out[i].sn) {
       case TGSI_SEMANTIC_PSIZE:
          prog->vp.psiz = i;
          break;
@@ -88,10 +91,15 @@ nv50_vertprog_assign_slots(struct nv50_ir_prog_info *info)
       case TGSI_SEMANTIC_EDGEFLAG:
          prog->vp.edgeflag = i;
          break;
+      case TGSI_SEMANTIC_BCOLOR:
+         prog->vp.bfc[info->in[i].si] = i;
+         break;
       default:
          break;
       }
       prog->out[i].id = i;
+      prog->out[i].sn = info->out[i].sn;
+      prog->out[i].si = info->out[i].si;
       prog->out[i].hw = n;
       prog->out[i].mask = info->out[i].mask;
 
@@ -100,6 +108,7 @@ nv50_vertprog_assign_slots(struct nv50_ir_prog_info *info)
             info->out[i].slot[c] = n++;
    }
    prog->out_nr = info->numOutputs;
+   prog->max_out = n;
 
    if (prog->vp.psiz < info->numOutputs)
       prog->vp.psiz = prog->out[prog->vp.psiz].hw;
@@ -191,7 +200,7 @@ nv50_fragprog_assign_slots(struct nv50_ir_prog_info *info)
       for (c = 0; c < 4; ++c)
          info->out[i].slot[c] = prog->out[i].hw + c;
 
-      prog->max_out = MAX2(prog->max_out, prog->out[i].hw + 3);
+      prog->max_out = MAX2(prog->max_out, prog->out[i].hw + 4);
    }
 
    if (info->io.sampleMask < PIPE_MAX_SHADER_OUTPUTS)
@@ -248,12 +257,22 @@ nv50_program_translate(struct nv50_program *prog, uint16_t chipset)
 
    info->driverPriv = prog;
 
+#ifdef DEBUG
+   info->optLevel = debug_get_num_option("NV50_PROG_OPTIMIZE", 3);
+   info->dbgFlags = debug_get_num_option("NV50_PROG_DEBUG", 0);
+#else
+   info->optLevel = 3;
+#endif
+
    ret = nv50_ir_generate_code(info);
    if (ret) {
       NOUVEAU_ERR("shader translation failed: %i\n", ret);
       goto out;
    }
+   prog->code = info->bin.code;
+   prog->code_size = info->bin.codeSize;
    prog->fixups = info->bin.relocData;
+   prog->max_gpr = MAX2(4, info->bin.maxGPR + 1);
 
    if (prog->type == PIPE_SHADER_FRAGMENT) {
       if (info->prop.fp.writesDepth) {
@@ -295,7 +314,7 @@ nv50_program_upload_code(struct nv50_context *nv50, struct nv50_program *prog)
          if (evict)
             nouveau_resource_free(&evict->res);
       }
-      debug_printf("WARNING: out of code space, evicting all shaders.");
+      debug_printf("WARNING: out of code space, evicting all shaders.\n");
    }
    prog->code_base = prog->res->start;
 
