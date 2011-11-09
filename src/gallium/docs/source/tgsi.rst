@@ -1325,9 +1325,9 @@ instructions. If in doubt double check Direct3D documentation.
                from the specified buffer/texture without any filtering.
                The source data may come from any resource type other
                than CUBE.
-               LOAD dst, address, resource
+               LOAD dst, resource, address
                e.g.
-               LOAD TEMP[0], TEMP[1], RES[0]
+               LOAD TEMP[0], RES[0], TEMP[1]
                The 'address' is specified as unsigned integers. If the
                'address' is out of range [0...(# texels - 1)] the
                result of the fetch is always 0 in all components.
@@ -1364,9 +1364,44 @@ instructions. If in doubt double check Direct3D documentation.
                Where 'mpl' is a mipmap level and 'idx' is the
                array index.
 
-
 .. opcode:: LOAD_MS - Just like LOAD but allows fetch data from
                multi-sampled surfaces.
+
+.. opcode:: STORE - Using the provided integer address, STORE writes
+               to the specified buffer/texture.  The resource type be
+               anything other than CUBE.
+
+               STORE resource, address, src
+               e.g.
+               STORE RES[0], TEMP[0], TEMP[1]
+
+               The 'address' is specified as unsigned integers. If the
+               'address' is out of range [0...(# texels - 1)] the
+               result is undefined. As such the instruction doesn't
+               honor address wrap modes.
+
+               address.w always provides an unsigned integer mipmap
+               level. address.yz are ignored for buffers and 1d
+               textures. address.z is ignored for 1d texture arrays
+               and 2d textures.  For 1D texture arrays address.y
+               provides the array index (also as unsigned
+               integer). For 2D texture arrays address.z provides the
+               array index.  The exact semantics of the destination
+               address are presented in the table below:
+
+               resource type         X     Y     Z       W
+               -------------         ------------------------
+               PIPE_BUFFER           x                ignored
+               PIPE_TEXTURE_1D       x                  mpl
+               PIPE_TEXTURE_2D       x     y            mpl
+               PIPE_TEXTURE_3D       x     y     z      mpl
+               PIPE_TEXTURE_RECT     x     y            mpl
+               PIPE_TEXTURE_CUBE     not allowed as source
+               PIPE_TEXTURE_1D_ARRAY x    idx           mpl
+               PIPE_TEXTURE_2D_ARRAY x     y    idx     mpl
+
+               Where 'mpl' is a mipmap level and 'idx' is the
+               array index.
 
 .. opcode:: SAMPLE - Using provided address, sample data from the
                specified texture using the filtering mode identified
@@ -1695,7 +1730,7 @@ Declaration Resource
 
    Follows Declaration token if file is TGSI_FILE_RESOURCE.
 
-   DCL RES[#], resource, type(s)
+   DCL RES[#], resource [, WR] [, RAW] [, type(s)]
 
    Declares a shader input resource and assigns it to a RES[#]
    register.
@@ -1703,8 +1738,12 @@ Declaration Resource
    resource can be one of BUFFER, 1D, 2D, 3D, CUBE, 1DArray and
    2DArray.
 
-   type must be 1 or 4 entries (if specifying on a per-component
-   level) out of UNORM, SNORM, SINT, UINT and FLOAT.
+   Unless the "RAW" flag is present, type must be 1 or 4 entries (if
+   specifying on a per-component level) out of UNORM, SNORM, SINT,
+   UINT and FLOAT.
+
+   Resource writeback opcodes are illegal if the "WR" flag is not
+   present.
 
 
 Properties
