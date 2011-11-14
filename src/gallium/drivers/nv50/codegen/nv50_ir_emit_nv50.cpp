@@ -652,7 +652,7 @@ CodeEmitterNV50::emitSTORE(const Instruction *i)
       srcId(i->src[1], 32 + 14);
       break;
    case FILE_MEMORY_GLOBAL:
-      code[0] = 0xd0000000;
+      code[0] = 0xd0000001;
       code[1] = 0xa0000000;
       emitLoadStoreSizeLG(i->dType, 21 + 32);
       break;
