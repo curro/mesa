@@ -281,17 +281,26 @@ void BasicBlock::permuteAdjacent(Instruction *a, Instruction *b)
 void
 BasicBlock::splitCommon(Instruction *insn, BasicBlock *bb, bool attach)
 {
+   bb->entry = insn;
+
+   if (insn) {
+      exit = insn->prev;
+      exit->next = NULL;
+      insn->prev = NULL;
+   }
+
    while (!cfg.outgoing().end()) {
       Graph::Edge *edge = cfg.outgoing().getEdge();
-      Graph::Node *node = edge->getOrigin();
-      cfg.detach(node);
-      bb->cfg.attach(node, edge->getType());
+
+      bb->cfg.attach(edge->getTarget(), edge->getType());
+      cfg.detach(edge->getTarget());
    }
 
    for (; insn; insn = insn->next) {
       this->numInsns--;
       bb->numInsns++;
       insn->bb = bb;
+      bb->exit = insn;
    }
    if (attach)
       this->cfg.attach(&bb->cfg, Graph::Edge::TREE);
@@ -303,12 +312,7 @@ BasicBlock::splitBefore(Instruction *insn, bool attach)
    BasicBlock *bb = new BasicBlock(func);
    assert(insn->op != OP_PHI);
 
-   this->exit = insn->prev;
-   bb->entry = insn;
-   insn->prev = NULL;
-
-   this->splitCommon(insn, bb, attach);
-
+   splitCommon(insn, bb, attach);
    return bb;
 }
 
@@ -318,12 +322,7 @@ BasicBlock::splitAfter(Instruction *insn, bool attach)
    BasicBlock *bb = new BasicBlock(func);
    assert(insn && insn->op != OP_PHI);
 
-   this->exit = insn;
-   bb->entry = insn->next;
-   insn->next = NULL;
-
-   this->splitCommon(insn->next, bb, attach);
-
+   splitCommon(insn->next, bb, attach);
    return bb;
 }
 
