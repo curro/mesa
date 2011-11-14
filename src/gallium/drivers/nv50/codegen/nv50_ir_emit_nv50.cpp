@@ -1128,6 +1128,7 @@ CodeEmitterNV50::emitCVT(const Instruction *i)
          assert(0);
          break;
       }
+      break;
    case TYPE_S16:
    case TYPE_U16:
    case TYPE_S8:
