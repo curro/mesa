@@ -1554,7 +1554,7 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
       ERROR("operation should have been lowered\n");
       return false;
    default:
-      ERROR("unknow op\n");
+      ERROR("unknown op\n");
       return false;
    }
    if (insn->join || insn->op == OP_JOIN)

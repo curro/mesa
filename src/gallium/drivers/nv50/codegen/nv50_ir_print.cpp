@@ -265,7 +265,7 @@ int Modifier::print(char *buf, size_t size) const
 
    return pos;
 }
-   
+
 int LValue::print(char *buf, size_t size, DataType ty) const
 {
    const char *postFix = "";
