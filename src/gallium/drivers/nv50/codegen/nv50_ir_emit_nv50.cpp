@@ -591,6 +591,10 @@ CodeEmitterNV50::emitLOAD(const Instruction *i)
          assert(offset <= (int32_t)(0x3fff * typeSizeof(i->sType)));
          code[0] = 0x10000001;
          code[1] = 0x40000000;
+
+         if (typeSizeof(i->dType) == 4)
+            code[1] |= 0x04000000;
+
          emitLoadStoreSizeCS(i->sType);
       } else {
          assert(offset <= (int32_t)(0x1f * typeSizeof(i->sType)));
