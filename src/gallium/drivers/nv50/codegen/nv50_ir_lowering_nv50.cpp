@@ -729,7 +729,7 @@ NV50LoweringPreSSA::visit(Instruction *i)
       return handleCALL(i);
    default:
       break;
-   }   
+   }
    return true;
 }
 
