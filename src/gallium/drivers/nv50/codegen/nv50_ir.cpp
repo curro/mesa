@@ -1010,6 +1010,7 @@ nv50_ir_generate_code(struct nv50_ir_prog_info *info)
 // PROG_TYPE_CASE(DOMAIN, TESSELLATION_EVAL);
    PROG_TYPE_CASE(GEOMETRY, GEOMETRY);
    PROG_TYPE_CASE(FRAGMENT, FRAGMENT);
+   PROG_TYPE_CASE(COMPUTE, COMPUTE);
    default:
       type = nv50_ir::Program::TYPE_COMPUTE;
       break;
