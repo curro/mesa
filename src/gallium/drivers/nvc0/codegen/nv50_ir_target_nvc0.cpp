@@ -443,6 +443,8 @@ TargetNVC0::insnCanLoad(const Instruction *i, int s,
 bool
 TargetNVC0::isAccessSupported(DataFile file, DataType ty) const
 {
+   if (ty == TYPE_NONE)
+      return false;
    if (ty == TYPE_B96)
       return (file == FILE_SHADER_INPUT) || (file == FILE_SHADER_OUTPUT);
    return true;
