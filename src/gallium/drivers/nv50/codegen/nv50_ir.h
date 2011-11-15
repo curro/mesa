@@ -877,6 +877,7 @@ public:
    Graph::Node dom;
 
    BitSet liveSet;
+   BitSet defSet;
 
    uint32_t binPos;
    uint32_t binSize;
@@ -927,6 +928,7 @@ public:
 
    inline LValue *getLValue(int id);
 
+   void buildDefSets();
    bool convertToSSA();
 
 public:
@@ -950,6 +952,7 @@ public:
 
 private:
    void buildLiveSetsPreSSA(BasicBlock *, const int sequence);
+   void buildDefSetsPreSSA(BasicBlock *bb, const int seq);
 
 private:
    int id;
