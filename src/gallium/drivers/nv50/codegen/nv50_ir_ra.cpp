@@ -50,7 +50,7 @@ public:
    void print() const;
 
 private:
-   uint32_t bits[FILE_ADDRESS + 1][(MAX_REGISTER_FILE_SIZE + 31) / 32];
+   uint32_t bits[LAST_REGISTER_FILE + 1][(MAX_REGISTER_FILE_SIZE + 31) / 32];
 
    int unit[FILE_ADDRESS + 1]; // log2 of allocation granularity
 
@@ -233,7 +233,13 @@ private:
       void addConstraint(Instruction *, int s, int n);
       bool detectConflict(Instruction *, int s);
 
+      // target specific functions, TOOD: put in subclass or Target
+      void texConstraintNV50(TexInstruction *);
+      void texConstraintNVC0(TexInstruction *);
+
       DLList constrList;
+
+      const Target *targ;
    };
 
    bool buildLiveSets(BasicBlock *);
@@ -646,10 +652,10 @@ RegAlloc::allocateConstrainedValues()
             if (rVal->reg.data.id >= 0 && rVal->livei.overlaps(defs[c]->livei))
                regSet[c].occupy(rVal);
          }
-         mask = 0x11111111;
+         mask = 0x03030303;
          if (vecSize == 2) // granularity is 2 instead of 4
-            mask |= 0x11111111 << 2;
-         regSet[c].periodicMask(defs[0]->reg.file, 0, ~(mask << c));
+            mask |= 0x03030303 << 4;
+         regSet[c].periodicMask(defs[0]->reg.file, 0, ~(mask << (c * 2)));
 
          if (!defs[c]->livei.isEmpty())
             insertOrderedTail(regVals, defs[c]);
@@ -887,17 +893,10 @@ RegAlloc::InsertConstraintsPass::textureMask(TexInstruction *tex)
    }
    tex->tex.mask = mask;
 
-#if 0 // reorder or set the unused ones NULL ?
-   for (c = 0; c < 4; ++c)
-      if (!(tex->tex.mask & (1 << c)))
-         def[d++] = tex->getDef(c);
-#endif
    for (c = 0; c < d; ++c)
       tex->setDef(c, def[c]);
-#if 1
    for (; c < 4; ++c)
       tex->setDef(c, NULL);
-#endif
 }
 
 bool
@@ -965,6 +964,49 @@ RegAlloc::InsertConstraintsPass::addHazard(Instruction *i, const ValueRef *src)
 
 }
 
+void
+RegAlloc::InsertConstraintsPass::texConstraintNVC0(TexInstruction *tex)
+{
+   int n, s;
+
+   textureMask(tex);
+
+   if (tex->op == OP_TXQ) {
+      s = tex->srcCount(0xff);
+      n = 0;
+   } else {
+      s = tex->tex.target.getArgCount();
+      if (!tex->tex.target.isArray() &&
+          (tex->tex.rIndirectSrc >= 0 || tex->tex.sIndirectSrc >= 0))
+         ++s;
+      if (tex->op == OP_TXD && tex->tex.useOffsets)
+         ++s;
+      n = tex->srcCount(0xff) - s;
+      assert(n <= 4);
+   }
+
+   if (s > 1)
+      addConstraint(tex, 0, s);
+   if (n > 1)
+      addConstraint(tex, s, n);
+}
+
+void
+RegAlloc::InsertConstraintsPass::texConstraintNV50(TexInstruction *tex)
+{
+   textureMask(tex);
+
+   for (int s = 0; tex->srcExists(s) && s != tex->predSrc; ++s) {
+      Instruction *mov = new_Instruction(func, OP_MOV, TYPE_U32);
+      mov->setSrc(0, tex->getSrc(s));
+      mov->setDef(0, new_LValue(func, tex->getSrc(s)->asLValue()));
+      tex->setSrc(s, mov->getDef(0));
+      tex->bb->insertBefore(tex, mov);
+      if (!tex->defExists(s))
+         tex->setDef(s, new_LValue(func, tex->getDef(0)->asLValue()));
+   }
+}
+
 // Insert constraint markers for instructions whose multiple sources must be
 // located in consecutive registers.
 bool
@@ -972,33 +1014,27 @@ RegAlloc::InsertConstraintsPass::visit(BasicBlock *bb)
 {
    TexInstruction *tex;
    Instruction *next;
-   int s, n, size;
+   int s, size;
+
+   targ = bb->getProgram()->getTarget();
 
    for (Instruction *i = bb->getEntry(); i; i = next) {
       next = i->next;
 
       if ((tex = i->asTex())) {
-         textureMask(tex);
-
-         // FIXME: this is target specific
-         if (tex->op == OP_TXQ) {
-            s = tex->srcCount(0xff);
-            n = 0;
-         } else {
-            s = tex->tex.target.getArgCount();
-            if (!tex->tex.target.isArray() &&
-                (tex->tex.rIndirectSrc >= 0 || tex->tex.sIndirectSrc >= 0))
-               ++s;
-	    if (tex->op == OP_TXD && tex->tex.useOffsets)
-               ++s;
-            n = tex->srcCount(0xff) - s;
-            assert(n <= 4);
+         switch (targ->getChipset() & ~0xf) {
+         case 0x50:
+         case 0x80:
+         case 0x90:
+         case 0xa0:
+            texConstraintNV50(tex);
+            break;
+         case 0xc0:
+            texConstraintNVC0(tex);
+            break;
+         default:
+            break;
          }
-
-         if (s > 1)
-            addConstraint(i, 0, s);
-         if (n > 1)
-            addConstraint(i, s, n);
       } else
       if (i->op == OP_EXPORT || i->op == OP_STORE) {
          for (size = typeSizeof(i->dType), s = 1; size > 0; ++s) {

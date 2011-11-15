@@ -216,6 +216,7 @@ enum DataFile
    FILE_PREDICATE,       // boolean predicate
    FILE_FLAGS,           // zero/sign/carry/overflow bits
    FILE_ADDRESS,
+   LAST_REGISTER_FILE = FILE_ADDRESS,
    FILE_IMMEDIATE,
    FILE_MEMORY_CONST,
    FILE_SHADER_INPUT,

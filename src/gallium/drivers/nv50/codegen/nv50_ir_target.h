@@ -78,7 +78,7 @@ public:
    inline void *getRelocInfo() const { return relocInfo; }
 
    void prepareEmission(Program *);
-   void prepareEmission(Function *);
+   virtual void prepareEmission(Function *);
    virtual void prepareEmission(BasicBlock *);
 
    void printBinary() const;
