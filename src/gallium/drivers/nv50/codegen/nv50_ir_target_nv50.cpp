@@ -236,6 +236,14 @@ TargetNV50::getSVAddress(DataFile shaderFile, const Symbol *sym) const
             addr += 4;
       return addr;
    }
+   case SV_NCTAID:
+      return 0x8 + 2 * sym->reg.data.sv.index;
+   case SV_CTAID:
+      return 0xc + 2 * sym->reg.data.sv.index;
+   case SV_NTID:
+      return 0x2 + 2 * sym->reg.data.sv.index;
+   case SV_TID:
+      return 0;
    default:
       return sysvalLocation[sym->reg.data.sv.sv];
    }
