@@ -620,7 +620,9 @@ public:
    inline void setFlagsSrc(int s, Value *);
    inline void setFlagsDef(int d, Value *);
 
+   unsigned int defCount() const { return defs.size(); };
    unsigned int defCount(unsigned int mask, bool singleFile = false) const;
+   unsigned int srcCount() const { return srcs.size(); };
    unsigned int srcCount(unsigned int mask) const;
 
    // save & remove / set indirect[0,1] and predicate source
