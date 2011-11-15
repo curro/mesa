@@ -863,10 +863,13 @@ CmpInstruction::clone(bool deep) const
 }
 
 FlowInstruction::FlowInstruction(Function *fn, operation op,
-                                 BasicBlock *targ)
+                                 void *targ)
    : Instruction(fn, op, TYPE_NONE)
 {
-   target.bb = targ;
+   if (op == OP_CALL)
+      target.fn = (Function *)targ;
+   else
+      target.bb = (BasicBlock *)targ;
 
    if (op == OP_BRA ||
        op == OP_CONT || op == OP_BREAK ||
@@ -920,6 +923,7 @@ Program::Program(Type type, Target *arch)
    maxGPR = -1;
 
    main = new Function(this, "MAIN", ~0);
+   calls.insert(&main->call);
 
    dbgFlags = 0;
 }

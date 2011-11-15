@@ -577,11 +577,6 @@ public:
    Source(struct nv50_ir_prog_info *);
    ~Source();
 
-   struct Subroutine
-   {
-      unsigned pc;
-   };
-
 public:
    bool scanSource();
    unsigned fileSize(unsigned file) const { return scan.file_max[file] + 1; }
@@ -604,9 +599,6 @@ public:
    uint8_t *resourceTargets; // TGSI_TEXTURE_*
    unsigned resourceCount;
 
-   Subroutine *subroutines;
-   unsigned subroutineCount;
-
 private:
    int inferSysValDirection(unsigned sn) const;
    bool scanDeclaration(const struct tgsi_full_declaration *);
@@ -625,7 +617,6 @@ Source::Source(struct nv50_ir_prog_info *prog) : info(prog)
       tgsi_dump(tokens, 0);
 
    resourceTargets = NULL;
-   subroutines = NULL;
 
    mainTempsInLMem = FALSE;
 }
@@ -642,14 +633,11 @@ Source::~Source()
 
    if (resourceTargets)
       delete[] resourceTargets;
-   if (subroutines)
-      delete[] subroutines;
 }
 
 bool Source::scanSource()
 {
    unsigned insnCount = 0;
-   unsigned subrCount = 0;
    struct tgsi_parse_context parse;
 
    tgsi_scan_shader(tokens, &scan);
@@ -663,9 +651,6 @@ bool Source::scanSource()
 
    resourceCount = scan.file_max[TGSI_FILE_RESOURCE] + 1;
    resourceTargets = new uint8_t[resourceCount];
-
-   subroutineCount = scan.opcode_count[TGSI_OPCODE_BGNSUB] + 1;
-   subroutines = new Subroutine[subroutineCount];
 
    info->immd.bufSize = 0;
    tempArrayCount = 0;
@@ -699,10 +684,7 @@ bool Source::scanSource()
          break;
       case TGSI_TOKEN_TYPE_INSTRUCTION:
          insns[insnCount++] = parse.FullToken.FullInstruction;
-         if (insns[insnCount - 1].Instruction.Opcode == TGSI_OPCODE_BGNSUB)
-            subroutines[++subrCount].pc = insnCount - 1;
-         else
-            scanInstruction(&parse.FullToken.FullInstruction);
+         scanInstruction(&parse.FullToken.FullInstruction);
          break;
       case TGSI_TOKEN_TYPE_PROPERTY:
          scanProperty(&parse.FullToken.FullProperty);
@@ -1027,6 +1009,12 @@ public:
    bool run();
 
 private:
+   struct Subroutine {
+      Subroutine(Function *f) : f(f) { }
+      Function *f;
+      ValueMap values;
+   };
+
    Value *getVertexBase(int s);
    DataArray *getArrayForFile(int file, int idx);
    Value *fetchSrc(int s, int c);
@@ -1045,6 +1033,8 @@ private:
 
    bool handleInstruction(const struct tgsi_full_instruction *);
    void exportOutputs();
+   inline Subroutine *getSubroutine(unsigned ip);
+   inline Subroutine *getSubroutine(Function *f);
    inline bool isEndOfSubroutine(uint ip);
 
    void loadProjTexCoords(Value *dst[4], Value *src[4], unsigned int mask);
@@ -1066,6 +1056,11 @@ private:
 private:
    const struct tgsi::Source *code;
    const struct nv50_ir_prog_info *info;
+
+   struct {
+      std::map<unsigned, Subroutine> map;
+      Subroutine *cur;
+   } sub;
 
    uint ip; // instruction pointer
 
@@ -1092,9 +1087,6 @@ private:
    Stack joinBBs;  // fork BB, for inserting join ops on ENDIF
    Stack loopBBs;  // loop headers
    Stack breakBBs; // end of / after loop
-   Stack entryBBs; // start of current (inlined) subroutine
-   Stack leaveBBs; // end of current (inlined) subroutine
-   Stack retIPs;   // return instruction pointer
 };
 
 Symbol *
@@ -1653,6 +1645,30 @@ Converter::handleLIT(Value *dst0[4])
    }
 }
 
+Converter::Subroutine *
+Converter::getSubroutine(unsigned ip)
+{
+   std::map<unsigned, Subroutine>::iterator it = sub.map.find(ip);
+
+   if (it == sub.map.end())
+      it = sub.map.insert(std::make_pair(ip,
+                Subroutine(new Function(prog, "SUB", ip)))).first;
+
+   return &it->second;
+}
+
+Converter::Subroutine *
+Converter::getSubroutine(Function *f)
+{
+   unsigned ip = f->getLabel();
+   std::map<unsigned, Subroutine>::iterator it = sub.map.find(ip);
+
+   if (it == sub.map.end())
+      it = sub.map.insert(std::make_pair(ip, Subroutine(f))).first;
+
+   return &it->second;
+}
+
 bool
 Converter::isEndOfSubroutine(uint ip)
 {
@@ -2106,56 +2122,50 @@ Converter::handleInstruction(const struct tgsi_full_instruction *insn)
       break;
    case TGSI_OPCODE_BGNSUB:
    {
-      if (!retIPs.getSize()) {
-         // end of main function
-         ip = code->scan.num_instructions - 2; // goto END
-         return true;
-      }
-      BasicBlock *entry = new BasicBlock(func);
-      BasicBlock *leave = new BasicBlock(func);
-      entryBBs.push(entry);
-      leaveBBs.push(leave);
-      bb->cfg.attach(&entry->cfg, Graph::Edge::TREE);
+      Subroutine *s = getSubroutine(ip);
+      BasicBlock *entry = new BasicBlock(s->f);
+      BasicBlock *leave = new BasicBlock(s->f);
+
+      sub.cur = s;
+      s->f->setEntry(entry);
+      s->f->setExit(leave);
+      prog->main->call.attach(&s->f->call, Graph::Edge::TREE);
       setPosition(entry, true);
-   }
       return true;
+   }
    case TGSI_OPCODE_ENDSUB:
    {
-      BasicBlock *leave = reinterpret_cast<BasicBlock *>(leaveBBs.pop().u.p);
-      entryBBs.pop();
-      bb->cfg.attach(&leave->cfg, Graph::Edge::TREE);
-      setPosition(leave, true);
-      ip = retIPs.pop().u.u;
+      sub.cur = getSubroutine(prog->main);
+      setPosition(BasicBlock::get(sub.cur->f->cfg.getRoot()), true);
+      return true;
    }
-      return true;
    case TGSI_OPCODE_CAL:
-      // we don't have function declarations, so inline everything
-      retIPs.push(ip);
-      ip = code->subroutines[tgsi.getLabel()].pc - 1; // +1 after return
+   {
+      Subroutine *s = getSubroutine(tgsi.getLabel());
+      mkFlow(OP_CALL, s->f, CC_ALWAYS, NULL);
+      func->call.attach(&s->f->call, Graph::Edge::TREE);
       return true;
+   }
    case TGSI_OPCODE_RET:
    {
       if (bb->isTerminated())
          return true;
-      BasicBlock *entry = reinterpret_cast<BasicBlock *>(entryBBs.peek().u.p);
-      BasicBlock *leave = reinterpret_cast<BasicBlock *>(leaveBBs.peek().u.p);
+      BasicBlock *leave = BasicBlock::get(func->cfgExit);
+
       if (!isEndOfSubroutine(ip + 1)) {
          // insert a PRERET at the entry if this is an early return
-         FlowInstruction *preRet = new_FlowInstruction(func, OP_PRERET, leave);
-         preRet->fixed = 1;
-         entry->insertHead(preRet);
+         mkFlow(OP_PRERET, leave, CC_ALWAYS, NULL)->fixed = 1;
          bb->cfg.attach(&leave->cfg, Graph::Edge::CROSS);
-      }
-      // everything inlined so RET serves only to wrap up the stack
-      if (entry->getEntry() && entry->getEntry()->op == OP_PRERET)
+      } else {
          mkFlow(OP_RET, NULL, CC_ALWAYS, NULL)->fixed = 1;
+         bb->cfg.attach(&leave->cfg, Graph::Edge::TREE);
+      }
    }
       break;
    case TGSI_OPCODE_END:
    {
       // attach and generate epilogue code
-      BasicBlock *epilogue = reinterpret_cast<BasicBlock *>(leaveBBs.pop().u.p);
-      entryBBs.pop();
+      BasicBlock *epilogue = BasicBlock::get(func->cfgExit);
       bb->cfg.attach(&epilogue->cfg, Graph::Edge::TREE);
       setPosition(epilogue, true);
       if (prog->getType() == Program::TYPE_FRAGMENT)
@@ -2296,8 +2306,7 @@ Converter::run()
    prog->main->setExit(leave);
 
    setPosition(entry, true);
-   entryBBs.push(entry);
-   leaveBBs.push(leave);
+   sub.cur = getSubroutine(prog->main);
 
    if (info->io.genUserClip > 0) {
       for (int c = 0; c < 4; ++c)
