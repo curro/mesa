@@ -1041,8 +1041,8 @@ private:
    DataArray aData; // TGSI_FILE_ADDRESS
    DataArray pData; // TGSI_FILE_PREDICATE
    DataArray oData; // TGSI_FILE_OUTPUT (if outputs in registers)
-   DataArray *lData; // TGSI_FILE_TEMPORARY_ARRAY
-   DataArray *iData; // TGSI_FILE_IMMEDIATE_ARRAY
+   std::vector<DataArray> lData; // TGSI_FILE_TEMPORARY_ARRAY
+   std::vector<DataArray> iData; // TGSI_FILE_IMMEDIATE_ARRAY
 
    Value *zero;
    Value *fragCoord[4];
@@ -2193,11 +2193,11 @@ Converter::exportOutputs()
 {
    for (unsigned int i = 0; i < info->numOutputs; ++i) {
       for (unsigned int c = 0; c < 4; ++c) {
-         if (!oData.exists(i, c))
+         if (!oData.exists(sub.cur->values, i, c))
             continue;
          Symbol *sym = mkSymbol(FILE_SHADER_OUTPUT, 0, TYPE_F32,
                                 info->out[i].slot[c] * 4);
-         Value *val = oData.load(i, c, NULL);
+         Value *val = oData.load(sub.cur->values, i, c, NULL);
          if (val)
             mkStore(OP_EXPORT, TYPE_F32, sym, NULL, val);
       }
@@ -2205,34 +2205,48 @@ Converter::exportOutputs()
 }
 
 Converter::Converter(Program *ir, const tgsi::Source *src)
-   : code(src),
-     tgsi(NULL),
-     tData(this), aData(this), pData(this), oData(this)
+   : code(src), tgsi(NULL),
+     tData(this, TGSI_FILE_TEMPORARY, 0, 0, src->fileSize(TGSI_FILE_TEMPORARY),
+           4, 4, (src->mainTempsInLMem ? FILE_MEMORY_LOCAL : FILE_GPR)),
+     aData(this, TGSI_FILE_ADDRESS, 0, 0, code->fileSize(TGSI_FILE_ADDRESS),
+           4, 4, FILE_ADDRESS),
+     pData(this, TGSI_FILE_PREDICATE, 0, 0, code->fileSize(TGSI_FILE_PREDICATE),
+           4, 4, FILE_PREDICATE),
+     oData(this, TGSI_FILE_OUTPUT, 0, 0, code->fileSize(TGSI_FILE_OUTPUT),
+           4, 4, FILE_GPR)
 {
+   if (code->tempArrayCount) {
+      uint32_t volume = 0;
+
+      for (int i = 0; i < code->tempArrayCount; ++i) {
+         int len = code->tempArrays[i].u32 >> 2;
+         int dim = code->tempArrays[i].u32 & 3;
+         lData.push_back(DataArray(this, TGSI_FILE_TEMPORARY_ARRAY, i,
+                                   volume, len, dim, 4, FILE_MEMORY_LOCAL));
+         volume += (len * dim * 4 + 0xf) & ~0xf;
+      }
+   }
+
+   if (code->immdArrayCount) {
+      uint32_t volume = 0;
+
+      for (int i = 0; i < code->immdArrayCount; ++i) {
+         int len = code->immdArrays[i].u32 >> 2;
+         int dim = code->immdArrays[i].u32 & 3;
+         lData.push_back(DataArray(this, TGSI_FILE_IMMEDIATE_ARRAY, i,
+                                   volume, len, dim, 4, FILE_MEMORY_CONST, 14));
+         volume += (len * dim * 4 + 0xf) & ~0xf;
+      }
+   }
+
    prog = ir;
    info = code->info;
-
-   DataFile tFile = code->mainTempsInLMem ? FILE_MEMORY_LOCAL : FILE_GPR;
-
-   tData.setup(0, code->fileSize(TGSI_FILE_TEMPORARY), 4, 4, tFile);
-   pData.setup(0, code->fileSize(TGSI_FILE_PREDICATE), 4, 4, FILE_PREDICATE);
-   aData.setup(0, code->fileSize(TGSI_FILE_ADDRESS), 4, 4, FILE_ADDRESS);
-   oData.setup(0, code->fileSize(TGSI_FILE_OUTPUT), 4, 4, FILE_GPR);
-
-   lData = NULL;
-   iData = NULL;
-
    zero = mkImm((uint32_t)0);
-
    vtxBaseValid = 0;
 }
 
 Converter::~Converter()
 {
-   if (lData)
-      delete[] lData;
-   if (iData)
-      delete[] iData;
 }
 
 bool
@@ -2240,33 +2254,6 @@ Converter::run()
 {
    BasicBlock *entry = new BasicBlock(prog->main);
    BasicBlock *leave = new BasicBlock(prog->main);
-
-   if (code->tempArrayCount && !lData) {
-      uint32_t volume = 0;
-      lData = new DataArray[code->tempArrayCount];
-      if (!lData)
-         return false;
-      for (int i = 0; i < code->tempArrayCount; ++i) {
-         int len = code->tempArrays[i].u32 >> 2;
-         int dim = code->tempArrays[i].u32 & 3;
-         lData[i].setParent(this);
-         lData[i].setup(volume, len, dim, 4, FILE_MEMORY_LOCAL);
-         volume += (len * dim * 4 + 0xf) & ~0xf;
-      }
-   }
-   if (code->immdArrayCount && !iData) {
-      uint32_t volume = 0;
-      iData = new DataArray[code->immdArrayCount];
-      if (!iData)
-         return false;
-      for (int i = 0; i < code->immdArrayCount; ++i) {
-         int len = code->immdArrays[i].u32 >> 2;
-         int dim = code->immdArrays[i].u32 & 3;
-         iData[i].setParent(this);
-         iData[i].setup(volume, len, dim, 4, FILE_MEMORY_CONST, 14);
-         volume += (len * dim * 4 + 0xf) & ~0xf;
-      }
-   }
 
    prog->main->setEntry(entry);
    prog->main->setExit(leave);

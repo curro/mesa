@@ -26,8 +26,8 @@
 #include <new>
 #include <assert.h>
 #include <stdio.h>
-#include <map>
 #include <memory>
+#include <map>
 
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
@@ -700,5 +700,27 @@ protected:
 };
 
 } // namespace nv50_ir
+
+template<typename S, typename T>
+struct bimap {
+   std::map<S, T> forth;
+   std::map<T, S> back;
+
+public:
+   bimap() : l(back), r(forth) {}
+   bimap(const bimap<S, T> &m) :
+      forth(m.forth), back(m.back), l(back), r(forth) {}
+
+   void insert(const S &s, const T &t)
+   {
+      forth.insert(std::make_pair(s, t));
+      back.insert(std::make_pair(t, s));
+   }
+
+   typedef typename std::map<T, S>::const_iterator l_iterator;
+   const std::map<T, S> &l;
+   typedef typename std::map<S, T>::const_iterator r_iterator;
+   const std::map<S, T> &r;
+};
 
 #endif // __NV50_IR_UTIL_H__

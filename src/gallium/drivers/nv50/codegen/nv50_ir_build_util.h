@@ -95,29 +95,55 @@ public:
 
    Value *loadImm(Value *dst, int i) { return loadImm(dst, (uint32_t)i); }
 
+   struct Location
+   {
+      Location(unsigned array, unsigned arrayIdx, unsigned i, unsigned c) :
+         array(array), arrayIdx(arrayIdx), i(i), c(c) { }
+      Location(const Location &l) :
+         array(l.array), arrayIdx(l.arrayIdx), i(l.i), c(l.c) { }
+
+      bool operator==(const Location &l) const
+      {
+         return array == l.array && arrayIdx == l.arrayIdx &&
+            i == l.i && c == l.c;
+      }
+
+      bool operator<(const Location &l) const
+      {
+         return array != l.array ? array < l.array :
+            arrayIdx != l.arrayIdx ? arrayIdx < l.arrayIdx :
+            i != l.i ? i < l.i :
+            c != l.c ? c < l.c :
+            false;
+      }
+
+      unsigned array, arrayIdx, i, c;
+   };
+
+   typedef bimap<Location, Value *> ValueMap;
+
    class DataArray
    {
    public:
-      DataArray();
-      DataArray(BuildUtil *);
-      ~DataArray();
+      DataArray(BuildUtil *up, int array, int arrayIdx,
+                uint32_t base, int len, int vecDim, int size,
+                DataFile f, int8_t fileIndex = 0);
 
-      inline void setParent(BuildUtil *bld) { assert(!up); up = bld; }
-
-      void setup(uint32_t base, int len, int vecDim, int size,
-                 DataFile, int8_t fileIndex = 0);
-
-      inline bool exists(unsigned int i, unsigned int c);
-
-      Value *load(int i, int c, Value *ptr);
-      void store(int i, int c, Value *ptr, Value *value);
-      Value *acquire(int i, int c);
+      inline bool exists(ValueMap &m, unsigned int i, unsigned int c);
+      Value *load(ValueMap &m, int i, int c, Value *ptr);
+      void store(ValueMap &m, int i, int c, Value *ptr, Value *value);
+      Value *acquire(ValueMap &m, int i, int c);
 
    private:
-      Symbol *mkSymbol(int i, int c, Symbol *base);
+      inline Value *lookup(ValueMap &m, unsigned i, unsigned c);
+      inline Value *insert(ValueMap &m, unsigned i, unsigned c, Value *v);
+
+      Symbol *mkSymbol(int i, int c);
 
    private:
-      Value **values;
+      BuildUtil *up;
+      int array, arrayIdx;
+
       uint32_t baseAddr;
       uint32_t arrayLen;
       Symbol *baseSym;
@@ -127,10 +153,6 @@ public:
 
       DataFile file;
       bool regOnly;
-
-      BuildUtil *up;
-
-      void init();
    };
 
    Symbol *mkSymbol(DataFile file, int8_t fileIndex,
@@ -255,10 +277,24 @@ BuildUtil::mkOp3v(operation op, DataType ty, Value *dst,
 }
 
 bool
-BuildUtil::DataArray::exists(unsigned int i, unsigned int c)
+BuildUtil::DataArray::exists(ValueMap &m, unsigned int i, unsigned int c)
 {
    assert(i < arrayLen && c < vecDim);
-   return !regOnly || values[i * vecDim + c];
+   return !regOnly || m.r.count(Location(array, arrayIdx, i, c));
+}
+
+Value *
+BuildUtil::DataArray::lookup(ValueMap &m, unsigned i, unsigned c)
+{
+   ValueMap::r_iterator it = m.r.find(Location(array, arrayIdx, i, c));
+   return it != m.r.end() ? it->second : NULL;
+}
+
+Value *
+BuildUtil::DataArray::insert(ValueMap &m, unsigned i, unsigned c, Value *v)
+{
+   m.insert(Location(array, arrayIdx, i, c), v);
+   return v;
 }
 
 } // namespace nv50_ir
