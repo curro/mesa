@@ -115,36 +115,6 @@ CodeEmitter::prepareEmission(Program *prog)
    }
 }
 
-static void
-replaceExitWithModifier(Function *fn)
-{
-   bool keep_exit = false;
-
-   for (Graph::EdgeIterator ei = fn->cfgExit->incident();
-        !ei.end(); ei.next()) {
-      BasicBlock *bb = BasicBlock::get(ei.getNode());
-      Instruction *i = bb->getExit();
-      if (!i) {
-         keep_exit = true;
-         break;
-      }
-      int s;
-      for (s = 0; i->srcExists(s); ++s)
-         if (i->src[s].getFile() == FILE_IMMEDIATE)
-            break;
-      if (!i->srcExists(s) && i->encSize == 8)
-         i->exit = 1;
-      else
-         keep_exit = true;
-   }
-   if (!keep_exit) {
-      BasicBlock *bb = BasicBlock::get(fn->cfgExit);
-      bb->binSize -= 8;
-      fn->binSize -= 8;
-      delete_Instruction(fn->getProgram(), bb->getExit());
-   }
-}
-
 void
 CodeEmitter::prepareEmission(Function *func)
 {
@@ -157,9 +127,6 @@ CodeEmitter::prepareEmission(Function *func)
    for (iter = func->cfg.iteratorCFG(); !iter->end(); iter->next())
       prepareEmission(BasicBlock::get(*iter));
    func->cfg.putIterator(iter);
-
-   if (!targ->isOpSupported(OP_EXIT, TYPE_NONE))
-      replaceExitWithModifier(func);
 }
 
 void
@@ -278,6 +245,9 @@ Program::emitBinary(struct nv50_ir_prog_info *info)
             emit->emitInstruction(i);
    }
    info->bin.relocData = emit->getRelocInfo();
+
+   if (dbgFlags & NV50_IR_DEBUG_BASIC)
+      emit->printBinary();
 
    delete emit;
    return true;

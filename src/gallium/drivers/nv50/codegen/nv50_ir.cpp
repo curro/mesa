@@ -693,8 +693,11 @@ Instruction::defCount(unsigned int mask, bool singleFile) const
    unsigned int i, n;
 
    if (singleFile) {
-      for (i = 1; defExists(i); ++i)
-         if (getDef(i)->reg.file != getDef(0)->reg.file)
+      unsigned int d = ffs(mask);
+      if (!d)
+         return 0;
+      for (i = d + 1; defExists(i); ++i)
+         if (getDef(i)->reg.file != getDef(d)->reg.file)
             mask &= ~(1 << i);
    }
 

@@ -41,6 +41,8 @@ public:
 
    inline void setProgramType(Program::Type pType) { progType = pType; }
 
+   virtual void prepareEmission(Function *);
+
 private:
    Program::Type progType;
 
@@ -728,6 +730,7 @@ CodeEmitterNV50::emitMOV(const Instruction *i)
          code[0] = 0x10000001;
          code[1] = (typeSizeof(i->dType) == 2) ? 0 : 0x04000000;
          code[1] |= (i->lanes << 14);
+         emitFlagsRd(i);
       }
       defId(i->def[0], 2);
       srcId(i->src[0], 9);
@@ -1529,6 +1532,53 @@ CodeEmitterNV50::getMinEncodingSize(const Instruction *i) const
       return 8;
 
    return 8;
+}
+
+static bool
+trySetExitModifier(Instruction *insn)
+{
+   if (insn->encSize != 8)
+      return false;
+   for (int s = 0; insn->srcExists(s); ++s)
+      if (insn->src[s].getFile() == FILE_IMMEDIATE)
+         return false;
+   if (insn->asFlow())
+      insn->op = OP_EXIT;
+   insn->exit = 1;
+   return true;
+}
+
+static void
+replaceExitWithModifier(Function *func)
+{
+   BasicBlock *epilogue = BasicBlock::get(func->cfgExit);
+
+   if (epilogue->getEntry()->op != OP_EXIT) {
+      Instruction *insn = epilogue->getExit()->prev;
+      if (!insn || !trySetExitModifier(insn))
+         return;
+      insn->exit = 1;
+   } else {
+      for (Graph::EdgeIterator ei = func->cfgExit->incident();
+           !ei.end(); ei.next()) {
+         BasicBlock *bb = BasicBlock::get(ei.getNode());
+         Instruction *i = bb->getExit();
+
+         if (!i || !trySetExitModifier(i))
+            return;
+      }
+   }
+   epilogue->binSize -= 8;
+   func->binSize -= 8;
+   delete_Instruction(func->getProgram(), epilogue->getExit());
+}
+
+void
+CodeEmitterNV50::prepareEmission(Function *func)
+{
+   CodeEmitter::prepareEmission(func);
+
+   replaceExitWithModifier(func);
 }
 
 CodeEmitterNV50::CodeEmitterNV50(const Target *target) : CodeEmitter(target)
