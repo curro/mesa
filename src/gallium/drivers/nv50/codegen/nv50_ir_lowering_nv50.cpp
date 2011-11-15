@@ -531,24 +531,51 @@ NV50LoweringPreSSA::handleRDSV(Instruction *i)
 {
    Symbol *sym = i->getSrc(0)->asSym();
    uint32_t addr = targ->getSVAddress(FILE_SHADER_INPUT, sym);
+   Value *def = i->getDef(0);
+   SVSemantic sv = sym->reg.data.sv.sv;
+   int idx = sym->reg.data.sv.index;
 
    if (addr >= 0x400) // mov $sreg
       return true;
 
-   switch (sym->reg.data.sv.sv) {
+   switch (sv) {
    case SV_POSITION:
       assert(prog->getType() == Program::TYPE_FRAGMENT);
       bld.mkInterp(NV50_IR_INTERP_LINEAR, i->getDef(0), addr, NULL);
       break;
    case SV_FACE:
-   {
-      Value *face = i->getDef(0);
-      bld.mkInterp(NV50_IR_INTERP_FLAT, face, addr, NULL);
+      bld.mkInterp(NV50_IR_INTERP_FLAT, def, addr, NULL);
       if (i->dType == TYPE_F32) {
-         bld.mkOp2(OP_AND, TYPE_U32, face, face, bld.mkImm(0x80000000));
-         bld.mkOp2(OP_XOR, TYPE_U32, face, face, bld.mkImm(0xbf800000));
+         bld.mkOp2(OP_AND, TYPE_U32, def, def, bld.mkImm(0x80000000));
+         bld.mkOp2(OP_XOR, TYPE_U32, def, def, bld.mkImm(0xbf800000));
       }
-   }
+      break;
+   case SV_NCTAID:
+   case SV_CTAID:
+   case SV_NTID:
+      if ((sv == SV_NCTAID && idx >= 2) ||
+          (sv == SV_NTID && idx >= 3)) {
+         bld.mkMov(def, bld.mkImm(1));
+      } else if (sv == SV_CTAID && idx >= 2) {
+         bld.mkMov(def, bld.mkImm(0));
+      } else {
+         Value *x = bld.getSSA(2);
+         bld.mkOp1(OP_LOAD, TYPE_U16, x,
+                   bld.mkSymbol(FILE_MEMORY_SHARED, 0, TYPE_U16, addr));
+         bld.mkCvt(OP_CVT, TYPE_U32, def, TYPE_U16, x);
+      }
+      break;
+   case SV_TID:
+      if (idx == 0) {
+         bld.mkOp2(OP_AND, TYPE_U32, def, tid, bld.mkImm(0x0000ffff));
+      } else if (idx == 1) {
+         bld.mkOp2(OP_AND, TYPE_U32, def, tid, bld.mkImm(0x03ff0000));
+         bld.mkOp2(OP_SHR, TYPE_U32, def, def, bld.mkImm(16));
+      } else if (idx == 2) {
+         bld.mkOp2(OP_SHR, TYPE_U32, def, tid, bld.mkImm(26));
+      } else {
+         bld.mkMov(def, bld.mkImm(0));
+      }
       break;
    default:
       bld.mkFetch(i->getDef(0), i->dType,
