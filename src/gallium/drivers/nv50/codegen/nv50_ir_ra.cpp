@@ -792,7 +792,7 @@ RegAlloc::execFunc()
    case 0x80:
    case 0x90:
    case 0xa0:
-      ret = coalesceValues(JOIN_MASK_UNION | JOIN_MASK_TEX);
+      ret = coalesceValues(JOIN_MASK_UNION | JOIN_MASK_TEX | JOIN_MASK_CONSTRAINT);
       break;
    case 0xc0:
       ret = coalesceValues(JOIN_MASK_UNION | JOIN_MASK_CONSTRAINT);
