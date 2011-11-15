@@ -2224,6 +2224,97 @@ DeadCodeElim::checkSplitLoad(Instruction *ld1)
 
 // =============================================================================
 
+class InlinerPass : public Pass
+{
+protected:
+   virtual bool shouldInline(Instruction *i)
+   {
+      return prog->getType() != Program::TYPE_COMPUTE;
+   }
+
+   virtual bool shouldKeepDef(Function *f)
+   {
+      return prog->getType() == Program::TYPE_COMPUTE;
+   }
+
+private:
+   void inlineCall(Instruction *i);
+
+   virtual bool visit(BasicBlock *bb)
+   {
+      return false;
+   }
+
+   virtual bool visit(Function *f);
+
+   BuildUtil bld;
+};
+
+void
+InlinerPass::inlineCall(Instruction *i)
+{
+   Function *df = i->bb->getFunction();
+   Function *sf = i->asFlow()->target.fn;
+   BasicBlock *pbb = i->bb;
+   BasicBlock *nbb = pbb->splitAfter(i, false);
+   DeepClonePolicy<Function> pol(df);
+
+   // Bind the function inputs
+   for (int s = 0; i->srcExists(s); ++s)
+      pol.set(sf->ins[s].get(), i->getSrc(s));
+
+   // Bind the function outputs
+   for (int d = 0; i->defExists(d); ++d)
+      pol.set(sf->outs[d].get(), i->getDef(d));
+
+   for (ArrayList::Iterator it = sf->allBBlocks.iterator();
+        !it.end(); it.next()) {
+      // Get a clone of the BB
+      BasicBlock *bb = pol.get(BasicBlock::get(it));
+
+      // Attach the entry/exit nodes to the blocks surrounding the
+      // function call
+      if (bb->cfg.incident().end())
+         pbb->cfg.attach(&bb->cfg, Graph::Edge::TREE);
+
+      if (bb->cfg.outgoing().end())
+         bb->cfg.attach(&nbb->cfg, Graph::Edge::TREE);
+
+      // Replace return instructions
+      for (Instruction *j = bb->getFirst(); j; j = j->next) {
+         if (j->op == OP_RET) {
+            delete_Instruction(prog, j);
+            break;
+         }
+      }
+   }
+
+   delete_Instruction(prog, i);
+
+   if (!shouldKeepDef(sf))
+      delete sf;
+}
+
+bool
+InlinerPass::visit(Function *f)
+{
+   for (ArrayList::Iterator bi = f->allBBlocks.iterator();
+        !bi.end(); bi.next()) {
+      BasicBlock *bb = BasicBlock::get(bi);
+
+      for (Instruction *next, *i = bb->getFirst(); i; i = next) {
+         next = i->next;
+         if (i->op == OP_CALL && !i->asFlow()->builtin &&
+             shouldInline(i))
+             inlineCall(i);
+      }
+   }
+
+   return true;
+}
+
+// =============================================================================
+
 #define RUN_PASS(l, n, f)                       \
    if (level >= (l)) {                          \
       if (dbgFlags & NV50_IR_DEBUG_VERBOSE)     \
@@ -2236,6 +2327,7 @@ DeadCodeElim::checkSplitLoad(Instruction *ld1)
 bool
 Program::optimizeSSA(int level)
 {
+   RUN_PASS(0, InlinerPass, run);
    RUN_PASS(1, DeadCodeElim, buryAll);
    RUN_PASS(1, CopyPropagation, run);
    RUN_PASS(2, GlobalCSE, run);
