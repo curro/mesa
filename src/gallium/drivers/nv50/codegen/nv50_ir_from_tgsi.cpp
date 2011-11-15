@@ -1053,6 +1053,27 @@ private:
 
    Value *buildDot(int dim);
 
+   class BindArgumentsPass : public Pass {
+   public:
+      BindArgumentsPass(Converter &conv) : conv(conv) {}
+
+   private:
+      Converter &conv;
+      Subroutine *sub;
+
+      template<typename T> inline void
+      updateCallArgs(Instruction *i, void (Instruction::*setArg)(int, Value *),
+                     T (Function::*proto));
+
+      template<typename T> inline void
+      updatePrototype(BitSet *set, void (Function::*updateSet)(),
+                      T (Function::*proto));
+
+   protected:
+      bool visit(Function *f);
+      bool visit(BasicBlock *bb) { return false; }
+   };
+
 private:
    const struct tgsi::Source *code;
    const struct nv50_ir_prog_info *info;
@@ -2269,6 +2290,62 @@ Converter::~Converter()
       delete[] iData;
 }
 
+template<typename T> inline void
+Converter::BindArgumentsPass::updateCallArgs(
+   Instruction *i, void (Instruction::*setArg)(int, Value *),
+   T (Function::*proto))
+{
+   Function *g = i->asFlow()->target.fn;
+   Subroutine *subg = conv.getSubroutine(g);
+
+   for (unsigned a = 0; a < (g->*proto).size(); ++a) {
+      Value *v = (g->*proto)[a].get();
+      const Converter::Location &l = subg->values.l.find(v)->second;
+      Converter::DataArray *array = conv.getArrayForFile(l.array, l.arrayIdx);
+
+      (i->*setArg)(a, array->acquire(sub->values, l.i, l.c));
+   }
+}
+
+template<typename T> inline void
+Converter::BindArgumentsPass::updatePrototype(
+   BitSet *set, void (Function::*updateSet)(), T (Function::*proto))
+{
+   (func->*updateSet)();
+
+   for (unsigned i = 0; i < set->getSize(); ++i) {
+      Value *v = func->getLValue(i);
+
+      // Only include values with a matching TGSI register
+      if (set->test(i) && sub->values.l.find(v) != sub->values.l.end())
+         (func->*proto).push_back(v);
+   }
+}
+
+bool
+Converter::BindArgumentsPass::visit(Function *f)
+{
+   sub = conv.getSubroutine(f);
+
+   for (ArrayList::Iterator bi = f->allBBlocks.iterator();
+        !bi.end(); bi.next()) {
+      for (Instruction *i = BasicBlock::get(bi)->getFirst();
+           i; i = i->next) {
+         if (i->op == OP_CALL && !i->asFlow()->builtin) {
+            updateCallArgs(i, &Instruction::setSrc, &Function::ins);
+            updateCallArgs(i, &Instruction::setDef, &Function::outs);
+         }
+      }
+   }
+
+   updatePrototype(&BasicBlock::get(f->cfg.getRoot())->liveSet,
+                   &Function::buildLiveSets, &Function::ins);
+   updatePrototype(&BasicBlock::get(f->cfgExit)->defSet,
+                   &Function::buildDefSets, &Function::outs);
+
+   return true;
+}
+
 bool
 Converter::run()
 {
@@ -2323,6 +2400,10 @@ Converter::run()
       if (!handleInstruction(&code->insns[ip]))
          return false;
    }
+
+   if (!BindArgumentsPass(*this).run(prog))
+      return false;
+
    return true;
 }
 
