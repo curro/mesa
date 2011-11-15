@@ -899,7 +899,7 @@ CodeEmitterNV50::emitUADD(const Instruction *i)
 
    code[0] = 0x20008000;
 
-   if (i->src(0).getFile() == FILE_IMMEDIATE) {
+   if (i->src(1).getFile() == FILE_IMMEDIATE) {
       code[1] = 0;
       emitForm_IMM(i);
    } else
@@ -954,7 +954,7 @@ CodeEmitterNV50::emitFMUL(const Instruction *i)
 
    code[0] = 0xc0000000;
 
-   if (i->src(0).getFile() == FILE_IMMEDIATE) {
+   if (i->src(1).getFile() == FILE_IMMEDIATE) {
       code[1] = 0;
       emitForm_IMM(i);
       if (neg)
