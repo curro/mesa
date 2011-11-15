@@ -214,6 +214,7 @@ public:
 
 private:
    virtual bool visit(Instruction *);
+   virtual bool visit(Function *);
 
    bool handleRDSV(Instruction *);
    bool handleWRSV(Instruction *);
@@ -234,17 +235,40 @@ private:
    bool handleTXL(TexInstruction *); // hate
    bool handleTXD(TexInstruction *); // these 3
 
+   bool handleCALL(Instruction *);
+
    void checkPredicate(Instruction *);
 
 private:
    const Target *const targ;
 
    BuildUtil bld;
+
+   Value *tid;
 };
 
-NV50LoweringPreSSA::NV50LoweringPreSSA(Program *prog) : targ(prog->getTarget())
+NV50LoweringPreSSA::NV50LoweringPreSSA(Program *prog) :
+   targ(prog->getTarget()), tid(NULL)
 {
    bld.setProgram(prog);
+}
+
+bool
+NV50LoweringPreSSA::visit(Function *f)
+{
+   BasicBlock *root = BasicBlock::get(func->cfg.getRoot());
+
+   if (prog->getType() == Program::TYPE_COMPUTE) {
+      // Add implicit "thread id" argument in $r0 to the function
+      Value *arg = new_LValue(func, FILE_GPR);
+      arg->reg.data.id = 0;
+      f->ins.push_back(arg);
+
+      bld.setPosition(root, false);
+      tid = bld.mkMov(bld.getScratch(), arg, TYPE_U32)->getDef(0);
+   }
+
+   return true;
 }
 
 // move array source to first slot, convert to u16, add indirections
@@ -493,6 +517,16 @@ NV50LoweringPreSSA::handleWRSV(Instruction *i)
 }
 
 bool
+NV50LoweringPreSSA::handleCALL(Instruction *i)
+{
+   if (prog->getType() == Program::TYPE_COMPUTE) {
+      // Add implicit "thread id" argument in $r0 to the function
+      i->setSrc(i->srcCount(), tid);
+   }
+   return true;
+}
+
+bool
 NV50LoweringPreSSA::handleRDSV(Instruction *i)
 {
    Symbol *sym = i->getSrc(0)->asSym();
@@ -664,6 +698,8 @@ NV50LoweringPreSSA::visit(Instruction *i)
       return handleRDSV(i);
    case OP_WRSV:
       return handleWRSV(i);
+   case OP_CALL:
+      return handleCALL(i);
    default:
       break;
    }   
