@@ -288,7 +288,7 @@ TargetNV50::insnCanLoad(const Instruction *i, int s,
 bool
 TargetNV50::isAccessSupported(DataFile file, DataType ty) const
 {
-   if (ty == TYPE_B96)
+   if (ty == TYPE_B96 || ty == TYPE_NONE)
       return false;
    if (typeSizeof(ty) > 4)
       return (file == FILE_MEMORY_LOCAL) || (file == FILE_MEMORY_GLOBAL);
