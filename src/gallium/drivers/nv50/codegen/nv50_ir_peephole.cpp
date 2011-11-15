@@ -247,7 +247,7 @@ ConstantFolding::visit(BasicBlock *bb)
 
    for (i = bb->getEntry(); i; i = next) {
       next = i->next;
-      if (i->op == OP_MOV) // continue early, MOV appears frequently
+      if (i->op == OP_MOV || i->op == OP_CALL)
          continue;
 
       if (i->srcExists(1) && i->src(0).getImmediate(src0) &&
@@ -2001,7 +2001,8 @@ GlobalCSE::visit(BasicBlock *bb)
       for (s = 1; phi->srcExists(s); ++s) {
          if (phi->getSrc(s)->refCount() > 1)
             break;
-         if (!phi->getSrc(s)->getInsn()->isResultEqual(ik))
+         if (!phi->getSrc(s)->getInsn() ||
+             !phi->getSrc(s)->getInsn()->isResultEqual(ik))
             break;
       }
       if (!phi->srcExists(s)) {
