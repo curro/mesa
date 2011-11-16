@@ -1414,6 +1414,9 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
    case OP_CEIL:
    case OP_FLOOR:
    case OP_TRUNC:
+   case OP_ABS:
+   case OP_NEG:
+   case OP_SAT:
    case OP_CVT:
       emitCVT(insn);
       break;
