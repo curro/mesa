@@ -236,6 +236,8 @@ private:
    bool handleTXD(TexInstruction *); // these 3
 
    bool handleCALL(Instruction *);
+   bool handlePRECONT(Instruction *);
+   bool handleCONT(Instruction *);
 
    void checkPredicate(Instruction *);
 
@@ -527,6 +529,20 @@ NV50LoweringPreSSA::handleCALL(Instruction *i)
 }
 
 bool
+NV50LoweringPreSSA::handlePRECONT(Instruction *i)
+{
+   delete_Instruction(prog, i);
+   return true;
+}
+
+bool
+NV50LoweringPreSSA::handleCONT(Instruction *i)
+{
+   i->op = OP_BRA;
+   return true;
+}
+
+bool
 NV50LoweringPreSSA::handleRDSV(Instruction *i)
 {
    Symbol *sym = i->getSrc(0)->asSym();
@@ -727,6 +743,10 @@ NV50LoweringPreSSA::visit(Instruction *i)
       return handleWRSV(i);
    case OP_CALL:
       return handleCALL(i);
+   case OP_PRECONT:
+      return handlePRECONT(i);
+   case OP_CONT:
+      return handleCONT(i);
    default:
       break;
    }
