@@ -654,7 +654,7 @@ ConstantFolding::opnd(Instruction *i, ImmediateValue &imm0, int s)
          i->setSrc(1, NULL);
       } else
       if (i->dType == TYPE_U32 && imm0.isPow2()) {
-         i->op = OP_SHL;
+         i->op = OP_SHR;
          i->setSrc(1, bld.mkImm(util_logbase2(imm0.reg.data.u32)));
       } else
       if (i->dType == TYPE_U32) {
