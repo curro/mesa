@@ -66,7 +66,7 @@ private:
    void setAReg16(const Instruction *, int s);
    void setImmediate(const Instruction *, int s);
 
-   void setDst(const Value *);
+   void setDst(const Value *, int unit);
    void setDst(const Instruction *, int d);
    void setSrcFileBits(const Instruction *, int enc);
    void setSrc(const Instruction *, unsigned int s, int slot);
@@ -295,7 +295,7 @@ CodeEmitterNV50::setImmediate(const Instruction *i, int s)
 }
 
 void
-CodeEmitterNV50::setDst(const Value *dst)
+CodeEmitterNV50::setDst(const Value *dst, int unit)
 {
    const Storage *reg = &dst->join->reg;
 
@@ -310,7 +310,7 @@ CodeEmitterNV50::setDst(const Value *dst)
          code[1] |= 8;
          id = reg->data.offset / 4;
       } else {
-         id = reg->data.id;
+         id = reg->data.id * reg->size / unit;
       }
       code[0] |= id << 2;
    }
@@ -320,7 +320,7 @@ void
 CodeEmitterNV50::setDst(const Instruction *i, int d)
 {
    if (i->defExists(d)) {
-      setDst(i->getDef(d));
+      setDst(i->getDef(d), std::min((int)typeSizeof(i->dType), 4));
    } else
    if (!d) {
       code[0] |= 0x01fc; // bit bucket
@@ -437,8 +437,9 @@ CodeEmitterNV50::setSrc(const Instruction *i, unsigned int s, int slot)
       return;
    const Storage *reg = &i->src[s].rep()->reg;
 
+   int unit = std::min((int)reg->size, 4);
    unsigned int id = (reg->file == FILE_GPR) ?
-      reg->data.id :
+      reg->data.id * reg->size / unit :
       reg->data.offset >> (reg->size >> 1); // no > 4 byte sources here
 
    switch (slot) {
