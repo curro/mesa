@@ -535,8 +535,11 @@ void Instruction::init()
    subOp = 0;
 
    saturate = 0;
-   join = terminator = 0;
-   ftz = dnz = 0;
+   join = 0;
+   exit = 0;
+   terminator = 0;
+   ftz = 0;
+   dnz = 0;
    atomic = 0;
    perPatch = 0;
    fixed = 0;
