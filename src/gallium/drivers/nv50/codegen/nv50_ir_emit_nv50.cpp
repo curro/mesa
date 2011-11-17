@@ -1425,6 +1425,8 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
    case OP_SUB:
       if (isFloatType(insn->dType))
          emitFADD(insn);
+      else if (insn->getDef(0)->reg.file == FILE_ADDRESS)
+         emitAADD(insn);
       else
          emitUADD(insn);
       break;

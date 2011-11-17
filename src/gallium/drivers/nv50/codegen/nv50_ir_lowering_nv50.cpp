@@ -168,7 +168,8 @@ NV50LegalizePostRA::visit(BasicBlock *bb)
       if (i->isNop()) {
          bb->remove(i);
       } else {
-         if (i->op != OP_MOV && i->op != OP_PFETCH)
+         if (i->op != OP_MOV && i->op != OP_PFETCH &&
+             (!i->defExists(0) || i->def(0).getFile() != FILE_ADDRESS))
             replaceZero(i);
          if (typeSizeof(i->dType) == 8)
             split64BitOp(i);
@@ -187,12 +188,31 @@ public:
 
 private:
    void propagateWriteToOutput(Instruction *);
+   void handleAddrDef(Instruction *);
+
+   BuildUtil bld;
 };
 
 void
 NV50LegalizeSSA::propagateWriteToOutput(Instruction *st)
 {
    // TODO
+}
+
+void
+NV50LegalizeSSA::handleAddrDef(Instruction *i)
+{
+   Instruction *arl;
+
+   if ((i->op == OP_SHL && i->src(1).getFile() == FILE_IMMEDIATE) ||
+       (i->op == OP_ADD && i->src(0).getFile() == FILE_ADDRESS &&
+        i->src(1).getFile() == FILE_IMMEDIATE))
+       return;
+
+   bld.setPosition(i, true);
+   arl = bld.mkOp2(OP_SHL, TYPE_U32, i->getDef(0),
+                   bld.getSSA(), bld.mkImm(0));
+   i->setDef(0, arl->getSrc(0));
 }
 
 bool
@@ -203,6 +223,9 @@ NV50LegalizeSSA::visit(BasicBlock *bb)
       next = insn->next;
       if (insn->op == OP_EXPORT)
          propagateWriteToOutput(insn);
+      if (insn->defExists(0) &&
+          insn->getDef(0)->reg.file == FILE_ADDRESS)
+         handleAddrDef(insn);
    }
    return true;
 }
