@@ -579,7 +579,7 @@ ConstantFolding::tryCollapseChainedMULs(Instruction *mul2,
       insn = mul2->getDef(0)->uses->getInsn();
       mul1 = mul2;
       mul2 = NULL;
-      s2 = mul2->getSrc(0) == mul1->getDef(0) ? 0 : 1;
+      s2 = insn->getSrc(0) == mul1->getDef(0) ? 0 : 1;
       t2 = s2 ? 0 : 1;
       if (insn->op == OP_MUL && insn->dType == TYPE_F32)
          if (!insn->src[t2].getImmediate())
