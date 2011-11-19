@@ -126,6 +126,10 @@ void TargetNV50::initOpInfo()
       OP_JOIN, OP_JOINAT, OP_BRKPT, OP_MEMBAR, OP_EMIT, OP_RESTART,
       OP_QUADON, OP_QUADPOP
    };
+   static const operation noPredList[] =
+   {
+      OP_CALL, OP_PREBRK, OP_PRERET, OP_QUADON, OP_QUADPOP, OP_JOINAT
+   };
 
    joinAnterior = true;
 
@@ -158,6 +162,8 @@ void TargetNV50::initOpInfo()
    }
    for (i = 0; i < sizeof(noDestList) / sizeof(noDestList[0]); ++i)
       opInfo[noDestList[i]].hasDest = 0;
+   for (i = 0; i < sizeof(noPredList) / sizeof(noPredList[0]); ++i)
+      opInfo[noPredList[i]].predicate = 0;
 
    for (i = 0; i < sizeof(_initProps) / sizeof(_initProps[0]); ++i) {
       const struct opProperties *prop = &_initProps[i];
