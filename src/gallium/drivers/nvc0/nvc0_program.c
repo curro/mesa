@@ -21,6 +21,7 @@
  */
 
 #include "pipe/p_defines.h"
+#include "os/os_time.h"
 
 #include "nvc0_context.h"
 
@@ -567,11 +568,19 @@ nvc0_program_translate(struct nvc0_program *prog)
    info->optLevel = 3;
 #endif
 
+   static int64_t t_sum = 0;
+   int k;
+   int64_t t0, t1;
+
+   t0 = os_time_get();
    ret = nv50_ir_generate_code(info);
+   t1 = os_time_get();
    if (ret) {
       NOUVEAU_ERR("shader translation failed: %i\n", ret);
       goto out;
    }
+   t_sum += t1 - t0;
+   debug_printf("shader-generation took %li usecs (%li total spent)\n", t1 - t0, t_sum);
 
    prog->code = info->bin.code;
    prog->code_size = info->bin.codeSize;
