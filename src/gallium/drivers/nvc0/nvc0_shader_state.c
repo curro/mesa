@@ -85,6 +85,13 @@ nvc0_program_validate(struct nvc0_context *nvc0, struct nvc0_program *prog)
       return TRUE;
 
    if (!prog->translated) {
+      unsigned i;
+      for (i = 0; i < 100; ++i) {
+         nvc0_program_destroy(nvc0, prog);
+         nvc0_program_translate(prog);
+      }
+      nvc0_program_destroy(nvc0, prog);
+      
       prog->translated = nvc0_program_translate(prog);
       if (!prog->translated)
          return FALSE;
