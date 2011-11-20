@@ -128,7 +128,7 @@ void TargetNV50::initOpInfo()
    };
    static const operation noPredList[] =
    {
-      OP_CALL, OP_PREBRK, OP_PRERET, OP_QUADON, OP_QUADPOP, OP_JOINAT
+      OP_CALL, OP_PREBREAK, OP_PRERET, OP_QUADON, OP_QUADPOP, OP_JOINAT
    };
 
    joinAnterior = true;
