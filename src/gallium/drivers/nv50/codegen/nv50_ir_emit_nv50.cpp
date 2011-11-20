@@ -1349,7 +1349,9 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
       return false;
    }
 
-   INFO("EMIT: "); insn->print();
+   if (insn->bb->getProgram()->dbgFlags & NV50_IR_DEBUG_BASIC) {
+      INFO("EMIT: "); insn->print();
+   }
 
    switch (insn->op) {
    case OP_MOV:
