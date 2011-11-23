@@ -33,7 +33,7 @@ namespace nv50_ir {
 class CodeEmitterNV50 : public CodeEmitter
 {
 public:
-   CodeEmitterNV50(const Target *);
+   CodeEmitterNV50(const TargetNV50 *);
 
    virtual bool emitInstruction(Instruction *);
 
@@ -45,6 +45,8 @@ public:
 
 private:
    Program::Type progType;
+
+   const TargetNV50 *targ;
 
 private:
    inline void defId(const ValueDef&, const int pos);
@@ -1313,18 +1315,42 @@ void
 CodeEmitterNV50::emitFlow(const Instruction *i, uint8_t flowOp)
 {
    const FlowInstruction *f = i->asFlow();
+   bool hasPred = false;
+   bool hasTarg = false;
 
    code[0] = 0x00000003 | (flowOp << 28);
    code[1] = 0x00000000;
 
-   emitFlagsRd(i);
+   switch (i->op) {
+   case OP_BRA:
+      hasPred = true;
+      hasTarg = true;
+      break;
+   case OP_BREAK:
+   case OP_BRKPT:
+   case OP_DISCARD:
+   case OP_RET:
+      hasPred = true;
+      break;
+   case OP_CALL:
+   case OP_PREBREAK:
+   case OP_JOINAT:
+   case OP_PRERET:
+      hasTarg = true;
+      break;
+   default:
+      break;
+   }
 
-   if (f && f->target.bb) {
+   if (hasPred)
+      emitFlagsRd(i);
+
+   if (hasTarg && f) {
       uint32_t pos;
 
       if (f->op == OP_CALL) {
          if (f->builtin) {
-            pos = 0; // XXX: TODO
+            pos = targ->getBuiltinOffset(f->target.builtin);
          } else {
             pos = f->target.fn->binPos;
          }
@@ -1334,6 +1360,13 @@ CodeEmitterNV50::emitFlow(const Instruction *i, uint8_t flowOp)
 
       code[0] |= ((pos >>  2) & 0xffff) << 11;
       code[1] |= ((pos >> 18) & 0x003f) << 14;
+
+      RelocEntry::Type relocTy;
+
+      relocTy = f->builtin ? RelocEntry::TYPE_BUILTIN : RelocEntry::TYPE_CODE;
+
+      addReloc(relocTy, 0, pos,  9, 0x07fff800);
+      addReloc(relocTy, 1, pos, -4, 0x000fc000);
    }
 }
 
@@ -1589,8 +1622,9 @@ CodeEmitterNV50::prepareEmission(Function *func)
    replaceExitWithModifier(func);
 }
 
-CodeEmitterNV50::CodeEmitterNV50(const Target *target) : CodeEmitter(target)
+CodeEmitterNV50::CodeEmitterNV50(const TargetNV50 *target) : CodeEmitter(target)
 {
+   targ = target; // specialized
    code = NULL;
    codeSize = codeSizeLimit = 0;
    relocInfo = NULL;
