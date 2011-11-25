@@ -264,7 +264,7 @@ TargetNV50::insnCanLoad(const Instruction *i, int s,
    if (sf == FILE_IMMEDIATE && (i->predSrc >= 0 || i->flagsDef >= 0))
       return false;
 
-   if (s > opInfo[i->op].srcNr)
+   if (s >= opInfo[i->op].srcNr)
       return false;
    if (!(opInfo[i->op].srcFiles[s] & (1 << (int)sf)))
       return false;
