@@ -70,14 +70,19 @@ util_sprintf(char *str, const char *format, ...)
 }
 
 static INLINE char *
+util_strchrnul(const char *s, char c)
+{
+   for (; *s && *s != c; ++s);
+
+   return (char *)s;
+}
+
+static INLINE char *
 util_strchr(const char *s, char c)
 {
-   while(*s) {
-      if(*s == c)
-	 return (char *)s;
-      ++s;
-   }
-   return NULL;
+   char *p = util_strchrnul(s, c);
+
+   return *p ? p : NULL;
 }
 
 static INLINE char*
@@ -166,6 +171,7 @@ util_memmove(void *dest, const void *src, size_t n)
 #define util_snprintf snprintf
 #define util_vsprintf vsprintf
 #define util_sprintf sprintf
+#define util_strchrnul strchrnul
 #define util_strchr strchr
 #define util_strcmp strcmp
 #define util_strncmp strncmp
