@@ -1916,6 +1916,13 @@ if test "x$NEED_G3DVL_DRI" = xyes; then
     GALLIUM_WINSYS_DIRS="$GALLIUM_WINSYS_DIRS g3dvl/dri"
 fi
 
+if test "x$enable_gallium_loader" = xyes; then
+    if test "x$have_libdrm$have_libudev" = xyes; then
+        GALLIUM_WINSYS_DIRS="$GALLIUM_WINSYS_DIRS loader/drm"
+    fi
+    GALLIUM_WINSYS_DIRS="$GALLIUM_WINSYS_DIRS loader/sw loader/"
+fi
+
 dnl prepend CORE_DIRS to SRC_DIRS
 SRC_DIRS="$CORE_DIRS $SRC_DIRS"
 
