@@ -11,19 +11,16 @@ INCLUDES = \
 	-I$(TOP)/src/gallium/winsys \
 	$(PROG_INCLUDES)
 
-ifeq ($(MESA_LLVM),1)
-LINKS = $(TOP)/src/gallium/drivers/llvmpipe/libllvmpipe.a
-LDFLAGS += $(LLVM_LDFLAGS)
-endif
-
 LINKS += \
 	$(TOP)/src/gallium/drivers/rbug/librbug.a \
 	$(TOP)/src/gallium/drivers/trace/libtrace.a \
 	$(TOP)/src/gallium/drivers/galahad/libgalahad.a \
-	$(TOP)/src/gallium/winsys/sw/null/libws_null.a \
-	$(TOP)/src/gallium/drivers/softpipe/libsoftpipe.a \
+	$(TOP)/src/gallium/winsys/loader/libws_loader.a \
+	$(TOP)/src/gallium/winsys/loader/drm/libws_loader_drm.a \
 	$(GALLIUM_AUXILIARIES) \
-	$(PROG_LINKS)
+	$(PROG_LINKS) $(LIBUDEV_LIBS)
+
+LDFLAGS += $(LLVM_LDFLAGS)
 
 SOURCES = \
 	tri.c \
@@ -40,6 +37,8 @@ PROG_DEFINES = \
 
 default: $(PROGS)
 
+include $(TOP)/src/gallium/targets/pipe-loader/Makefile.template
+
 clean:
 	-rm -f $(PROGS)
 	-rm -f *.o
@@ -48,7 +47,7 @@ clean:
 ##### RULES #####
 
 $(OBJECTS): %.o: %.c
-	$(CC) -c $(INCLUDES) $(CFLAGS) $(DEFINES) $(PROG_DEFINES) $< -o $@
+	$(CC) -c $(INCLUDES) $(CFLAGS) $(DEFINES) $(PROG_DEFINES) $(PIPE_DEFINES) $< -o $@
 
-$(PROGS): %: %.o $(LINKS)
+$(PROGS): %: %.o $(LINKS) $(PIPE_TARGETS)
 	$(CXX) $(LDFLAGS) $< $(LINKS) $(LLVM_LIBS) -lm -lpthread -ldl -o $@

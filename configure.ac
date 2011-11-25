@@ -646,6 +646,12 @@ AC_ARG_ENABLE([gallium_gbm],
     [enable_gallium_gbm="$enableval"],
     [enable_gallium_gbm=auto])
 
+AC_ARG_ENABLE([gallium_tests],
+    [AS_HELP_STRING([--enable-gallium-tests],
+        [Enable optional Gallium tests) @<:@default=disable@:>@])],
+    [enable_gallium_tests="$enableval"],
+    [enable_gallium_tests=no])
+
 # Option for Gallium drivers
 GALLIUM_DRIVERS_DEFAULT="r300,r600,svga,swrast"
 
@@ -1914,6 +1920,11 @@ fi
 
 if test "x$NEED_G3DVL_DRI" = xyes; then
     GALLIUM_WINSYS_DIRS="$GALLIUM_WINSYS_DIRS g3dvl/dri"
+fi
+
+if test "x$enable_gallium_tests" = xyes; then
+    SRC_DIRS="$SRC_DIRS gallium/tests/trivial"
+    enable_gallium_loader=yes
 fi
 
 if test "x$enable_gallium_loader" = xyes; then
