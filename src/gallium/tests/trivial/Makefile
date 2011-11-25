@@ -24,7 +24,8 @@ LDFLAGS += $(LLVM_LDFLAGS)
 
 SOURCES = \
 	tri.c \
-	quad-tex.c
+	quad-tex.c \
+	compute.c
 
 OBJECTS = $(SOURCES:.c=.o)
 
