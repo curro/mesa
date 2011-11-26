@@ -216,6 +216,25 @@ CodeEmitter::prepareEmission(BasicBlock *bb)
    func->binSize += bb->binSize;
 }
 
+void
+Program::emitSymbolTable(struct nv50_ir_prog_info *info)
+{
+   int n = 0;
+
+   info->bin.syms = (struct nv50_ir_prog_symbol *)
+      MALLOC(allFuncs.getSize() * sizeof(*info->bin.syms));
+
+   for (ArrayList::Iterator fi = allFuncs.iterator();
+        !fi.end(); fi.next(), ++n) {
+      Function *f = (Function *)fi.get();
+
+      info->bin.syms[n].label = f->getLabel();
+      info->bin.syms[n].offset = f->binPos;
+   }
+
+   info->bin.numSyms = n;
+}
+
 bool
 Program::emitBinary(struct nv50_ir_prog_info *info)
 {
@@ -245,6 +264,8 @@ Program::emitBinary(struct nv50_ir_prog_info *info)
             emit->emitInstruction(i);
    }
    info->bin.relocData = emit->getRelocInfo();
+
+   emitSymbolTable(info);
 
    if (dbgFlags & NV50_IR_DEBUG_BASIC)
       emit->printBinary();
