@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <map>
+#include <memory>
 
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
@@ -86,6 +87,8 @@ public:
    virtual void *get() const = 0;
    virtual bool end() const = 0; // if true, get will return 0
 };
+
+typedef std::auto_ptr<Iterator> IteratorRef;
 
 class ManipIterator : public Iterator
 {

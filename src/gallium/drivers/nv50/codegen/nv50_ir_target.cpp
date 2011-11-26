@@ -122,10 +122,8 @@ CodeEmitter::prepareEmission(Function *func)
 
    BasicBlock::get(func->cfg.getRoot())->binPos = func->binPos;
 
-   Graph::GraphIterator *iter;
-   for (iter = func->cfg.iteratorCFG(); !iter->end(); iter->next())
-      prepareEmission(BasicBlock::get(*iter));
-   func->cfg.putIterator(iter);
+   for (IteratorRef it = func->cfg.iteratorCFG(); !it->end(); it->next())
+      prepareEmission(BasicBlock::get(*it));
 }
 
 void
