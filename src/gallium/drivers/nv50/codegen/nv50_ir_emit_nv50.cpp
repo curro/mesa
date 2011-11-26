@@ -276,9 +276,11 @@ CodeEmitterNV50::setARegBits(unsigned int u)
 void
 CodeEmitterNV50::setAReg16(const Instruction *i, int s)
 {
-   s = i->src[s].indirect[0];
-   if (s >= 0)
-      setARegBits(SDATA(i->src[s]).id + 1);
+   if (i->srcExists(s)) {
+      s = i->src[s].indirect[0];
+      if (s >= 0)
+         setARegBits(SDATA(i->src[s]).id + 1);
+   }
 }
 
 void

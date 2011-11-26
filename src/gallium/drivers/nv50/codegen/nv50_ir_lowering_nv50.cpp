@@ -192,9 +192,6 @@ private:
 void
 NV50LegalizeSSA::propagateWriteToOutput(Instruction *st)
 {
-   Instruction *gen = st->getSrc(1)->getInsn();
-   if (!gen || st->getSrc(1)->refCount() > 1)
-      return;
    // TODO
 }
 
