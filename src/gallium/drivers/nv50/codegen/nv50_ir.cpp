@@ -961,7 +961,7 @@ Program::Program(Type type, Target *arch)
 
    maxGPR = -1;
 
-   main = new Function(this, "MAIN");
+   main = new Function(this, "MAIN", ~0);
 
    dbgFlags = 0;
 }
