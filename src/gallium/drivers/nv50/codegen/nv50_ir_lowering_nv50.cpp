@@ -576,14 +576,14 @@ bool
 NV50LoweringPreSSA::handleEXPORT(Instruction *i)
 {
    if (prog->getType() == Program::TYPE_FRAGMENT) {
-      if (i->src[0].isIndirect(0)) {
+      if (i->getIndirect(0, 0)) {
          // TODO: redirect to l[] here, load to GPRs at exit
          return false;
       } else {
          int id = i->getSrc(0)->reg.data.offset / 4; // in 32 bit reg units
 
          i->op = OP_MOV;
-         i->src[0].set(i->src[1]);
+         i->src(0).set(i->src(1));
          i->setSrc(1, NULL);
          i->setDef(0, new_LValue(func, FILE_GPR));
          i->getDef(0)->reg.data.id = id;

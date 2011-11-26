@@ -248,10 +248,10 @@ bool
 TargetNV50::insnCanLoad(const Instruction *i, int s,
                         const Instruction *ld) const
 {
-   DataFile sf = ld->src[0].getFile();
+   DataFile sf = ld->src(0).getFile();
 
    for (int z = 0; i->srcExists(z); ++z)
-      if (i->src[z].getFile() == FILE_IMMEDIATE)
+      if (i->src(z).getFile() == FILE_IMMEDIATE)
          return false;
    if (sf == FILE_IMMEDIATE && (i->predSrc >= 0 || i->flagsDef >= 0))
       return false;
@@ -260,15 +260,15 @@ TargetNV50::insnCanLoad(const Instruction *i, int s,
       return false;
    if (!(opInfo[i->op].srcFiles[s] & (1 << (int)sf)))
       return false;
-   if (s == 2 && i->src[1].getFile() != FILE_GPR)
+   if (s == 2 && i->src(1).getFile() != FILE_GPR)
       return false;
 
    if (ld->getSrc(0)->reg.data.offset > (int32_t)(127 * typeSizeof(ld->dType)))
       return false;
 
-   if (ld->src[0].isIndirect(0)) {
+   if (ld->src(0).isIndirect(0)) {
       for (int z = 0; i->srcExists(z); ++z)
-         if (i->src[z].isIndirect(0))
+         if (i->src(z).isIndirect(0))
             return false;
 
       // s[] access only possible in CP, $aX always applies
@@ -283,7 +283,7 @@ TargetNV50::insnCanLoad(const Instruction *i, int s,
          return false;
       if (pt == Program::TYPE_GEOMETRY) {
          if (sf == FILE_MEMORY_CONST)
-            return i->src[s].getFile() != FILE_SHADER_INPUT;
+            return i->src(s).getFile() != FILE_SHADER_INPUT;
          return sf == FILE_SHADER_INPUT;
       }
       return sf == FILE_MEMORY_CONST;
@@ -349,12 +349,12 @@ TargetNV50::isModSupported(const Instruction *insn, int s, Modifier mod) const
       case OP_XOR:
          break;
       case OP_ADD:
-         if (insn->src[s ? 0 : 1].mod.neg())
+         if (insn->src(s ? 0 : 1).mod.neg())
             return false;
          break;
       case OP_SUB:
          if (s == 0)
-            return insn->src[1].mod.neg() ? false : true;
+            return insn->src(1).mod.neg() ? false : true;
          break;
       default:
          return false;
@@ -371,7 +371,7 @@ TargetNV50::mayPredicate(const Instruction *insn, const Value *pred) const
    if (insn->getPredicate() || insn->flagsSrc >= 0)
       return false;
    for (int s = 0; insn->srcExists(s); ++s)
-      if (insn->src[s].getFile() == FILE_IMMEDIATE)
+      if (insn->src(s).getFile() == FILE_IMMEDIATE)
          return false;
    return opInfo[insn->op].predicate;
 }
@@ -390,7 +390,7 @@ int TargetNV50::getLatency(const Instruction *i) const
 {
    // TODO: tune these values
    if (i->op == OP_LOAD) {
-      switch (i->src[0].getFile()) {
+      switch (i->src(0).getFile()) {
       case FILE_MEMORY_LOCAL:
       case FILE_MEMORY_GLOBAL:
          return 100; // really 400 to 800
