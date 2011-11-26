@@ -24,10 +24,8 @@
 
 namespace nv50_ir {
 
-Function::Function(Program *p, const char *fnName)
-   : call(this),
-     name(fnName),
-     prog(p)
+Function::Function(Program *p, const char *fnName, uint32_t label)
+   : call(this), name(fnName), label(label), prog(p)
 {
    cfgExit = NULL;
    domTree = NULL;
