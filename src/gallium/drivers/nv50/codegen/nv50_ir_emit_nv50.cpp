@@ -1593,7 +1593,8 @@ replaceExitWithModifier(Function *func)
 {
    BasicBlock *epilogue = BasicBlock::get(func->cfgExit);
 
-   if (epilogue->getExit()->op != OP_EXIT) // only main will use OP_EXIT
+   if (!epilogue->getExit() ||
+       epilogue->getExit()->op != OP_EXIT) // only main will use OP_EXIT
       return;
 
    if (epilogue->getEntry()->op != OP_EXIT) {
