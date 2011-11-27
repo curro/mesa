@@ -58,11 +58,12 @@ Modifier Modifier::operator*(const Modifier m) const
    return Modifier(a | c);
 }
 
-ValueRef::ValueRef() : value(NULL), insn(NULL)
+ValueRef::ValueRef(Value *v) : value(NULL), insn(NULL)
 {
    indirect[0] = -1;
    indirect[1] = -1;
    usedAsPtr = false;
+   set(v);
 }
 
 ValueRef::ValueRef(const ValueRef& ref) : value(NULL), insn(ref.insn)
@@ -91,9 +92,9 @@ ImmediateValue *ValueRef::getImmediate() const
    return NULL;
 }
 
-ValueDef::ValueDef() : value(NULL), insn(NULL)
+ValueDef::ValueDef(Value *v) : value(NULL), insn(NULL)
 {
-   // nothing to do
+   set(v);
 }
 
 ValueDef::ValueDef(const ValueDef& def) : value(NULL), insn(NULL)
@@ -141,17 +142,51 @@ ValueDef::set(Value *defVal)
    value = defVal;
 }
 
-void
-ValueDef::replace(Value *repVal, bool doSet)
+bool
+ValueDef::mayReplace(const ValueRef &rep)
 {
-   if (value == repVal)
+   if (rep.mod) {
+      if (!insn || !insn->bb)
+         return false; // Unbound instruction?
+
+      const Target *target = insn->bb->getProgram()->getTarget();
+
+      for (Value::UseIterator it = value->uses.begin();
+           it != value->uses.end(); ++it) {
+         Instruction *insn = (*it)->getInsn();
+         int s = -1;
+
+         for (int i = 0; insn->srcExists(i); ++i) {
+            if (&insn->src(i) == *it)
+               s = i;
+            else if (insn->src(i).get() == value)
+               return false; // Multiple references to us
+         }
+
+         if (!target->isModSupported(insn, s, rep.mod))
+            return false; // Unsupported modifier
+      }
+   }
+
+   return true;
+}
+
+void
+ValueDef::replace(const ValueRef &repVal, bool doSet)
+{
+   assert(mayReplace(repVal));
+
+   if (value == repVal.get())
       return;
 
-   while (value->refCount())
-      value->uses.front()->set(repVal);
+   while (!value->uses.empty()) {
+      ValueRef *ref = value->uses.front();
+      ref->set(repVal.get());
+      ref->mod *= repVal.mod;
+   }
 
    if (doSet)
-      set(repVal);
+      set(repVal.get());
 }
 
 Value::Value()

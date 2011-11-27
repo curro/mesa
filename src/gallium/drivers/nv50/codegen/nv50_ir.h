@@ -357,6 +357,7 @@ public:
 
    // @return new Modifier applying a after b (asserts if unrepresentable)
    Modifier operator*(const Modifier) const;
+   Modifier operator*=(const Modifier m) { *this = *this * m; return *this; }
    Modifier operator==(const Modifier m) const { return m.bits == bits; }
    Modifier operator!=(const Modifier m) const { return m.bits != bits; }
 
@@ -369,7 +370,7 @@ public:
    inline int neg() const { return (bits & NV50_IR_MOD_NEG) ? 1 : 0; }
    inline int abs() const { return (bits & NV50_IR_MOD_ABS) ? 1 : 0; }
 
-   inline operator bool() { return bits ? true : false; }
+   inline operator bool() const { return bits ? true : false; }
 
    void applyTo(ImmediateValue &imm) const;
 
@@ -382,7 +383,7 @@ private:
 class ValueRef
 {
 public:
-   ValueRef();
+   ValueRef(Value *v = NULL);
    ValueRef(const ValueRef&);
    ~ValueRef();
 
@@ -420,7 +421,7 @@ private:
 class ValueDef
 {
 public:
-   ValueDef();
+   ValueDef(Value *v = NULL);
    ValueDef(const ValueDef&);
    ~ValueDef();
 
@@ -429,7 +430,8 @@ public:
    inline Value *get() const { return value; }
    inline Value *rep() const;
    void set(Value *);
-   void replace(Value *, bool doSet); // replace all uses of the old value
+   bool mayReplace(const ValueRef &);
+   void replace(const ValueRef &, bool doSet); // replace all uses of the old value
 
    inline Instruction *getInsn() const { return insn; }
    inline void setInsn(Instruction *inst) { insn = inst; }
