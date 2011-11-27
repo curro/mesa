@@ -153,7 +153,7 @@ NV50LegalizePostRA::split64BitOp(Instruction *i)
          return;
       i->dType = i->sType = TYPE_U32;
 
-      i->bb->insertAfter(i, i->clone(true)); // deep cloning
+      i->bb->insertAfter(i, cloneForward(func, i));
    }
 }
 
@@ -333,7 +333,7 @@ NV50LoweringPreSSA::handleTXB(TexInstruction *i)
 
    Instruction *tex[4];
    for (l = 0; l < 4; ++l)
-      (tex[l] = i->clone(true))->setPredicate(cc[l], flags);
+      (tex[l] = cloneForward(func, i))->setPredicate(cc[l], flags);
 
    Value *res[4][4];
    for (d = 0; i->defExists(d); ++d)
@@ -418,7 +418,7 @@ NV50LoweringPreSSA::handleTXD(TexInstruction *i)
       for (c = 0; c < dim; ++c)
          bld.mkQuadop(qOps[l][1], crd[c], l, i->dPdy[c].get(), crd[c]);
       // texture
-      bld.insert(tex = i->clone(true));
+      bld.insert(tex = cloneForward(func, i));
       for (c = 0; c < dim; ++c)
          tex->setSrc(c, crd[c]);
       // save results

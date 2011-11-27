@@ -299,6 +299,16 @@ const TexInstruction *Instruction::asTex() const
    return NULL;
 }
 
+static inline Instruction *cloneForward(Function *c, Instruction *obj)
+{
+   DeepClonePolicy<Function> pol(c);
+
+   for (int i = 0; obj->srcExists(i); ++i)
+      pol.set(obj->getSrc(i), obj->getSrc(i));
+
+   return obj->clone(pol);
+}
+
 // XXX: use a virtual function so we're really really safe ?
 LValue *Value::asLValue()
 {
