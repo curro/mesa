@@ -1373,8 +1373,8 @@ CodeEmitterNV50::emitFlow(const Instruction *i, uint8_t flowOp)
 
       relocTy = f->builtin ? RelocEntry::TYPE_BUILTIN : RelocEntry::TYPE_CODE;
 
-      addReloc(relocTy, 0, pos,  9, 0x07fff800);
-      addReloc(relocTy, 1, pos, -4, 0x000fc000);
+      addReloc(relocTy, 0, pos, 0x07fff800, 9);
+      addReloc(relocTy, 1, pos, 0x000fc000, -4);
    }
 }
 
