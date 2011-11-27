@@ -888,6 +888,9 @@ CodeEmitterNV50::emitFADD(const Instruction *i)
 void
 CodeEmitterNV50::emitUADD(const Instruction *i)
 {
+   const int neg0 = i->src(0).mod.neg();
+   const int neg1 = i->src(1).mod.neg() ^ ((i->op == OP_SUB) ? 1 : 0);
+
    code[0] = 0x20008000;
 
    if (i->src(0).getFile() == FILE_IMMEDIATE) {
@@ -901,10 +904,9 @@ CodeEmitterNV50::emitUADD(const Instruction *i)
    } else {
       emitForm_MUL(i);
    }
-   assert(!(i->src(0).mod.neg() && i->src(1).mod.neg()));
-   code[0] |= i->src(0).mod.neg() << 28;
-   code[0] |= i->src(1).mod.neg() << 22;
-   assert((code[0] & 0x10400000) != 0x10400000);
+   assert(!(neg0 && neg1));
+   code[0] |= neg0 << 28;
+   code[0] |= neg1 << 22;
 
    if (i->flagsSrc >= 0) {
       // addc == sub | subr
