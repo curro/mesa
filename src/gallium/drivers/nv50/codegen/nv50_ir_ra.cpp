@@ -697,6 +697,28 @@ RegAlloc::collectLValues(DLList &list, bool assignedOnly)
    checkList(list);
 }
 
+static int
+spanVector(Value *v, Value *vs[])
+{
+   Instruction *i = NULL;
+   int size = 0;
+
+   for (Value::DefIterator it = v->defs.begin(); it != v->defs.end(); ++it) {
+      int defs = (*it)->getInsn() ?
+         (*it)->getInsn()->defCount(0xf, true) : 0;
+
+      if (size < defs) {
+         size = defs;
+         i = (*it)->getInsn();
+      }
+   }
+
+   for (int c = 0; c < size; ++c)
+      vs[c] = i->def(c).rep();
+
+   return size;
+}
+
 bool
 RegAlloc::allocateConstrainedValues()
 {
@@ -713,14 +735,12 @@ RegAlloc::allocateConstrainedValues()
 
    for (int n = 0; n < insns.getSize(); ++n) {
       Instruction *i = insnBySerial(n);
+      const int vecSize = i->defExists(0) ?
+         spanVector(i->def(0).rep(), defs) : 0;
 
-      const int vecSize = i->defCount(0xf, true);
       if (vecSize < 2)
          continue;
       assert(vecSize <= 4);
-
-      for (int c = 0; c < vecSize; ++c)
-         defs[c] = i->def(c).rep();
 
       if (defs[0]->reg.data.id >= 0) {
          for (int c = 1; c < vecSize; ++c) {
