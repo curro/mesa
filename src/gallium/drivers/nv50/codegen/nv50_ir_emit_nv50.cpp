@@ -656,11 +656,13 @@ CodeEmitterNV50::emitSTORE(const Instruction *i)
       code[0] = 0xd0000001 | (i->getSrc(0)->reg.fileIndex << 16);
       code[1] = 0xa0000000;
       emitLoadStoreSizeLG(i->dType, 21 + 32);
+      srcId(i->src(1), 2);
       break;
    case FILE_MEMORY_LOCAL:
       code[0] = 0xd0000001;
       code[1] = 0x60000000;
       emitLoadStoreSizeLG(i->dType, 21 + 32);
+      srcId(i->src(1), 2);
       break;
    case FILE_MEMORY_SHARED:
       code[0] = 0x00000001;
@@ -675,27 +677,26 @@ CodeEmitterNV50::emitSTORE(const Instruction *i)
          break;
       case 4:
          code[0] |= (offset >> 2) << 9;
-         code[1] |= 0x04000000;
+         code[1] |= 0x04200000;
          break;
       default:
          assert(0);
          break;
       }
+      srcId(i->src(1), 32 + 14);
       break;
    default:
       assert(!"invalid store destination file");
       break;
    }
 
-   if (f != FILE_SHADER_OUTPUT) {
-      srcId(i->src(1), 2);
-      if (f == FILE_MEMORY_GLOBAL)
-         srcId(*i->src(0).getIndirect(0), 9);
-      if (f == FILE_MEMORY_LOCAL)
-         srcAddr16(i->src(0), false, 9);
-   }
-   if (f != FILE_MEMORY_GLOBAL)
+   if (f == FILE_MEMORY_GLOBAL)
+      srcId(*i->src(0).getIndirect(0), 9);
+   else
       setAReg16(i, 0);
+
+   if (f == FILE_MEMORY_LOCAL)
+      srcAddr16(i->src(0), false, 9);
 
    emitFlagsRd(i);
 }
