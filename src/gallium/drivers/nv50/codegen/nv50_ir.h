@@ -404,7 +404,7 @@ public:
    inline unsigned getSize() const;
 
    // SSA: return eventual (traverse MOVs) literal value, if it exists
-   ImmediateValue *getImmediate() const;
+   bool getImmediate(ImmediateValue &imm) const;
 
 public:
    Modifier mod;
@@ -547,6 +547,7 @@ private:
 class ImmediateValue : public Value
 {
 public:
+   ImmediateValue() {}
    ImmediateValue(Program *, uint32_t);
    ImmediateValue(Program *, float);
    ImmediateValue(Program *, double);

@@ -77,19 +77,25 @@ ValueRef::~ValueRef()
    this->set(NULL);
 }
 
-ImmediateValue *ValueRef::getImmediate() const
+bool ValueRef::getImmediate(ImmediateValue &imm) const
 {
-   Value *src = value;
+   const ValueRef *src = this;
+   Modifier m;
 
    while (src) {
-      if (src->reg.file == FILE_IMMEDIATE)
-         return src->asImm();
+      m *= src->mod;
 
-      Instruction *insn = src->getUniqueInsn();
+      if (src->value->reg.file == FILE_IMMEDIATE) {
+         imm = *src->value->asImm();
+         m.applyTo(imm);
+         return true;
+      }
 
-      src = (insn && insn->op == OP_MOV) ? insn->getSrc(0) : NULL;
+      Instruction *insn = src->value->getUniqueInsn();
+      src = (insn && insn->op == OP_MOV) ? &insn->src(0) : NULL;
    }
-   return NULL;
+
+   return false;
 }
 
 ValueDef::ValueDef(Value *v) : value(NULL), insn(NULL)
