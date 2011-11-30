@@ -347,6 +347,15 @@ struct radeon_winsys {
     boolean (*cs_request_feature)(struct radeon_winsys_cs *cs,
                                   enum radeon_feature_id fid,
                                   boolean enable);
+
+    /**
+     * Set KMS compute mode
+     *
+     * \param ws        The winsys this function is called from.
+     * \param flag      1 = compute mode on (no lockup detection), 0 = compute mode off,
+     */
+    
+    int (*set_compute_mode)(struct radeon_winsys* ws, int flag);
 };
 
 #endif

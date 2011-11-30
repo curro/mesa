@@ -47,6 +47,7 @@
 #include "r600_shader.h"
 #include "r600_pipe.h"
 #include "r600_formats.h"
+#include "evergreen_compute.h"
 
 static uint32_t r600_translate_blend_function(int blend_func)
 {
@@ -989,7 +990,10 @@ static void *evergreen_create_rs_state(struct pipe_context *ctx,
 	return rstate;
 }
 
-static void *evergreen_create_sampler_state(struct pipe_context *ctx,
+void *evergreen_create_sampler_state(struct pipe_context *ctx,
+          const struct pipe_sampler_state *state);
+
+void *evergreen_create_sampler_state(struct pipe_context *ctx,
 					const struct pipe_sampler_state *state)
 {
 	struct r600_pipe_state *rstate = CALLOC_STRUCT(r600_pipe_state);
@@ -1623,6 +1627,8 @@ static void evergreen_set_framebuffer_state(struct pipe_context *ctx,
 
 void evergreen_init_state_functions(struct r600_context *rctx)
 {
+
+
 	rctx->context.create_blend_state = evergreen_create_blend_state;
 	rctx->context.create_depth_stencil_alpha_state = evergreen_create_dsa_state;
 	rctx->context.create_fs_state = r600_create_shader_state;
@@ -1664,6 +1670,8 @@ void evergreen_init_state_functions(struct r600_context *rctx)
 	rctx->context.texture_barrier = r600_texture_barrier;
 	rctx->context.create_stream_output_target = r600_create_so_target;
 	rctx->context.stream_output_target_destroy = r600_so_target_destroy;
+	
+	evergreen_init_compute_state_functions(rctx);
 	rctx->context.set_stream_output_targets = r600_set_so_targets;
 }
 

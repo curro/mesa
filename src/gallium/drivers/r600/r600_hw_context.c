@@ -1441,6 +1441,7 @@ void r600_context_flush(struct r600_context *ctx, unsigned flags)
 
 	/* Flush the CS. */
 	ctx->ws->cs_flush(ctx->cs, flags);
+	printf("flush cs: %i\n", ctx->cs->cdw);
 
 	ctx->pm4_dirty_cdwords = 0;
 	ctx->flags = 0;

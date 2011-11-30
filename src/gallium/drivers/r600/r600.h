@@ -250,6 +250,7 @@ int evergreen_context_init(struct r600_context *ctx);
 void evergreen_context_draw(struct r600_context *ctx, const struct r600_draw *draw);
 void evergreen_context_pipe_state_set_ps_resource(struct r600_context *ctx, struct r600_pipe_resource_state *state, unsigned rid);
 void evergreen_context_pipe_state_set_vs_resource(struct r600_context *ctx, struct r600_pipe_resource_state *state, unsigned rid);
+void evergreen_context_pipe_state_set_cs_resource(struct r600_context *ctx, struct r600_pipe_resource_state *state, unsigned rid);
 void evergreen_context_pipe_state_set_fs_resource(struct r600_context *ctx, struct r600_pipe_resource_state *state, unsigned rid);
 void evergreen_context_pipe_state_set_ps_sampler(struct r600_context *ctx, struct r600_pipe_state *state, unsigned id);
 void evergreen_context_pipe_state_set_vs_sampler(struct r600_context *ctx, struct r600_pipe_state *state, unsigned id);

@@ -134,7 +134,7 @@ static void r600_buffer_transfer_inline_write(struct pipe_context *pipe,
 	rctx->ws->buffer_unmap(rbuffer->buf);
 }
 
-static const struct u_resource_vtbl r600_buffer_vtbl =
+const struct u_resource_vtbl r600_buffer_vtbl =
 {
 	u_default_resource_get_handle,		/* get_handle */
 	r600_buffer_destroy,			/* resource_destroy */

@@ -39,6 +39,15 @@ struct r600_transfer {
 	struct pipe_resource		*staging_texture;
 };
 
+struct compute_memory_item;
+
+struct r600_resource_global
+{
+  struct r600_resource base;
+
+  struct compute_memory_item *chunk;
+};
+
 struct r600_resource_texture {
 	struct r600_resource		resource;
 
@@ -69,6 +78,7 @@ struct r600_surface {
 	unsigned			aligned_height;
 };
 
+void r600_resource_destroy(struct pipe_screen *screen, struct pipe_resource *res);
 void r600_init_screen_resource_functions(struct pipe_screen *screen);
 
 /* r600_texture */

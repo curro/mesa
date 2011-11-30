@@ -51,3 +51,6 @@ $(OBJECTS): %.o: %.c
 
 $(PROGS): %: %.o $(LINKS) $(PIPE_TARGETS)
 	$(CXX) $(LDFLAGS) $< $(LINKS) $(LLVM_LIBS) -lm -lpthread -ldl -o $@
+
+install:
+	
