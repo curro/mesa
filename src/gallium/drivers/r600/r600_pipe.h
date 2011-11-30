@@ -38,6 +38,7 @@
 #include "r600_public.h"
 #include "r600_shader.h"
 #include "r600_resource.h"
+#include "evergreen_compute.h"
 
 #define R600_MAX_CONST_BUFFERS 2
 #define R600_MAX_CONST_BUFFER_SIZE 4096
@@ -92,8 +93,12 @@ enum r600_pipe_state_id {
 	R600_PIPE_STATE_RESOURCE,
 	R600_PIPE_STATE_POLYGON_OFFSET,
 	R600_PIPE_STATE_FETCH_SHADER,
+	R600_PIPE_STATE_SPI,
 	R600_PIPE_NSTATES
 };
+
+struct compute_memory_pool;
+void compute_memory_pool_delete(struct compute_memory_pool* pool);
 
 struct r600_pipe_fences {
 	struct r600_resource		*bo;
@@ -118,6 +123,9 @@ struct r600_screen {
 
 	unsigned			num_contexts;
 
+  /*for compute global memory binding, we allocate stuff here, instead of buffers*/
+  struct compute_memory_pool *global_pool; 
+  
 	/* for thread-safe write accessing to num_contexts */
 	pipe_mutex			mutex_num_contexts;
 };
@@ -170,6 +178,22 @@ struct r600_vertex_element
 	unsigned			vbuffer_offset[PIPE_MAX_ATTRIBS];
 };
 
+struct r600_pipe_compute
+{
+  struct r600_context *ctx;
+	struct r600_bytecode  bc;
+	struct tgsi_token     *tokens;
+	
+  struct evergreen_compute_resource *resources;
+  
+  unsigned local_size;
+  unsigned private_size;
+  unsigned input_size;
+
+  struct r600_resource *kernel_param;
+  struct r600_resource *shader_code_bo;
+};
+
 struct r600_pipe_shader {
 	struct r600_shader		shader;
 	struct r600_pipe_state		rstate;
@@ -177,7 +201,7 @@ struct r600_pipe_shader {
 	struct r600_resource		*bo_fetch;
 	struct r600_vertex_element	vertex_elements;
 	struct tgsi_token		*tokens;
-	unsigned	sprite_coord_enable;
+  unsigned sprite_coord_enable;
 	unsigned	flatshade;
 	unsigned	pa_cl_vs_out_cntl;
 	struct pipe_stream_output_info	so;
@@ -248,6 +272,7 @@ struct r600_context {
 	struct r600_pipe_state		config;
 	struct r600_pipe_shader 	*ps_shader;
 	struct r600_pipe_shader 	*vs_shader;
+  struct r600_pipe_compute   *cs_shader;  
 	struct r600_pipe_state		vs_const_buffer;
 	struct r600_pipe_resource_state		vs_const_buffer_resource[R600_MAX_CONST_BUFFERS];
 	struct r600_pipe_state		ps_const_buffer;
@@ -261,7 +286,9 @@ struct r600_context {
 	unsigned			saved_render_cond_mode;
 	/* shader information */
 	boolean				two_side;
+	boolean				spi_dirty;
 	unsigned			sprite_coord_enable;
+	boolean				flatshade;
 	boolean				export_16bpc;
 	unsigned			alpha_ref;
 	boolean				alpha_ref_dirty;

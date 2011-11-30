@@ -857,6 +857,12 @@ static uint64_t radeon_winsys_bo_va(struct pb_buffer *buffer)
     return bo->va;
 }
 
+static int radeon_set_compute_mode(struct radeon_winsys* rws, int flag)
+{
+    struct radeon_drm_winsys *ws = radeon_drm_winsys(rws);
+    return drmCommandWrite(ws->fd, 0x2b, &flag, sizeof(flag));
+}
+ 
 void radeon_bomgr_init_functions(struct radeon_drm_winsys *ws)
 {
     ws->base.buffer_get_cs_handle = radeon_drm_get_cs_handle;
@@ -870,4 +876,5 @@ void radeon_bomgr_init_functions(struct radeon_drm_winsys *ws)
     ws->base.buffer_from_handle = radeon_winsys_bo_from_handle;
     ws->base.buffer_get_handle = radeon_winsys_bo_get_handle;
     ws->base.buffer_get_virtual_address = radeon_winsys_bo_va;
+    ws->base.set_compute_mode = radeon_set_compute_mode;
 }

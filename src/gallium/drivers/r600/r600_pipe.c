@@ -541,18 +541,57 @@ static int r600_get_video_param(struct pipe_screen *screen,
 	}
 }
 
+static int r600_get_compute_param(struct pipe_screen *screen,
+        enum pipe_compute_cap param,
+        uint64_t *ret)
+{
+  //TODO: select these params by asic
+   switch (param) {
+   case PIPE_COMPUTE_CAP_GRID_DIMENSION:
+      if (ret)
+   ret[0] = 3;
+      return 1;
+
+   case PIPE_COMPUTE_CAP_MAX_GRID_SIZE:
+      if (ret) {
+   ret[0] = 65535;
+   ret[1] = 65535;
+   ret[2] = 1;
+      }
+      return 3;
+
+   case PIPE_COMPUTE_CAP_MAX_BLOCK_SIZE:
+      if (ret) {
+   ret[0] = 256;
+   ret[1] = 256;
+   ret[2] = 256;
+      }
+      return 3;
+
+   default:
+      fprintf(stderr, "unknown PIPE_COMPUTE_CAP %d\n", param);
+      return 0;
+   }
+}
+
 static void r600_destroy_screen(struct pipe_screen* pscreen)
 {
 	struct r600_screen *rscreen = (struct r600_screen *)pscreen;
 
 	if (rscreen == NULL)
 		return;
+		
+	if (rscreen->global_pool)
+	{
+		compute_memory_pool_delete(rscreen->global_pool);
+	}
 
 	if (rscreen->fences.bo) {
 		struct r600_fence_block *entry, *tmp;
 
 		LIST_FOR_EACH_ENTRY_SAFE(entry, tmp, &rscreen->fences.blocks, head) {
 			LIST_DEL(&entry->head);
+	
 			FREE(entry);
 		}
 
@@ -789,6 +828,8 @@ struct pipe_screen *r600_screen_create(struct radeon_winsys *ws)
 	rscreen->screen.get_shader_param = r600_get_shader_param;
 	rscreen->screen.get_paramf = r600_get_paramf;
 	rscreen->screen.get_video_param = r600_get_video_param;
+  rscreen->screen.get_compute_param = r600_get_compute_param;
+  
 	if (rscreen->chip_class >= EVERGREEN) {
 		rscreen->screen.is_format_supported = evergreen_is_format_supported;
 	} else {
