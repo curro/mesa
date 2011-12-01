@@ -512,6 +512,7 @@ NV50LoweringPreSSA::handleSLCT(CmpInstruction *i)
              pred, i->getSrc(2), bld.loadImm(NULL, 0));
    bld.mkMov(src1, i->getSrc(1))->setPredicate(CC_EQ, pred);
    bld.mkOp2(OP_UNION, i->dType, i->getDef(0), i->getSrc(0), src1);
+   delete_Instruction(prog, i);
    return true;
 }
 
@@ -521,6 +522,7 @@ NV50LoweringPreSSA::handleSELP(Instruction *i)
    Value *src1 = bld.getSSA();
    bld.mkMov(src1, i->getSrc(1))->setPredicate(CC_EQ, i->getPredicate());
    bld.mkOp2(OP_UNION, i->dType, i->getDef(0), i->getSrc(0), src1);
+   delete_Instruction(prog, i);
    return true;
 }
 
