@@ -27,6 +27,10 @@
 #include <assert.h>
 #include <stdio.h>
 
+#ifndef NDEBUG
+# include <typeinfo>
+#endif
+
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 
