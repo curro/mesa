@@ -97,6 +97,8 @@ CopyPropagation::visit(BasicBlock *bb)
       next = mov->next;
       if (mov->op != OP_MOV || mov->fixed || !mov->getSrc(0)->asLValue())
          continue;
+      if (mov->getPredicate())
+         continue;
       si = mov->getSrc(0)->getInsn();
       if (mov->getDef(0)->reg.data.id < 0 && si && si->op != OP_PHI) {
          // propagate

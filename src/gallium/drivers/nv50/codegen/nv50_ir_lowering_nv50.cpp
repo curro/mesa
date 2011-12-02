@@ -506,22 +506,34 @@ NV50LoweringPreSSA::handleSET(Instruction *i)
 bool
 NV50LoweringPreSSA::handleSLCT(CmpInstruction *i)
 {
+   Value *src0 = bld.getSSA();
    Value *src1 = bld.getSSA();
-   Value *pred = bld.getScratch(FILE_FLAGS);
-   bld.mkCmp(OP_SET, i->setCond, i->sType,
-             pred, i->getSrc(2), bld.loadImm(NULL, 0));
+   Value *pred = bld.getScratch(1, FILE_FLAGS);
+
+   bld.setPosition(i, true);
+   bld.mkMov(src0, i->getSrc(0))->setPredicate(CC_NE, pred);
    bld.mkMov(src1, i->getSrc(1))->setPredicate(CC_EQ, pred);
-   bld.mkOp2(OP_UNION, i->dType, i->getDef(0), i->getSrc(0), src1);
-   delete_Instruction(prog, i);
+   bld.mkOp2(OP_UNION, i->dType, i->getDef(0), src0, src1);
+
+   bld.setPosition(i, false);
+   i->op = OP_SET;
+   i->setFlagsDef(0, pred);
+   i->dType = TYPE_U8;
+   i->setSrc(0, i->getSrc(2));
+   i->setSrc(2, NULL);
+   i->setSrc(1, bld.loadImm(NULL, 0));
+
    return true;
 }
 
 bool
 NV50LoweringPreSSA::handleSELP(Instruction *i)
 {
+   Value *src0 = bld.getSSA();
    Value *src1 = bld.getSSA();
-   bld.mkMov(src1, i->getSrc(1))->setPredicate(CC_EQ, i->getPredicate());
-   bld.mkOp2(OP_UNION, i->dType, i->getDef(0), i->getSrc(0), src1);
+   bld.mkMov(src0, i->getSrc(0))->setPredicate(CC_NE, i->getSrc(2));
+   bld.mkMov(src1, i->getSrc(1))->setPredicate(CC_EQ, i->getSrc(2));
+   bld.mkOp2(OP_UNION, i->dType, i->getDef(0), src0, src1);
    delete_Instruction(prog, i);
    return true;
 }
