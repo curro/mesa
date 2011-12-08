@@ -36,6 +36,7 @@
 #include "util/u_debug.h"
 #include "util/u_memory.h"
 #include "util/u_math.h"
+#include "util/u_dynarray.h"
 
 union tgsi_any_token {
    struct tgsi_header header;
@@ -75,7 +76,6 @@ struct ureg_tokens {
 #define UREG_MAX_OUTPUT PIPE_MAX_ATTRIBS
 #define UREG_MAX_CONSTANT_RANGE 32
 #define UREG_MAX_IMMEDIATE 256
-#define UREG_MAX_TEMP 256
 #define UREG_MAX_ADDR 2
 #define UREG_MAX_PRED 1
 
@@ -151,7 +151,8 @@ struct ureg_program
    } resource[PIPE_MAX_SHADER_RESOURCES];
    unsigned nr_resources;
 
-   unsigned temps_active[UREG_MAX_TEMP / 32];
+   struct util_dynarray temps_active;
+   struct util_dynarray local_temps;
    unsigned nr_temps;
 
    struct const_decl const_decls;
@@ -530,16 +531,17 @@ out:
    return ureg_src_register(TGSI_FILE_CONSTANT, index);
 }
 
+#define ent(array, i) (*util_dynarray_element(&(array), unsigned, i / 32))
 
-/* Allocate a new temporary.  Temporaries greater than UREG_MAX_TEMP
- * are legal, but will not be released.
- */
-struct ureg_dst ureg_DECL_temporary( struct ureg_program *ureg )
+static struct ureg_dst alloc_temporary( struct ureg_program *ureg,
+                                        boolean local )
 {
-   unsigned i;
+   unsigned i, n;
 
-   for (i = 0; i < UREG_MAX_TEMP; i += 32) {
-      int bit = ffs(~ureg->temps_active[i/32]);
+   for (i = 0; i < ureg->nr_temps; i += 32) {
+      unsigned mask = ent(ureg->local_temps, i);
+      int bit = ffs(~ent(ureg->temps_active, i) & (local ? mask : ~mask));
+
       if (bit != 0) {
          i += bit - 1;
          goto out;
@@ -549,26 +551,33 @@ struct ureg_dst ureg_DECL_temporary( struct ureg_program *ureg )
    /* No reusable temps, so allocate a new one:
     */
    i = ureg->nr_temps++;
+   n = align(ureg->nr_temps, 32) / 32;
+   util_dynarray_resize(&ureg->temps_active, n);
+   util_dynarray_resize(&ureg->local_temps, n);
 
 out:
-   if (i < UREG_MAX_TEMP)
-      ureg->temps_active[i/32] |= 1 << (i % 32);
-
-   if (i >= ureg->nr_temps)
-      ureg->nr_temps = i + 1;
+   ent(ureg->temps_active, i) |= 1 << (i % 32);
+   ent(ureg->local_temps, i) |= (local ? 1 << (i % 32) : 0);
 
    return ureg_dst_register( TGSI_FILE_TEMPORARY, i );
 }
 
+struct ureg_dst ureg_DECL_temporary( struct ureg_program *ureg )
+{
+   return alloc_temporary(ureg, FALSE);
+}
+
+struct ureg_dst ureg_DECL_local_temporary( struct ureg_program *ureg )
+{
+   return alloc_temporary(ureg, TRUE);
+}
 
 void ureg_release_temporary( struct ureg_program *ureg,
                              struct ureg_dst tmp )
 {
    if(tmp.File == TGSI_FILE_TEMPORARY)
-      if (tmp.Index < UREG_MAX_TEMP)
-         ureg->temps_active[tmp.Index/32] &= ~(1 << (tmp.Index % 32));
+      ent(ureg->temps_active, tmp.Index) &= ~(1 << (tmp.Index % 32));
 }
-
 
 /* Allocate a new address register.
  */
@@ -1255,6 +1264,25 @@ emit_decl_fs(struct ureg_program *ureg,
 }
 
 
+static void emit_decl( struct ureg_program *ureg,
+                       unsigned file,
+                       unsigned first,
+                       boolean local )
+{
+   union tgsi_any_token *out = get_tokens( ureg, DOMAIN_DECL, 2 );
+
+   out[0].value = 0;
+   out[0].decl.Type = TGSI_TOKEN_TYPE_DECLARATION;
+   out[0].decl.NrTokens = 2;
+   out[0].decl.File = file;
+   out[0].decl.UsageMask = TGSI_WRITEMASK_XYZW;
+   out[0].decl.Local = !!local;
+
+   out[1].value = 0;
+   out[1].decl_range.First = first;
+   out[1].decl_range.Last = first;
+}
+
 static void emit_decl_range( struct ureg_program *ureg,
                              unsigned file,
                              unsigned first,
@@ -1509,10 +1537,11 @@ static void emit_decls( struct ureg_program *ureg )
       }
    }
 
-   if (ureg->nr_temps) {
-      emit_decl_range( ureg,
-                       TGSI_FILE_TEMPORARY,
-                       0, ureg->nr_temps );
+   for (i = 0; i < ureg->nr_temps; i++) {
+      emit_decl(ureg,
+                TGSI_FILE_TEMPORARY,
+                i,
+                ent(ureg->local_temps, i) & (1 << (i % 32)));
    }
 
    if (ureg->nr_addrs) {
