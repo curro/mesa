@@ -796,7 +796,7 @@ bool Source::scanDeclaration(const struct tgsi_full_declaration *decl)
             info->in[i].si = si;
             if (info->type == PIPE_SHADER_FRAGMENT) {
                // translate interpolation mode
-               switch (decl->Declaration.Interpolate) {
+               switch (decl->Interp.Interpolate) {
                case TGSI_INTERPOLATE_CONSTANT:
                   info->in[i].flat = 1;
                   break;
@@ -809,7 +809,7 @@ bool Source::scanDeclaration(const struct tgsi_full_declaration *decl)
                default:
                   break;
                }
-               if (decl->Declaration.Centroid)
+               if (decl->Interp.Centroid)
                   info->in[i].centroid = 1;
             }
          }
