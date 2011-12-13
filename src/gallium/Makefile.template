@@ -30,7 +30,7 @@ endif
 
 ##### TARGETS #####
 
-default: depend lib$(LIBNAME).a $(PROGS)
+default: $(DEFAULT_DEPS) depend lib$(LIBNAME).a $(PROGS)
 
 lib$(LIBNAME).a: $(OBJECTS) $(EXTRA_OBJECTS) Makefile $(TOP)/src/gallium/Makefile.template
 	$(MKLIB) -o $(LIBNAME) -static $(OBJECTS) $(EXTRA_OBJECTS)
