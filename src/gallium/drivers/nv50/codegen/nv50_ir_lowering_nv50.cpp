@@ -497,7 +497,7 @@ NV50LoweringPreSSA::handleSET(Instruction *i)
    if (i->dType == TYPE_F32) {
       bld.setPosition(i, true);
       i->dType = TYPE_U32;
-      bld.mkOp1(OP_NEG, TYPE_S32, i->getDef(0), i->getDef(0));
+      bld.mkOp1(OP_ABS, TYPE_S32, i->getDef(0), i->getDef(0));
       bld.mkCvt(OP_CVT, TYPE_F32, i->getDef(0), TYPE_S32, i->getDef(0));
    }
    return true;
