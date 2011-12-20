@@ -1811,6 +1811,8 @@ FlatteningPass::tryPropagateBranch(BasicBlock *bb)
    FlowInstruction *bra = bb->getExit()->asFlow();
    FlowInstruction *rep = bf->getExit()->asFlow();
 
+   if (bra->target.bb != bf)
+      return;
    if (rep->getPredicate())
       return;
    if (rep->op != OP_BRA &&
@@ -1820,8 +1822,6 @@ FlatteningPass::tryPropagateBranch(BasicBlock *bb)
 
    bra->op = rep->op;
    bra->target.bb = rep->target.bb;
-   if (i) // 2nd out block means branch not taken
-      bra->cc = inverseCondCode(bra->cc);
    bf->remove(rep);
 }
 
