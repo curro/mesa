@@ -257,7 +257,9 @@ tgsi_default_declaration_resource(void)
 {
    struct tgsi_declaration_resource declaration_resource;
 
-   declaration_resource.Resource = TGSI_TEXTURE_UNKNOWN;
+   declaration_resource.Resource = TGSI_BUFFER;
+   declaration_resource.Raw = 0;
+   declaration_resource.Writable = 0;
    declaration_resource.ReturnTypeX = PIPE_TYPE_UNORM;
    declaration_resource.ReturnTypeY = PIPE_TYPE_UNORM;
    declaration_resource.ReturnTypeZ = PIPE_TYPE_UNORM;
@@ -669,7 +671,7 @@ tgsi_default_instruction_texture( void )
 {
    struct tgsi_instruction_texture instruction_texture;
 
-   instruction_texture.Texture = TGSI_TEXTURE_UNKNOWN;
+   instruction_texture.Texture = TGSI_BUFFER;
    instruction_texture.NumOffsets = 0;
    instruction_texture.Padding = 0;
 
