@@ -114,12 +114,10 @@ bool
 RegisterSet::assign(Value **def, int nr)
 {
    DataFile f = def[0]->reg.file;
-   int n = nr;
-   if (n == 3)
-      n = 4;
-   int s = (n * def[0]->reg.size) >> unit[f];
+   int n = (nr == 3 ? 4 : nr);
+   int csize = std::max(1, def[0]->reg.size >> unit[f]);
+   int s = n * csize;
    uint32_t m = (1 << s) - 1;
-
    int id = last[f] + 1;
    int i;
 
@@ -142,7 +140,7 @@ RegisterSet::assign(Value **def, int nr)
    if (id + (s - 1) > fill[f])
       fill[f] = id + (s - 1);
 
-   id >>= ffs(def[0]->reg.size >> unit[f]) - 1;
+   id >>= ffs(csize) - 1;
    for (i = 0; i < nr; ++i, ++id)
       if (!def[i]->livei.isEmpty()) // XXX: really increased id if empty ?
          def[i]->reg.data.id = id;
@@ -153,8 +151,9 @@ bool
 RegisterSet::occupy(const Value *val)
 {
    int f = val->reg.file;
-   int id = val->reg.data.id * (val->reg.size >> unit[f]);
-   uint32_t m = (1 << (val->reg.size >> unit[f])) - 1;
+   int s = std::max(1, val->reg.size >> unit[f]);
+   int id = val->reg.data.id * s;
+   uint32_t m = (1 << s) - 1;
 
    if (id < 0 || bits[f][id / 32] & m << (id % 32))
       return false;
@@ -176,10 +175,11 @@ RegisterSet::release(const Value *val)
    if (id < 0)
       return;
    unsigned int f = val->reg.file;
+   int s = std::max(1, val->reg.size >> unit[f]);
 
-   id *= val->reg.size >> unit[f];
+   id *= s;
 
-   uint32_t m = (1 << (val->reg.size >> unit[f])) - 1;
+   uint32_t m = (1 << s) - 1;
 
    INFO_DBG(0, REG_ALLOC, "reg release: %u[%i] %x\n", f, id, m);
 
