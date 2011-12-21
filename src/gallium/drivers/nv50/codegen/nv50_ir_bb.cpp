@@ -322,6 +322,9 @@ BasicBlock::splitAfter(Instruction *insn, bool attach)
    BasicBlock *bb = new BasicBlock(func);
    assert(insn && insn->op != OP_PHI);
 
+   bb->joinAt = joinAt;
+   joinAt = NULL;
+
    splitCommon(insn->next, bb, attach);
    return bb;
 }
