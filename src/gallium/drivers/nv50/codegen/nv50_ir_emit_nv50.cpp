@@ -1590,13 +1590,18 @@ CodeEmitterNV50::getMinEncodingSize(const Instruction *i) const
 static bool
 trySetExitModifier(Instruction *insn)
 {
-   if (insn->encSize != 8)
+   if (insn->encSize != 8 || insn->op == OP_DISCARD)
       return false;
    for (int s = 0; insn->srcExists(s); ++s)
       if (insn->src[s].getFile() == FILE_IMMEDIATE)
          return false;
-   if (insn->asFlow())
+   if (insn->asFlow()) {
+      if (insn->op == OP_CALL) // side effects !
+         return false;
+      if (insn->getPredicate()) // cannot do conditional exit (or can we ?)
+         return false;
       insn->op = OP_EXIT;
+   }
    insn->exit = 1;
    return true;
 }
