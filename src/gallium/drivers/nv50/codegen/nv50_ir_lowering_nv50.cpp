@@ -190,6 +190,8 @@ private:
    void propagateWriteToOutput(Instruction *);
    void handleAddrDef(Instruction *);
 
+   inline bool isARL(const Instruction *) const;
+
    BuildUtil bld;
 };
 
@@ -199,19 +201,50 @@ NV50LegalizeSSA::propagateWriteToOutput(Instruction *st)
    // TODO
 }
 
+bool
+NV50LegalizeSSA::isARL(const Instruction *i) const
+{
+   ImmediateValue imm;
+
+   if (i->op != OP_SHL || i->src(0).getFile() != FILE_GPR)
+      return false;
+   if (!i->src(1).getImmediate(imm))
+      return false;
+   return imm.isInteger(0);
+}
+
 void
 NV50LegalizeSSA::handleAddrDef(Instruction *i)
 {
    Instruction *arl;
 
-   if ((i->op == OP_SHL && i->src(1).getFile() == FILE_IMMEDIATE) ||
-       (i->op == OP_ADD && i->src(0).getFile() == FILE_ADDRESS &&
-        i->src(1).getFile() == FILE_IMMEDIATE))
-       return;
+   // only ADDR <- SHL(GPR, IMM) and ADDR <- ADD(ADDR, IMM) are valid
+   if (i->srcExists(1) && i->src(1).getFile() == FILE_IMMEDIATE) {
+      if (i->op == OP_SHL && i->src(0).getFile() == FILE_GPR)
+         return;
+      if (i->op == OP_ADD && i->src(0).getFile() == FILE_ADDRESS)
+         return;
+   }
+
+   for (int s = 0; i->srcExists(s); ++s) {
+      Value *a = i->getSrc(s);
+      Value *r;
+      if (a->reg.file == FILE_ADDRESS) {
+         if (a->getInsn() && isARL(a->getInsn())) {
+            i->setSrc(s, a->getInsn()->getSrc(0));
+         } else {
+            bld.setPosition(i, false);
+            r = bld.getSSA();
+            bld.mkMov(r, a);
+            i->setSrc(s, r);
+         }
+      }
+   }
+   if (i->op == OP_SHL && i->src(1).getFile() == FILE_IMMEDIATE)
+      return;
 
    bld.setPosition(i, true);
-   arl = bld.mkOp2(OP_SHL, TYPE_U32, i->getDef(0),
-                   bld.getSSA(), bld.mkImm(0));
+   arl = bld.mkOp2(OP_SHL, TYPE_U32, i->getDef(0), bld.getSSA(), bld.mkImm(0));
    i->setDef(0, arl->getSrc(0));
 }
 
