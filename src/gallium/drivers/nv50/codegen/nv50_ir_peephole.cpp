@@ -99,6 +99,8 @@ CopyPropagation::visit(BasicBlock *bb)
          continue;
       if (mov->getPredicate())
          continue;
+      if (mov->def(0).getFile() != mov->src(0).getFile())
+         continue;
       si = mov->getSrc(0)->getInsn();
       if (mov->getDef(0)->reg.data.id < 0 && si && si->op != OP_PHI) {
          // propagate
@@ -376,6 +378,8 @@ ConstantFolding::expr(Instruction *i,
 
    i->src[0].mod.applyTo(imm0);
    i->src[1].mod.applyTo(imm1);
+
+   memset(&res.data, 0, sizeof(res.data));
 
    switch (i->op) {
    case OP_MAD:
@@ -1744,9 +1748,9 @@ FlatteningPass::removeFlow(Instruction *insn)
    if (term->op != OP_JOIN)
       return;
 
-   delete_Instruction(prog, term);
-
    Value *pred = term->getPredicate();
+
+   delete_Instruction(prog, term);
 
    if (pred && pred->refCount() == 0) {
       Instruction *pSet = pred->getUniqueInsn();
@@ -2095,7 +2099,7 @@ LocalCSE::visit(BasicBlock *bb)
             for (Value::UseIterator it = src->uses.begin();
                  it != src->uses.end(); ++it) {
                Instruction *ik = (*it)->getInsn();
-               if (ik && ik->serial < ir->serial && ik->bb == ir->bb)
+               if (ik && ik->bb == ir->bb && ik->serial < ir->serial)
                   if (tryReplace(&ir, ik))
                      break;
             }
