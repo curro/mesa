@@ -641,7 +641,7 @@ RegAlloc::coalesceValues(unsigned int mask)
       case OP_TEXCSAA:
          if (!(mask & JOIN_MASK_TEX))
             break;
-         for (c = 0; c < 4 && insn->srcExists(c); ++c)
+         for (c = 0; insn->srcExists(c) && c != insn->predSrc; ++c)
             insn->getDef(c)->coalesce(insn->getSrc(c), true);
          break;
       default:
