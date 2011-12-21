@@ -153,7 +153,7 @@ void CodeEmitterNV50::srcAddr8(const ValueRef& src, const int pos)
 
    uint32_t offset = SDATA(src).offset;
 
-   assert(offset <= 0x1fc && !(offset & 0x3));
+   assert((offset <= 0x1fc || offset == 0x3fc) && !(offset & 0x3));
 
    code[pos / 32] |= (offset >> 2) << (pos % 32);
 }
