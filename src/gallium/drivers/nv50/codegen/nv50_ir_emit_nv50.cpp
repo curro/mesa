@@ -1462,8 +1462,13 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
    case OP_ABS:
    case OP_NEG:
    case OP_SAT:
-   case OP_CVT:
       emitCVT(insn);
+      break;
+   case OP_CVT:
+      if (insn->def(0).getFile() == FILE_FLAGS)
+         emitMOV(insn);
+      else
+         emitCVT(insn);
       break;
    case OP_RCP:
       emitSFnOp(insn, 0);
