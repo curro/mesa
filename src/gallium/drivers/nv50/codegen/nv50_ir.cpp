@@ -704,7 +704,7 @@ Instruction::defCount(unsigned int mask, bool singleFile) const
       unsigned int d = ffs(mask);
       if (!d)
          return 0;
-      for (i = d + 1; defExists(i); ++i)
+      for (i = d--; defExists(i); ++i)
          if (getDef(i)->reg.file != getDef(d)->reg.file)
             mask &= ~(1 << i);
    }
