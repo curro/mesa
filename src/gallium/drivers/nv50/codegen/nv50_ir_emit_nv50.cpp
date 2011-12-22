@@ -974,7 +974,7 @@ CodeEmitterNV50::emitIMAD(const Instruction *i)
 {
    code[0] = 0x60000000;
    if (isSignedType(i->sType))
-      code[1] = i->saturate ? 0x20000000 : 0x40000000;
+      code[1] = i->saturate ? 0x40000000 : 0x20000000;
    else
       code[1] = 0x00000000;
 
@@ -1237,7 +1237,7 @@ CodeEmitterNV50::emitShift(const Instruction *i)
    } else {
       code[0] = 0x30000001;
       code[1] = (i->op == OP_SHR) ? 0xe4000000 : 0xc4000000;
-      if (isSignedType(i->sType))
+      if (i->op == OP_SHR && isSignedType(i->sType))
           code[1] |= 1 << 27;
 
       if (i->src[1].getFile() == FILE_IMMEDIATE) {
