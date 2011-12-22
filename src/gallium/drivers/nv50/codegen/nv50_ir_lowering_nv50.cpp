@@ -184,16 +184,24 @@ NV50LegalizePostRA::visit(BasicBlock *bb)
 class NV50LegalizeSSA : public Pass
 {
 public:
+   NV50LegalizeSSA(Program *);
+
    virtual bool visit(BasicBlock *bb);
 
 private:
    void propagateWriteToOutput(Instruction *);
+   void handleDIV(Instruction *);
    void handleAddrDef(Instruction *);
 
    inline bool isARL(const Instruction *) const;
 
    BuildUtil bld;
 };
+
+NV50LegalizeSSA::NV50LegalizeSSA(Program *prog)
+{
+   bld.setProgram(prog);
+}
 
 void
 NV50LegalizeSSA::propagateWriteToOutput(Instruction *st)
@@ -248,6 +256,59 @@ NV50LegalizeSSA::handleAddrDef(Instruction *i)
    i->setDef(0, arl->getSrc(0));
 }
 
+// Use f32 division: first compute an approximate result, use it to reduce
+// the dividend, which should then be representable as f32, divide the reduced
+// dividend, and add the quotients.
+void
+NV50LegalizeSSA::handleDIV(Instruction *div)
+{
+   const DataType ty = div->sType;
+
+   Instruction *sub;
+
+   Value *q0, *qf, *aR[3], *aRf, *qRf, *qR, *t, *cond;
+
+   bld.setPosition(div, false);
+
+   Value *af = bld.getSSA();
+   Value *bf = bld.getSSA();
+
+   bld.mkCvt(OP_CVT, TYPE_F32, af, ty, div->getSrc(0));
+   bld.mkCvt(OP_CVT, TYPE_F32, bf, ty, div->getSrc(1));
+
+   bf = bld.mkOp1v(OP_RCP, TYPE_F32, bld.getSSA(), bf);
+
+   bld.mkOp2(OP_MUL, TYPE_F32, (qf = bld.getSSA()), af, bf);
+   bld.mkCvt(OP_CVT, ty, (q0 = bld.getSSA()), TYPE_F32, qf)->rnd = ROUND_N;
+
+   expandIntegerMUL(&bld,
+      bld.mkOp2(OP_MUL, TYPE_U32, (t = bld.getSSA()), q0, div->getSrc(1)));
+
+   sub = bld.mkOp2(OP_SUB, TYPE_S32, (aRf = bld.getSSA()), div->getSrc(0), t);
+
+   if (!isSignedType(ty)) {
+      sub->setFlagsDef(1, (cond = bld.getSSA(1, FILE_FLAGS)));
+
+      bld.mkCvt(OP_CVT, TYPE_F32, (aR[0] = bld.getSSA()), TYPE_S32, aRf)
+         ->setPredicate(CC_NC, cond);
+      bld.mkCvt(OP_CVT, TYPE_F32, (aR[1] = bld.getSSA()), TYPE_U32, aRf)
+         ->setPredicate(CC_C, cond);
+
+      bld.mkOp2(OP_UNION, TYPE_U32, (aR[2] = bld.getSSA()), aR[0], aR[1]);
+   } else {
+      bld.mkCvt(OP_CVT, TYPE_F32, (aR[2] = bld.getSSA()), TYPE_S32, aRf);
+   }
+
+   bld.mkOp2(OP_MUL, TYPE_F32, (qRf = bld.getSSA()), aR[2], bf);
+   bld.mkCvt(OP_CVT, TYPE_S32, (qR = bld.getSSA()), TYPE_F32, qRf)
+      ->rnd = ROUND_M;
+
+   div->op = OP_ADD;
+
+   div->setSrc(0, q0);
+   div->setSrc(1, qR);
+}
+
 bool
 NV50LegalizeSSA::visit(BasicBlock *bb)
 {
@@ -256,8 +317,11 @@ NV50LegalizeSSA::visit(BasicBlock *bb)
       next = insn->next;
       if (insn->op == OP_EXPORT)
          propagateWriteToOutput(insn);
-      if (insn->defExists(0) &&
-          insn->getDef(0)->reg.file == FILE_ADDRESS)
+      else
+      if (insn->op == OP_DIV)
+         handleDIV(insn);
+
+      if (insn->defExists(0) && insn->getDef(0)->reg.file == FILE_ADDRESS)
          handleAddrDef(insn);
    }
    return true;
@@ -831,7 +895,7 @@ TargetNV50::runLegalizePass(Program *prog, CGStage stage) const
       return pass.run(prog, false, true);
    } else
    if (stage == CG_STAGE_SSA) {
-      NV50LegalizeSSA pass;
+      NV50LegalizeSSA pass(prog);
       return pass.run(prog, false, true);
    } else
    if (stage == CG_STAGE_POST_RA) {
