@@ -108,6 +108,7 @@ private:
    void emitShift(const Instruction *);
    void emitARL(const Instruction *);
    void emitLogicOp(const Instruction *);
+   void emitNOT(const Instruction *);
 
    void emitCVT(const Instruction *);
    void emitSET(const Instruction *);
@@ -1187,6 +1188,24 @@ CodeEmitterNV50::emitSFnOp(const Instruction *i, uint8_t subOp)
 }
 
 void
+CodeEmitterNV50::emitNOT(const Instruction *i)
+{
+   code[0] = 0xd0000000;
+   code[1] = 0x0002c000;
+
+   switch (i->sType) {
+   case TYPE_U32:
+   case TYPE_S32:
+      code[1] |= 0x04000000;
+      break;
+   default:
+      break;
+   }
+   emitForm_MAD(i);
+   setSrc(i, 0, 1);
+}
+
+void
 CodeEmitterNV50::emitLogicOp(const Instruction *i)
 {
    code[0] = 0xd0000000;
@@ -1439,6 +1458,9 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
          emitFMAD(insn);
       else
          emitIMAD(insn);
+      break;
+   case OP_NOT:
+      emitNOT(insn);
       break;
    case OP_AND:
    case OP_OR:
