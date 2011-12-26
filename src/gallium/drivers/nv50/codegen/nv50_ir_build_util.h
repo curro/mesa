@@ -45,6 +45,8 @@ public:
    inline void remove(Instruction *i) { assert(i->bb == bb); bb->remove(i); }
 
    inline LValue *getScratch(int size = 4, DataFile = FILE_GPR);
+   inline std::vector<Value *> getScratchv(int n, int size = 4,
+                                           DataFile = FILE_GPR);
    // scratch value for a single assignment:
    inline LValue *getSSA(int size = 4, DataFile = FILE_GPR);
 
@@ -191,6 +193,17 @@ BuildUtil::getScratch(int size, DataFile f)
    LValue *lval = new_LValue(func, f);
    lval->reg.size = size;
    return lval;
+}
+
+std::vector<Value *>
+BuildUtil::getScratchv(int n, int size, DataFile f)
+{
+   std::vector<Value *> v;
+
+   while (n--)
+      v.push_back(getScratch(size, f));
+
+   return v;
 }
 
 LValue *
