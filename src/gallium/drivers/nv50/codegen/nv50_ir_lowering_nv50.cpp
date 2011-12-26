@@ -894,6 +894,41 @@ NV50LoweringPreSSA::handleLDST(Instruction *i)
        sym->reg.file == FILE_SHADER_INPUT)
       sym->reg.file = FILE_MEMORY_SHARED;
 
+   if (i->getIndirect(0, 1)) {
+      int n = (sym->reg.file == FILE_MEMORY_CONST ?
+               prog->maxCB : prog->maxSurf) - sym->reg.fileIndex;
+      Value *r = i->getIndirect(0, 1);
+      Value *off = i->getIndirect(0, 0);
+      std::vector<Value *> defs;
+
+      bld.setPosition(i, false);
+
+      for (int j = 0; j < n; ++j) {
+         Symbol *base = new_Symbol(prog, sym->reg.file, sym->reg.fileIndex + j);
+         Value *pred = bld.getScratch(1, FILE_FLAGS);
+
+         bld.mkCmp(OP_SET, CC_EQ, TYPE_U32, pred, r, bld.loadImm(NULL, j));
+
+         if (i->op == OP_LOAD) {
+            Value *v = bld.getScratch();
+            bld.mkLoad(TYPE_U32, v, base, off)->setPredicate(CC_NE, pred);
+            defs.push_back(v);
+         } else {
+            bld.mkStore(OP_STORE, TYPE_U32, base, off, i->getSrc(1))
+               ->setPredicate(CC_NE, pred);
+         }
+      }
+
+      if (!defs.empty()) {
+         Instruction *un = bld.mkOp(OP_UNION, TYPE_U32, i->getDef(0));
+
+         for (int j = 0; j < n; ++j)
+            un->setSrc(j, defs[j]);
+      }
+
+      delete_Instruction(prog, i);
+   }
+
    return true;
 }
 
