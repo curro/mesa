@@ -91,9 +91,53 @@ static void destroy_ctx(struct context *ctx)
 	FREE(ctx);
 }
 
+static char *
+preprocess_prog(struct context *ctx, const char *src, const char *defs)
+{
+        const char header[] =
+                "#define RGLOBAL        RES[-1]\n"
+                "#define RLOCAL         RES[-2]\n"
+                "#define RPRIVATE       RES[-3]\n"
+                "#define RINPUT         RES[-4]\n";
+        char cmd[512];
+        char tmp[] = "/tmp/test-compute.tgsi-XXXXXX";
+        char *buf;
+        int fd, ret;
+        struct stat st;
+        FILE *p;
+
+        /* Open a temporary file */
+        fd = mkstemp(tmp);
+        assert(fd >= 0);
+        snprintf(cmd, sizeof(cmd), "cpp -P -nostdinc -undef %s > %s",
+                 defs ? defs : "", tmp);
+
+        /* Preprocess */
+        p = popen(cmd, "w");
+        fwrite(header, strlen(header), 1, p);
+        fwrite(src, strlen(src), 1, p);
+        ret = pclose(p);
+        assert(!ret);
+
+        /* Read back */
+        ret = fstat(fd, &st);
+        assert(!ret);
+
+        buf = malloc(st.st_size + 1);
+        ret = read(fd, buf, st.st_size);
+        assert(ret == st.st_size);
+        buf[ret] = 0;
+
+        /* Clean up */
+        close(fd);
+        unlink(tmp);
+
+        return buf;
+}
+
 static void init_prog(struct context *ctx, unsigned local_sz,
                       unsigned private_sz, unsigned input_sz,
-                      const char *src)
+                      const char *src, const char *defs)
 {
         struct pipe_context *pipe = ctx->pipe;
         struct tgsi_token prog[1024];
@@ -103,10 +147,12 @@ static void init_prog(struct context *ctx, unsigned local_sz,
                 .req_private_mem = private_sz,
                 .req_input_mem = input_sz
         };
+        char *psrc = preprocess_prog(ctx, src, defs);
         int ret;
 
-        ret = tgsi_text_translate(src, prog, Elements(prog));
+        ret = tgsi_text_translate(psrc, prog, Elements(prog));
         assert(ret);
+        free(psrc);
 
         ctx->hwcs = pipe->create_compute_state(pipe, &cs);
         assert(ctx->hwcs);
@@ -387,7 +433,7 @@ static void test_system_values(struct context *ctx)
 
         printf("- %s\n", __func__);
 
-        init_prog(ctx, 0, 0, 0, src);
+        init_prog(ctx, 0, 0, 0, src, NULL);
         init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
                  76800, 0, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
@@ -493,7 +539,7 @@ static void test_function_calls(struct context *ctx)
 
         printf("- %s\n", __func__);
 
-        init_prog(ctx, 0, 0, 0, src);
+        init_prog(ctx, 0, 0, 0, src, NULL);
         init_tex(ctx, 0, PIPE_TEXTURE_2D, true, PIPE_FORMAT_R32_FLOAT,
                  15, 12, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
@@ -514,10 +560,10 @@ static void test_input_global(struct context *ctx)
                 "\n"
                 "    BGNSUB\n"
                 "       UMUL TEMP[0], SV[0], IMM[0]\n"
-                "       LOAD TEMP[1].xy, RES[-4], TEMP[0]\n"
-                "       LOAD TEMP[0].x, RES[-1], TEMP[1].yyyy\n"
+                "       LOAD TEMP[1].xy, RINPUT, TEMP[0]\n"
+                "       LOAD TEMP[0].x, RGLOBAL, TEMP[1].yyyy\n"
                 "       UADD TEMP[1].x, TEMP[0], -TEMP[1]\n"
-                "       STORE RES[-1].x, TEMP[1].yyyy, TEMP[1]\n"
+                "       STORE RGLOBAL.x, TEMP[1].yyyy, TEMP[1]\n"
                 "       RET\n"
                 "    ENDSUB\n";
         void init(void *p, int s, int x, int y) {
@@ -531,7 +577,7 @@ static void test_input_global(struct context *ctx)
 
         printf("- %s\n", __func__);
 
-        init_prog(ctx, 0, 0, 32, src);
+        init_prog(ctx, 0, 0, 32, src, NULL);
         init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT, 32, 0, init);
         init_tex(ctx, 1, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT, 32, 0, init);
         init_tex(ctx, 2, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT, 32, 0, init);
@@ -573,7 +619,7 @@ static void test_private(struct context *ctx)
                 "               ENDIF\n"
                 "               UDIV TEMP[2].x, TEMP[1], IMM[1]\n"
                 "               UADD TEMP[2].x, TEMP[2], TEMP[0]\n"
-                "               STORE RES[-3].x, TEMP[1], TEMP[2]\n"
+                "               STORE RPRIVATE.x, TEMP[1], TEMP[2]\n"
                 "               UADD TEMP[1].x, TEMP[1], IMM[1]\n"
                 "       ENDLOOP\n"
                 "       MOV TEMP[1].x, IMM[0].wwww\n"
@@ -583,7 +629,7 @@ static void test_private(struct context *ctx)
                 "               IF TEMP[2]\n"
                 "                       BRK\n"
                 "               ENDIF\n"
-                "               LOAD TEMP[2].x, RES[-3], TEMP[1]\n"
+                "               LOAD TEMP[2].x, RPRIVATE, TEMP[1]\n"
                 "               STORE RES[0].x, TEMP[0], TEMP[2]\n"
                 "               UADD TEMP[0].x, TEMP[0], IMM[1]\n"
                 "               UADD TEMP[1].x, TEMP[1], IMM[1]\n"
@@ -599,7 +645,7 @@ static void test_private(struct context *ctx)
 
         printf("- %s\n", __func__);
 
-        init_prog(ctx, 0, 128, 0, src);
+        init_prog(ctx, 0, 128, 0, src, NULL);
         init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
                  32768, 0, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
@@ -681,7 +727,7 @@ static void test_local(struct context *ctx)
 
         printf("- %s\n", __func__);
 
-        init_prog(ctx, 256, 0, 0, src);
+        init_prog(ctx, 256, 0, 0, src, NULL);
         init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
                  4096, 0, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
@@ -732,7 +778,7 @@ static void test_sample(struct context *ctx)
 
         printf("- %s\n", __func__);
 
-        init_prog(ctx, 0, 0, 0, src);
+        init_prog(ctx, 0, 0, 0, src, NULL);
         init_tex(ctx, 0, PIPE_TEXTURE_2D, true, PIPE_FORMAT_R32_FLOAT,
                  128, 32, init);
         init_tex(ctx, 1, PIPE_TEXTURE_2D, true, PIPE_FORMAT_R32_FLOAT,
