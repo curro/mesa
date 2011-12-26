@@ -607,9 +607,17 @@ NV50LoweringPreSSA::handleSLCT(CmpInstruction *i)
    Value *src1 = bld.getSSA();
    Value *pred = bld.getScratch(1, FILE_FLAGS);
 
+   Value *v0 = i->getSrc(0);
+   Value *v1 = i->getSrc(1);
+   // XXX: these probably shouldn't be immediates in the first place ...
+   if (v0->asImm())
+      v0 = bld.mkMov(bld.getSSA(), v0)->getDef(0);
+   if (v1->asImm())
+      v1 = bld.mkMov(bld.getSSA(), v1)->getDef(0);
+
    bld.setPosition(i, true);
-   bld.mkMov(src0, i->getSrc(0))->setPredicate(CC_NE, pred);
-   bld.mkMov(src1, i->getSrc(1))->setPredicate(CC_EQ, pred);
+   bld.mkMov(src0, v0)->setPredicate(CC_NE, pred);
+   bld.mkMov(src1, v1)->setPredicate(CC_EQ, pred);
    bld.mkOp2(OP_UNION, i->dType, i->getDef(0), src0, src1);
 
    bld.setPosition(i, false);
@@ -628,8 +636,16 @@ NV50LoweringPreSSA::handleSELP(Instruction *i)
 {
    Value *src0 = bld.getSSA();
    Value *src1 = bld.getSSA();
-   bld.mkMov(src0, i->getSrc(0))->setPredicate(CC_NE, i->getSrc(2));
-   bld.mkMov(src1, i->getSrc(1))->setPredicate(CC_EQ, i->getSrc(2));
+
+   Value *v0 = i->getSrc(0);
+   Value *v1 = i->getSrc(1);
+   if (v0->asImm())
+      v0 = bld.mkMov(bld.getSSA(), v0)->getDef(0);
+   if (v1->asImm())
+      v1 = bld.mkMov(bld.getSSA(), v1)->getDef(0);
+
+   bld.mkMov(src0, v0)->setPredicate(CC_NE, i->getSrc(2));
+   bld.mkMov(src1, v1)->setPredicate(CC_EQ, i->getSrc(2));
    bld.mkOp2(OP_UNION, i->dType, i->getDef(0), src0, src1);
    delete_Instruction(prog, i);
    return true;
