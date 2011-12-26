@@ -538,6 +538,8 @@ private:
    bool handlePRECONT(Instruction *);
    bool handleCONT(Instruction *);
 
+   bool handleLDST(Instruction *);
+
    void checkPredicate(Instruction *);
 
 private:
@@ -884,6 +886,18 @@ NV50LoweringPreSSA::handleCONT(Instruction *i)
 }
 
 bool
+NV50LoweringPreSSA::handleLDST(Instruction *i)
+{
+   Symbol *sym = i->getSrc(0)->asSym();
+
+   if (prog->getType() == Program::TYPE_COMPUTE &&
+       sym->reg.file == FILE_SHADER_INPUT)
+      sym->reg.file = FILE_MEMORY_SHARED;
+
+   return true;
+}
+
+bool
 NV50LoweringPreSSA::handleRDSV(Instruction *i)
 {
    Symbol *sym = i->getSrc(0)->asSym();
@@ -1079,6 +1093,9 @@ NV50LoweringPreSSA::visit(Instruction *i)
       return handlePRECONT(i);
    case OP_CONT:
       return handleCONT(i);
+   case OP_LOAD:
+   case OP_STORE:
+      return handleLDST(i);
    default:
       break;
    }
