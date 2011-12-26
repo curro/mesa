@@ -702,6 +702,37 @@ NV50LoweringPreSSA::handleLDST(Instruction *i)
    if (sym->reg.file == FILE_SHADER_INPUT)
       sym->reg.file = FILE_MEMORY_SHARED;
 
+   if (i->getIndirect(0, 1)) {
+      int n = (sym->reg.file == FILE_MEMORY_CONST ?
+               prog->maxCB : prog->maxSurf) - sym->reg.fileIndex;
+      Value *r = i->getIndirect(0, 1);
+      Value *off = i->getIndirect(0, 0);
+      Value *def = NULL;
+
+      bld.setPosition(i, false);
+
+      for (int j = 0; j < n; ++j) {
+         Symbol *base = new_Symbol(prog, sym->reg.file, sym->reg.fileIndex + j);
+         Value *pred = bld.getScratch(1, FILE_FLAGS);
+
+         bld.mkCmp(OP_SET, CC_EQ, TYPE_U32, pred, r, bld.loadImm(NULL, j));
+
+         if (i->op == OP_LOAD) {
+            Value *v = bld.getScratch();
+            bld.mkLoad(TYPE_U32, v, base, off)->setPredicate(CC_NE, pred);
+            def = bld.mkOp2v(OP_UNION, TYPE_U32, bld.getScratch(), v, def);
+         } else {
+            bld.mkStore(OP_STORE, TYPE_U32, base, off, i->getSrc(1))
+               ->setPredicate(CC_NE, pred);
+         }
+      }
+
+      if (def)
+         bld.mkMov(i->getDef(0), def);
+
+      delete_Instruction(prog, i);
+   }
+
    return true;
 }
 
