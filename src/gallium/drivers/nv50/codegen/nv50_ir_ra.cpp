@@ -417,13 +417,13 @@ RegAlloc::ArgumentMovesPass::visit(BasicBlock *bb)
    }
 
    // Update the clobber set of the function
-   BasicBlock *exit = BasicBlock::get(func->cfgExit);
+   if (BasicBlock::get(func->cfgExit) == bb) {
+      func->buildDefSets();
 
-   func->buildDefSets();
-
-   for (unsigned i = 0; i < exit->defSet.getSize(); ++i) {
-      if (exit->defSet.test(i))
-         func->clobbers.push_back(func->getLValue(i));
+      for (unsigned i = 0; i < bb->defSet.getSize(); ++i) {
+         if (bb->defSet.test(i))
+            func->clobbers.push_back(func->getLValue(i));
+      }
    }
 
    return true;
@@ -866,7 +866,7 @@ RegAlloc::execFunc()
    if (!ret)
       goto out;
 
-   ret = insertArgMoves.run(func);
+   ret = insertArgMoves.run(func, true);
    if (!ret)
       goto out;
 
