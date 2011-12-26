@@ -103,24 +103,26 @@ BuildUtil::mkOp3(operation op, DataType ty, Value *dst,
    return insn;
 }
 
-LValue *
-BuildUtil::mkLoad(DataType ty, Symbol *mem, Value *ptr)
+Instruction *
+BuildUtil::mkLoad(DataType ty, Value *dst, Symbol *mem, Value *ptr,
+                  Value *filePtr)
 {
    Instruction *insn = new_Instruction(func, OP_LOAD, ty);
-   LValue *def = getScratch();
 
-   insn->setDef(0, def);
+   insn->setDef(0, dst);
    insn->setSrc(0, mem);
    if (ptr)
       insn->setIndirect(0, 0, ptr);
+   if (filePtr)
+      insn->setIndirect(0, 1, filePtr);
 
    insert(insn);
-   return def;
+   return insn;
 }
 
 Instruction *
 BuildUtil::mkStore(operation op, DataType ty, Symbol *mem, Value *ptr,
-                   Value *stVal)
+                   Value *stVal, Value *filePtr)
 {
    Instruction *insn = new_Instruction(func, op, ty);
 
@@ -128,6 +130,8 @@ BuildUtil::mkStore(operation op, DataType ty, Symbol *mem, Value *ptr,
    insn->setSrc(1, stVal);
    if (ptr)
       insn->setIndirect(0, 0, ptr);
+   if (filePtr)
+      insn->setIndirect(0, 1, filePtr);
 
    insert(insn);
    return insn;

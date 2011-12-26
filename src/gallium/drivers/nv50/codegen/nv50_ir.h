@@ -789,7 +789,9 @@ public:
    }
 
    inline Value *getIndirectR() const;
+   inline void setIndirectR(Value *v);
    inline Value *getIndirectS() const;
+   inline void setIndirectS(Value *v);
 
 public:
    struct {

@@ -244,9 +244,29 @@ Value *TexInstruction::getIndirectR() const
    return tex.rIndirectSrc >= 0 ? getSrc(tex.rIndirectSrc) : NULL;
 }
 
+void TexInstruction::setIndirectR(Value *v)
+{
+   int p = (tex.rIndirectSrc < 0 && v ? srcs.size() : tex.rIndirectSrc);
+   if (p >= 0) {
+      setSrc(p, v);
+      tex.rIndirectSrc = p;
+      srcs[p].usedAsPtr = !!v;
+   }
+}
+
 Value *TexInstruction::getIndirectS() const
 {
    return tex.rIndirectSrc >= 0 ? getSrc(tex.rIndirectSrc) : NULL;
+}
+
+void TexInstruction::setIndirectS(Value *v)
+{
+   int p = (tex.sIndirectSrc < 0 && v ? srcs.size() : tex.sIndirectSrc);
+   if (p >= 0) {
+      setSrc(p, v);
+      tex.sIndirectSrc = p;
+      srcs[p].usedAsPtr = !!v;
+   }
 }
 
 CmpInstruction *Instruction::asCmp()

@@ -58,8 +58,9 @@ public:
    LValue *mkOp2v(operation, DataType, Value *, Value *, Value *);
    LValue *mkOp3v(operation, DataType, Value *, Value *, Value *, Value *);
 
-   LValue *mkLoad(DataType, Symbol *, Value *ptr);
-   Instruction *mkStore(operation, DataType, Symbol *, Value *ptr, Value *val);
+   LValue *mkLoad(DataType, Symbol *, Value *ptr, Value *filePtr = NULL);
+   Instruction *mkStore(operation, DataType, Symbol *, Value *ptr, Value *val,
+                        Value *filePtr = NULL);
 
    Instruction *mkMov(Value *, Value *, DataType = TYPE_U32);
    Instruction *mkMovToReg(int id, Value *);
