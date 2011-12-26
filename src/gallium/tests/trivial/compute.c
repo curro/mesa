@@ -1230,6 +1230,299 @@ static void test_barrier(struct context *ctx)
         destroy_prog(ctx);
 }
 
+static void test_atom_ops(struct context *ctx, bool global)
+{
+        const char *src = "COMP\n"
+                "#ifdef TARGET_GLOBAL\n"
+                "#define target RES[0]\n"
+                "#else\n"
+                "#define target RLOCAL\n"
+                "#endif\n"
+                ""
+                "DCL RES[0], BUFFER, RAW, WR\n"
+                "#define threadid SV[0]\n"
+                "DCL threadid, THREAD_ID[0]\n"
+                ""
+                "#define offset TEMP[0]\n"
+                "DCL offset, LOCAL\n"
+                "#define tmp TEMP[1]\n"
+                "DCL tmp, LOCAL\n"
+                ""
+                "#define k0 IMM[0]\n"
+                "IMM UINT32 { 0, 0, 0, 0 }\n"
+                "#define k1 IMM[1]\n"
+                "IMM UINT32 { 1, 0, 0, 0 }\n"
+                "#define k2 IMM[2]\n"
+                "IMM UINT32 { 2, 0, 0, 0 }\n"
+                "#define k3 IMM[3]\n"
+                "IMM UINT32 { 3, 0, 0, 0 }\n"
+                "#define k4 IMM[4]\n"
+                "IMM UINT32 { 4, 0, 0, 0 }\n"
+                "#define k5 IMM[5]\n"
+                "IMM UINT32 { 5, 0, 0, 0 }\n"
+                "#define k6 IMM[6]\n"
+                "IMM UINT32 { 6, 0, 0, 0 }\n"
+                "#define k7 IMM[7]\n"
+                "IMM UINT32 { 7, 0, 0, 0 }\n"
+                "#define k8 IMM[8]\n"
+                "IMM UINT32 { 8, 0, 0, 0 }\n"
+                "#define k9 IMM[9]\n"
+                "IMM UINT32 { 9, 0, 0, 0 }\n"
+                "#define korig IMM[10].xxxx\n"
+                "#define karg IMM[10].yyyy\n"
+                "IMM UINT32 { 3735928559, 286331153, 0, 0 }\n"
+                "\n"
+                "    BGNSUB\n"
+                "       UMUL offset.x, threadid, k4\n"
+                "       STORE target.x, offset, korig\n"
+                "       USEQ tmp.x, threadid, k0\n"
+                "       IF tmp\n"
+                "               ATOMADD tmp.x, target, offset, karg\n"
+                "               ATOMADD tmp.x, target, offset, tmp\n"
+                "       ENDIF\n"
+                "       USEQ tmp.x, threadid, k1\n"
+                "       IF tmp\n"
+                "               ATOMXCHG tmp.x, target, offset, karg\n"
+                "               ATOMXCHG tmp.x, target, offset, tmp\n"
+                "       ENDIF\n"
+                "       USEQ tmp.x, threadid, k2\n"
+                "       IF tmp\n"
+                "               ATOMCAS tmp.x, target, offset, korig, karg\n"
+                "               ATOMCAS tmp.x, target, offset, tmp, k0\n"
+                "       ENDIF\n"
+                "       USEQ tmp.x, threadid, k3\n"
+                "       IF tmp\n"
+                "               ATOMAND tmp.x, target, offset, karg\n"
+                "               ATOMAND tmp.x, target, offset, tmp\n"
+                "       ENDIF\n"
+                "       USEQ tmp.x, threadid, k4\n"
+                "       IF tmp\n"
+                "               ATOMOR tmp.x, target, offset, karg\n"
+                "               ATOMOR tmp.x, target, offset, tmp\n"
+                "       ENDIF\n"
+                "       USEQ tmp.x, threadid, k5\n"
+                "       IF tmp\n"
+                "               ATOMXOR tmp.x, target, offset, karg\n"
+                "               ATOMXOR tmp.x, target, offset, tmp\n"
+                "       ENDIF\n"
+                "       USEQ tmp.x, threadid, k6\n"
+                "       IF tmp\n"
+                "               ATOMUMIN tmp.x, target, offset, karg\n"
+                "               ATOMUMIN tmp.x, target, offset, tmp\n"
+                "       ENDIF\n"
+                "       USEQ tmp.x, threadid, k7\n"
+                "       IF tmp\n"
+                "               ATOMUMAX tmp.x, target, offset, karg\n"
+                "               ATOMUMAX tmp.x, target, offset, tmp\n"
+                "       ENDIF\n"
+                "       USEQ tmp.x, threadid, k8\n"
+                "       IF tmp\n"
+                "               ATOMIMIN tmp.x, target, offset, karg\n"
+                "               ATOMIMIN tmp.x, target, offset, tmp\n"
+                "       ENDIF\n"
+                "       USEQ tmp.x, threadid, k9\n"
+                "       IF tmp\n"
+                "               ATOMIMAX tmp.x, target, offset, karg\n"
+                "               ATOMIMAX tmp.x, target, offset, tmp\n"
+                "       ENDIF\n"
+                "#ifdef TARGET_LOCAL\n"
+                "       LOAD tmp.x, RLOCAL, offset\n"
+                "       STORE RES[0].x, offset, tmp\n"
+                "#endif\n"
+                "       RET\n"
+                "    ENDSUB\n";
+
+        void init(void *p, int s, int x, int y) {
+                *(uint32_t *)p = 0xbad;
+        }
+        void expect(void *p, int s, int x, int y) {
+                switch (x) {
+                case 0:
+                        *(uint32_t *)p = 0xce6c8eef;
+                        break;
+                case 1:
+                        *(uint32_t *)p = 0xdeadbeef;
+                        break;
+                case 2:
+                        *(uint32_t *)p = 0x11111111;
+                        break;
+                case 3:
+                        *(uint32_t *)p = 0x10011001;
+                        break;
+                case 4:
+                        *(uint32_t *)p = 0xdfbdbfff;
+                        break;
+                case 5:
+                        *(uint32_t *)p = 0x11111111;
+                        break;
+                case 6:
+                        *(uint32_t *)p = 0x11111111;
+                        break;
+                case 7:
+                        *(uint32_t *)p = 0xdeadbeef;
+                        break;
+                case 8:
+                        *(uint32_t *)p = 0xdeadbeef;
+                        break;
+                case 9:
+                        *(uint32_t *)p = 0x11111111;
+                        break;
+                }
+        }
+
+        printf("- %s (%s)\n", __func__, global ? "global" : "local");
+
+        init_prog(ctx, 40, 0, 0, src,
+                  (global ? "-DTARGET_GLOBAL" : "-DTARGET_LOCAL"));
+        init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
+                 40, 0, init);
+        init_sampler_views(ctx, (int []) { 0, -1 });
+        launch_grid(ctx, (uint []){10, 1, 1}, (uint []){1, 1, 1}, 0, NULL);
+        check_tex(ctx, 0, expect, NULL);
+        destroy_sampler_views(ctx);
+        destroy_tex(ctx);
+        destroy_prog(ctx);
+}
+
+static void test_atom_race(struct context *ctx, bool global)
+{
+        const char *src = "COMP\n"
+                "#ifdef TARGET_GLOBAL\n"
+                "#define target RES[0]\n"
+                "#else\n"
+                "#define target RLOCAL\n"
+                "#endif\n"
+                ""
+                "DCL RES[0], BUFFER, RAW, WR\n"
+                ""
+                "#define blockid SV[0]\n"
+                "DCL blockid, BLOCK_ID[0]\n"
+                "#define blocksz SV[1]\n"
+                "DCL blocksz, BLOCK_SIZE[0]\n"
+                "#define threadid SV[2]\n"
+                "DCL threadid, THREAD_ID[0]\n"
+                ""
+                "#define offset TEMP[0]\n"
+                "DCL offset, LOCAL\n"
+                "#define arg TEMP[1]\n"
+                "DCL arg, LOCAL\n"
+                "#define count TEMP[2]\n"
+                "DCL count, LOCAL\n"
+                "#define vlocal TEMP[3]\n"
+                "DCL vlocal, LOCAL\n"
+                "#define vshared TEMP[4]\n"
+                "DCL vshared, LOCAL\n"
+                "#define last TEMP[5]\n"
+                "DCL last, LOCAL\n"
+                "#define tmp0 TEMP[6]\n"
+                "DCL tmp0, LOCAL\n"
+                "#define tmp1 TEMP[7]\n"
+                "DCL tmp1, LOCAL\n"
+                ""
+                "#define k0 IMM[0]\n"
+                "IMM UINT32 { 0, 0, 0, 0 }\n"
+                "#define k1 IMM[1]\n"
+                "IMM UINT32 { 1, 0, 0, 0 }\n"
+                "#define k4 IMM[2]\n"
+                "IMM UINT32 { 4, 0, 0, 0 }\n"
+                "#define k32 IMM[3]\n"
+                "IMM UINT32 { 32, 0, 0, 0 }\n"
+                "#define k128 IMM[4]\n"
+                "IMM UINT32 { 128, 0, 0, 0 }\n"
+                "#define kdeadcafe IMM[5]\n"
+                "IMM UINT32 { 3735931646, 0, 0, 0 }\n"
+                "#define kallowed_set IMM[6]\n"
+                "IMM UINT32 { 559035650, 0, 0, 0 }\n"
+                "#define k11111111 IMM[7]\n"
+                "IMM UINT32 { 286331153, 0, 0, 0 }\n"
+                "\n"
+                "    BGNSUB\n"
+                "       MOV offset.x, threadid\n"
+                "#ifdef TARGET_GLOBAL\n"
+                "       UMUL tmp0.x, blockid, blocksz\n"
+                "       UADD offset.x, offset, tmp0\n"
+                "#endif\n"
+                "       UMUL offset.x, offset, k4\n"
+                "       USLT tmp0.x, threadid, k32\n"
+                "       STORE target.x, offset, k0\n"
+                "       BARRIER\n"
+                "       IF tmp0\n"
+                "               MOV vlocal.x, k0\n"
+                "               MOV arg.x, kdeadcafe\n"
+                "               BGNLOOP\n"
+                "                       INEG arg.x, arg\n"
+                "                       ATOMADD vshared.x, target, offset, arg\n"
+                "                       SFENCE target\n"
+                "                       USNE tmp0.x, vshared, vlocal\n"
+                "                       IF tmp0\n"
+                "                               BRK\n"
+                "                       ENDIF\n"
+                "                       UADD vlocal.x, vlocal, arg\n"
+                "               ENDLOOP\n"
+                "               UADD vlocal.x, vshared, arg\n"
+                "               LOAD vshared.x, target, offset\n"
+                "               USEQ tmp0.x, vshared, vlocal\n"
+                "               STORE target.x, offset, tmp0\n"
+                "       ELSE\n"
+                "               UADD offset.x, offset, -k128\n"
+                "               MOV count.x, k0\n"
+                "               MOV last.x, k0\n"
+                "               BGNLOOP\n"
+                "                       LOAD vshared.x, target, offset\n"
+                "                       USEQ tmp0.x, vshared, kallowed_set.xxxx\n"
+                "                       USEQ tmp1.x, vshared, kallowed_set.yyyy\n"
+                "                       OR tmp0.x, tmp0, tmp1\n"
+                "                       IF tmp0\n"
+                "                               USEQ tmp0.x, vshared, last\n"
+                "                               IF tmp0\n"
+                "                                       CONT\n"
+                "                               ENDIF\n"
+                "                               MOV last.x, vshared\n"
+                "                       ELSE\n"
+                "                               END\n"
+                "                       ENDIF\n"
+                "                       UADD count.x, count, k1\n"
+                "                       USEQ tmp0.x, count, k128\n"
+                "                       IF tmp0\n"
+                "                               BRK\n"
+                "                       ENDIF\n"
+                "               ENDLOOP\n"
+                "               ATOMXCHG tmp0.x, target, offset, k11111111\n"
+                "               UADD offset.x, offset, k128\n"
+                "               ATOMXCHG tmp0.x, target, offset, k11111111\n"
+                "               SFENCE target\n"
+                "       ENDIF\n"
+                "#ifdef TARGET_LOCAL\n"
+                "       LOAD tmp0.x, RLOCAL, offset\n"
+                "       UMUL tmp1.x, blockid, blocksz\n"
+                "       UMUL tmp1.x, tmp1, k4\n"
+                "       UADD offset.x, offset, tmp1\n"
+                "       STORE RES[0].x, offset, tmp0\n"
+                "#endif\n"
+                "       RET\n"
+                "    ENDSUB\n";
+
+        void init(void *p, int s, int x, int y) {
+                *(uint32_t *)p = 0xdeadbeef;
+        }
+        void expect(void *p, int s, int x, int y) {
+                *(uint32_t *)p = x & 0x20 ? 0x11111111 : 0xffffffff;
+        }
+
+        printf("- %s (%s)\n", __func__, global ? "global" : "local");
+
+        init_prog(ctx, 256, 0, 0, src,
+                  (global ? "-DTARGET_GLOBAL" : "-DTARGET_LOCAL"));
+        init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
+                 4096, 0, init);
+        init_sampler_views(ctx, (int []) { 0, -1 });
+        launch_grid(ctx, (uint []){64, 1, 1}, (uint []){16, 1, 1}, 0, NULL);
+        check_tex(ctx, 0, expect, NULL);
+        destroy_sampler_views(ctx);
+        destroy_tex(ctx);
+        destroy_prog(ctx);
+}
+
 int main(int argc, char *argv[])
 {
 	struct context *ctx = CALLOC_STRUCT(context);
@@ -1248,6 +1541,10 @@ int main(int argc, char *argv[])
 	test_surface_ld(ctx);
 	test_surface_st(ctx);
 	test_barrier(ctx);
+	test_atom_ops(ctx, true);
+	test_atom_race(ctx, true);
+	test_atom_ops(ctx, false);
+	test_atom_race(ctx, false);
 	destroy_ctx(ctx);
 
 	return 0;
