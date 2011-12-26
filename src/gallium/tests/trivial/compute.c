@@ -820,6 +820,57 @@ static void test_sample(struct context *ctx)
         destroy_prog(ctx);
 }
 
+static void test_many_kern(struct context *ctx)
+{
+        const char *src = "COMP\n"
+                "DCL RES[0], BUFFER, RAW, WR\n"
+                "DCL TEMP[0], LOCAL\n"
+                "IMM UINT32 { 0, 1, 2, 3 }\n"
+                "IMM UINT32 { 4, 0, 0, 0 }\n"
+                "\n"
+                "    BGNSUB\n"
+                "       UMUL TEMP[0].x, IMM[0].xxxx, IMM[1].xxxx\n"
+                "       STORE RES[0].x, TEMP[0], IMM[0].xxxx\n"
+                "       RET\n"
+                "    ENDSUB\n"
+                "    BGNSUB\n"
+                "       UMUL TEMP[0].x, IMM[0].yyyy, IMM[1].xxxx\n"
+                "       STORE RES[0].x, TEMP[0], IMM[0].yyyy\n"
+                "       RET\n"
+                "    ENDSUB\n"
+                "    BGNSUB\n"
+                "       UMUL TEMP[0].x, IMM[0].zzzz, IMM[1].xxxx\n"
+                "       STORE RES[0].x, TEMP[0], IMM[0].zzzz\n"
+                "       RET\n"
+                "    ENDSUB\n"
+                "    BGNSUB\n"
+                "       UMUL TEMP[0].x, IMM[0].wwww, IMM[1].xxxx\n"
+                "       STORE RES[0].x, TEMP[0], IMM[0].wwww\n"
+                "       RET\n"
+                "    ENDSUB\n";
+        void init(void *p, int s, int x, int y) {
+                *(uint32_t *)p = 0xdeadbeef;
+        }
+        void expect(void *p, int s, int x, int y) {
+                *(uint32_t *)p = x;
+        }
+
+        printf("- %s\n", __func__);
+
+        init_prog(ctx, 0, 0, 0, src, NULL);
+        init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
+                 16, 0, init);
+        init_sampler_views(ctx, (int []) { 0, -1 });
+        launch_grid(ctx, (uint []){1, 1, 1}, (uint []){1, 1, 1}, 0, NULL);
+        launch_grid(ctx, (uint []){1, 1, 1}, (uint []){1, 1, 1}, 5, NULL);
+        launch_grid(ctx, (uint []){1, 1, 1}, (uint []){1, 1, 1}, 10, NULL);
+        launch_grid(ctx, (uint []){1, 1, 1}, (uint []){1, 1, 1}, 15, NULL);
+        check_tex(ctx, 0, expect, NULL);
+        destroy_sampler_views(ctx);
+        destroy_tex(ctx);
+        destroy_prog(ctx);
+}
+
 static void test_constant(struct context *ctx)
 {
         const char *src = "COMP\n"
@@ -1076,6 +1127,7 @@ int main(int argc, char *argv[])
 	test_private(ctx);
 	test_local(ctx);
 	test_sample(ctx);
+	test_many_kern(ctx);
 	test_constant(ctx);
 	test_surface_ld(ctx);
 	test_surface_st(ctx);
