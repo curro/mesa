@@ -909,6 +909,52 @@ static void test_constant(struct context *ctx)
         destroy_prog(ctx);
 }
 
+static void test_resource_indirect(struct context *ctx)
+{
+        const char *src = "COMP\n"
+                "DCL RES[0], BUFFER, RAW, WR\n"
+                "DCL RES[1..3], BUFFER, RAW\n"
+                "DCL SV[0], BLOCK_ID[0]\n"
+                "DCL TEMP[0], LOCAL\n"
+                "DCL TEMP[1], LOCAL\n"
+                "IMM UINT32 { 4, 0, 0, 0 }\n"
+                "\n"
+                "    BGNSUB\n"
+                "       UMUL TEMP[0].x, SV[0], IMM[0]\n"
+                "       LOAD TEMP[1].x, RES[1], TEMP[0]\n"
+                "       LOAD TEMP[1].x, RES[TEMP[1].x+2], TEMP[0]\n"
+                "       STORE RES[0].x, TEMP[0], TEMP[1]\n"
+                "       RET\n"
+                "    ENDSUB\n";
+        void init(void *p, int s, int x, int y) {
+                *(uint32_t *)p = s == 0 ? 0xdeadbeef :
+                   s == 1 ? x % 2 :
+                   s == 2 ? 2 * x :
+                   2 * x + 1;
+        }
+        void expect(void *p, int s, int x, int y) {
+           *(uint32_t *)p = 2 * x + (x % 2 ? 1 : 0);
+        }
+
+        printf("- %s\n", __func__);
+
+        init_prog(ctx, 0, 0, 0, src, NULL);
+        init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
+                 256, 0, init);
+        init_tex(ctx, 1, PIPE_BUFFER, false, PIPE_FORMAT_R32_FLOAT,
+                 256, 0, init);
+        init_tex(ctx, 2, PIPE_BUFFER, false, PIPE_FORMAT_R32_FLOAT,
+                 256, 0, init);
+        init_tex(ctx, 3, PIPE_BUFFER, false, PIPE_FORMAT_R32_FLOAT,
+                 256, 0, init);
+        init_sampler_views(ctx, (int []) { 0, 1, 2, 3, -1 });
+        launch_grid(ctx, (uint []){1, 1, 1}, (uint []){64, 1, 1}, 0, NULL);
+        check_tex(ctx, 0, expect, NULL);
+        destroy_sampler_views(ctx);
+        destroy_tex(ctx);
+        destroy_prog(ctx);
+}
+
 enum pipe_format surface_fmts[] = {
         PIPE_FORMAT_B8G8R8A8_UNORM,
         PIPE_FORMAT_B8G8R8X8_UNORM,
@@ -1129,6 +1175,7 @@ int main(int argc, char *argv[])
 	test_sample(ctx);
 	test_many_kern(ctx);
 	test_constant(ctx);
+	test_resource_indirect(ctx);
 	test_surface_ld(ctx);
 	test_surface_st(ctx);
 	destroy_ctx(ctx);
