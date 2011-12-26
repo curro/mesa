@@ -26,13 +26,13 @@
 
 #include <fcntl.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <inttypes.h>
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_shader_tokens.h"
-#include "cso_cache/cso_context.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
 #include "util/u_sampler.h"
@@ -123,7 +123,7 @@ static void destroy_prog(struct context *ctx)
 }
 
 static void init_tex(struct context *ctx, int slot,
-                     enum pipe_texture_target target,
+                     enum pipe_texture_target target, bool rw,
                      enum pipe_format format, int w, int h,
                      void (*init)(void *, int, int, int))
 {
@@ -136,8 +136,9 @@ static void init_tex(struct context *ctx, int slot,
                 .height0 = h,
                 .depth0 = 1,
                 .array_size = 1,
-                .bind = (PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_WRITABLE_VIEW |
-                         PIPE_BIND_GLOBAL)
+                .bind = (PIPE_BIND_SAMPLER_VIEW |
+                         (rw ? PIPE_BIND_WRITABLE_VIEW |
+                          PIPE_BIND_GLOBAL : 0))
         };
         int dx = util_format_get_blocksize(format);
         int dy = util_format_get_stride(format, w);
@@ -239,7 +240,9 @@ static void init_sampler_views(struct context *ctx, const int *slots)
         for (i = 0; *slots >= 0; ++i, ++slots) {
                 u_sampler_view_default_template(&tview, ctx->tex[*slots],
                                                 ctx->tex[*slots]->format);
-                tview.writable = 1;
+
+                if (ctx->tex[*slots]->bind & PIPE_BIND_WRITABLE_VIEW)
+                   tview.writable = 1;
 
                 ctx->view[i] = pipe->create_sampler_view(pipe, ctx->tex[*slots],
                                                          &tview);
@@ -385,7 +388,8 @@ static void test_system_values(struct context *ctx)
         printf("- %s\n", __func__);
 
         init_prog(ctx, 0, 0, 0, src);
-        init_tex(ctx, 0, PIPE_BUFFER, PIPE_FORMAT_R32_FLOAT, 76800, 0, init);
+        init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
+                 76800, 0, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
         launch_grid(ctx, (uint []){4, 3, 5}, (uint []){5, 4, 1}, 0, NULL);
         check_tex(ctx, 0, check);
@@ -403,15 +407,15 @@ static void test_resource_access(struct context *ctx)
                 "DCL TEMP[0], LOCAL\n"
                 "DCL TEMP[1], LOCAL\n"
                 "IMM UINT32 { 15, 0, 0, 0 }\n"
-                "IMM UINT32 { 4, 1, 0, 0 }\n"
+                "IMM UINT32 { 16, 1, 0, 0 }\n"
                 "\n"
                 "    BGNSUB\n"
                 "       UADD TEMP[0].x, SV[0].xxxx, SV[0].yyyy\n"
                 "       AND TEMP[0].x, TEMP[0], IMM[0]\n"
                 "       UMUL TEMP[0].x, TEMP[0], IMM[1]\n"
-                "       LOAD TEMP[0].x, RES[0], TEMP[0]\n"
+                "       LOAD TEMP[0].xyzw, RES[0], TEMP[0]\n"
                 "       UMUL TEMP[1], SV[0], IMM[1]\n"
-                "       STORE RES[1].x, TEMP[1], TEMP[0]\n"
+                "       STORE RES[1].xyzw, TEMP[1], TEMP[0]\n"
                 "       RET\n"
                 "    ENDSUB\n";
         void init0(void *p, int s, int x, int y) {
@@ -420,15 +424,17 @@ static void test_resource_access(struct context *ctx)
         void init1(void *p, int s, int x, int y) {
                 *(uint32_t *)p = 0xdeadbeef;
         }
-        void check(void *p, int s, int x, int y) {
-                *(float *)p = 8.0 - (float)((x + y) & 0xf);
+        void expect(void *p, int s, int x, int y) {
+                *(float *)p = 8.0 - (float)((x + 4*y) & 0x3f);
         }
 
         printf("- %s\n", __func__);
 
         init_prog(ctx, 0, 0, 0, src);
-        init_tex(ctx, 0, PIPE_BUFFER, PIPE_FORMAT_R32_FLOAT, 64, 0, init0);
-        init_tex(ctx, 1, PIPE_TEXTURE_2D, PIPE_FORMAT_R32_FLOAT, 15, 12, init1);
+        init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
+                 256, 0, init0);
+        init_tex(ctx, 1, PIPE_TEXTURE_2D, true, PIPE_FORMAT_R32_FLOAT,
+                 60, 12, init1);
         init_sampler_views(ctx, (int []) { 0, 1, -1 });
         launch_grid(ctx, (uint []){1, 1, 1}, (uint []){15, 12, 1}, 0, NULL);
         check_tex(ctx, 1, check);
@@ -488,7 +494,8 @@ static void test_function_calls(struct context *ctx)
         printf("- %s\n", __func__);
 
         init_prog(ctx, 0, 0, 0, src);
-        init_tex(ctx, 0, PIPE_TEXTURE_2D, PIPE_FORMAT_R32_FLOAT, 15, 12, init);
+        init_tex(ctx, 0, PIPE_TEXTURE_2D, true, PIPE_FORMAT_R32_FLOAT,
+                 15, 12, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
         launch_grid(ctx, (uint []){3, 3, 3}, (uint []){5, 4, 1}, 15, NULL);
         check_tex(ctx, 0, check);
@@ -525,10 +532,10 @@ static void test_input_global(struct context *ctx)
         printf("- %s\n", __func__);
 
         init_prog(ctx, 0, 0, 32, src);
-        init_tex(ctx, 0, PIPE_BUFFER, PIPE_FORMAT_R32_FLOAT, 32, 0, init);
-        init_tex(ctx, 1, PIPE_BUFFER, PIPE_FORMAT_R32_FLOAT, 32, 0, init);
-        init_tex(ctx, 2, PIPE_BUFFER, PIPE_FORMAT_R32_FLOAT, 32, 0, init);
-        init_tex(ctx, 3, PIPE_BUFFER, PIPE_FORMAT_R32_FLOAT, 32, 0, init);
+        init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT, 32, 0, init);
+        init_tex(ctx, 1, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT, 32, 0, init);
+        init_tex(ctx, 2, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT, 32, 0, init);
+        init_tex(ctx, 3, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT, 32, 0, init);
         init_globals(ctx, (int []){ 0, 1, 2, 3, -1 },
                      (uint32_t *[]){ &input[1], &input[3],
                                      &input[5], &input[7] });
@@ -593,7 +600,8 @@ static void test_private(struct context *ctx)
         printf("- %s\n", __func__);
 
         init_prog(ctx, 0, 128, 0, src);
-        init_tex(ctx, 0, PIPE_BUFFER, PIPE_FORMAT_R32_FLOAT, 32768, 0, init);
+        init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
+                 32768, 0, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
         launch_grid(ctx, (uint []){16, 1, 1}, (uint []){16, 1, 1}, 0, NULL);
         check_tex(ctx, 0, check);
@@ -674,7 +682,8 @@ static void test_local(struct context *ctx)
         printf("- %s\n", __func__);
 
         init_prog(ctx, 256, 0, 0, src);
-        init_tex(ctx, 0, PIPE_BUFFER, PIPE_FORMAT_R32_FLOAT, 4096, 0, init);
+        init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
+                 4096, 0, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
         launch_grid(ctx, (uint []){64, 1, 1}, (uint []){16, 1, 1}, 0, NULL);
         check_tex(ctx, 0, check);
@@ -724,8 +733,10 @@ static void test_sample(struct context *ctx)
         printf("- %s\n", __func__);
 
         init_prog(ctx, 0, 0, 0, src);
-        init_tex(ctx, 0, PIPE_TEXTURE_2D, PIPE_FORMAT_R32_FLOAT, 128, 32, init);
-        init_tex(ctx, 1, PIPE_TEXTURE_2D, PIPE_FORMAT_R32_FLOAT, 512, 32, init);
+        init_tex(ctx, 0, PIPE_TEXTURE_2D, true, PIPE_FORMAT_R32_FLOAT,
+                 128, 32, init);
+        init_tex(ctx, 1, PIPE_TEXTURE_2D, true, PIPE_FORMAT_R32_FLOAT,
+                 512, 32, init);
         init_sampler_views(ctx, (int []) { 0, 1, -1 });
         init_sampler_states(ctx, 2);
         launch_grid(ctx, (uint []){1, 1, 1}, (uint []){128, 32, 1}, 0, NULL);
@@ -736,7 +747,45 @@ static void test_sample(struct context *ctx)
         destroy_prog(ctx);
 }
 
-int main(int argc, char** argv)
+static void test_constant(struct context *ctx)
+{
+        const char *src = "COMP\n"
+                "DCL RES[0], BUFFER, RAW\n"
+                "DCL RES[1], BUFFER, RAW, WR\n"
+                "DCL SV[0], BLOCK_ID[0]\n"
+                "DCL TEMP[0], LOCAL\n"
+                "DCL TEMP[1], LOCAL\n"
+                "IMM UINT32 { 4, 0, 0, 0 }\n"
+                "\n"
+                "    BGNSUB\n"
+                "       UMUL TEMP[0].x, SV[0], IMM[0]\n"
+                "       LOAD TEMP[1].x, RES[0], TEMP[0]\n"
+                "       STORE RES[1].x, TEMP[0], TEMP[1]\n"
+                "       RET\n"
+                "    ENDSUB\n";
+        void init(void *p, int s, int x, int y) {
+                *(float *)p = s ? 0xdeadbeef : 8.0 - (float)x;
+        }
+        void expect(void *p, int s, int x, int y) {
+                *(float *)p = 8.0 - (float)x;
+        }
+
+        printf("- %s\n", __func__);
+
+        init_prog(ctx, 0, 0, 0, src, NULL);
+        init_tex(ctx, 0, PIPE_BUFFER, false, PIPE_FORMAT_R32_FLOAT,
+                 256, 0, init);
+        init_tex(ctx, 1, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
+                 256, 0, init);
+        init_sampler_views(ctx, (int []) { 0, 1, -1 });
+        launch_grid(ctx, (uint []){1, 1, 1}, (uint []){64, 1, 1}, 0, NULL);
+        check_tex(ctx, 1, expect, NULL);
+        destroy_sampler_views(ctx);
+        destroy_tex(ctx);
+        destroy_prog(ctx);
+}
+
+int main(int argc, char *argv[])
 {
 	struct context *ctx = CALLOC_STRUCT(context);
 
@@ -748,6 +797,7 @@ int main(int argc, char** argv)
 	test_private(ctx);
 	test_local(ctx);
 	test_sample(ctx);
+	test_constant(ctx);
 	destroy_ctx(ctx);
 
 	return 0;
