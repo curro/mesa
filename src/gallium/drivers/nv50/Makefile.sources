@@ -30,4 +30,5 @@ CPP_SOURCES := \
 	codegen/nv50_ir_ssa.cpp \
 	codegen/nv50_ir_target.cpp \
 	codegen/nv50_ir_target_nv50.cpp \
-	codegen/nv50_ir_util.cpp
+	codegen/nv50_ir_util.cpp \
+	codegen/nv50_ir_surface.cpp
