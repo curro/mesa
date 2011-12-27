@@ -610,7 +610,7 @@ CodeEmitterNV50::emitLOAD(const Instruction *i)
       if (targ->getChipset() >= 0x84) {
          assert(offset <= (int32_t)(0x3fff * typeSizeof(i->sType)));
          code[0] = 0x10000001;
-         code[1] = 0x40000000;
+         code[1] = 0x40000000 | (i->lock ? 1 << 23 : 0);
 
          if (typeSizeof(i->dType) == 4)
             code[1] |= 0x04000000;
@@ -685,7 +685,7 @@ CodeEmitterNV50::emitSTORE(const Instruction *i)
       break;
    case FILE_MEMORY_SHARED:
       code[0] = 0x00000001;
-      code[1] = 0xe0000000;
+      code[1] = 0xe0000000 | (i->unlock ? 1 << 23 : 0);
       switch (typeSizeof(i->dType)) {
       case 1:
          code[0] |= offset << 9;

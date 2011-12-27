@@ -552,6 +552,7 @@ private:
    bool handleCONT(Instruction *);
 
    bool handleLDST(Instruction *);
+   bool handleATOM(Instruction *);
 
    void checkPredicate(Instruction *);
 
@@ -1067,6 +1068,83 @@ NV50LoweringPreSSA::handleEXPORT(Instruction *i)
    return true;
 }
 
+bool
+NV50LoweringPreSSA::handleATOM(Instruction *i)
+{
+   if (i->getSrc(0)->reg.file == FILE_MEMORY_SHARED) {
+      assert(prog->getTarget()->getChipset() >= 0xa0);
+      BasicBlock *entry = i->bb;
+      BasicBlock *loop = entry->splitBefore(i);
+      BasicBlock *body = loop->splitBefore(i);
+      BasicBlock *exit = body->splitBefore(i);
+      Value *pred = bld.getSSA(1, FILE_FLAGS);
+      Value *v = bld.getSSA();
+      Instruction *j;
+
+      bld.setPosition(entry, true);
+      bld.mkFlow(OP_JOINAT, exit, CC_ALWAYS, NULL);
+
+      bld.setPosition(loop, true);
+      j = bld.mkLoad(TYPE_U32, i->getDef(0), i->getSrc(0)->asSym(),
+                     i->getIndirect(0, 0));
+      j->setFlagsDef(1, pred);
+      j->lock = 1;
+      bld.mkOp1(OP_NOP, TYPE_U32, NULL, i->getDef(0))->fixed = 1;
+      bld.mkFlow(OP_BRA, body, CC_LT, pred);
+      bld.mkFlow(OP_BRA, loop, CC_TR, NULL);
+
+      bld.setPosition(body, true);
+      switch (i->op) {
+      case OP_ATOMADD:
+         bld.mkOp2(OP_ADD, i->dType, v, i->getDef(0), i->getSrc(1));
+         break;
+      case OP_ATOMINC:
+         bld.mkOp2(OP_ADD, i->dType, v, i->getDef(0), bld.mkImm(1));
+         break;
+      case OP_ATOMDEC:
+         bld.mkOp2(OP_ADD, i->dType, v, i->getDef(0), bld.mkImm(-1));
+         break;
+      case OP_ATOMMAX:
+         bld.mkOp2(OP_MAX, i->dType, v, i->getDef(0), i->getSrc(1));
+         break;
+      case OP_ATOMMIN:
+         bld.mkOp2(OP_MIN, i->dType, v, i->getDef(0), i->getSrc(1));
+         break;
+      case OP_ATOMAND:
+         bld.mkOp2(OP_AND, i->dType, v, i->getDef(0), i->getSrc(1));
+         break;
+      case OP_ATOMOR:
+         bld.mkOp2(OP_OR, i->dType, v, i->getDef(0), i->getSrc(1));
+         break;
+      case OP_ATOMXOR:
+         bld.mkOp2(OP_XOR, i->dType, v, i->getDef(0), i->getSrc(1));
+         break;
+      case OP_ATOMXCHG:
+         bld.mkMov(v, i->getSrc(1));
+         break;
+      case OP_ATOMCAS:
+         bld.mkCmp(OP_SET, CC_EQ, i->dType, pred, i->getDef(0), i->getSrc(1));
+         bld.mkSelect(pred, v, i->getSrc(2), i->getDef(0));
+         break;
+      default:
+         assert(0);
+         break;
+      }
+
+      bld.mkStore(OP_STORE, TYPE_U32, i->getSrc(0)->asSym(),
+                  i->getIndirect(0, 0), v);
+      j = bld.mkStore(OP_STORE, TYPE_U32, i->getSrc(0)->asSym(),
+                      i->getIndirect(0, 0), v);
+      j->unlock = 1;
+
+      bld.setPosition(i, false);
+      bld.mkFlow(OP_JOIN, NULL, CC_ALWAYS, NULL)->fixed = 1;
+      delete_Instruction(prog, i);
+   }
+
+   return true;
+}
+
 // Set flags according to predicate and make the instruction read $cX.
 void
 NV50LoweringPreSSA::checkPredicate(Instruction *insn)
@@ -1144,6 +1222,17 @@ NV50LoweringPreSSA::visit(Instruction *i)
    case OP_LOAD:
    case OP_STORE:
       return handleLDST(i);
+   case OP_ATOMADD:
+   case OP_ATOMINC:
+   case OP_ATOMDEC:
+   case OP_ATOMMAX:
+   case OP_ATOMMIN:
+   case OP_ATOMAND:
+   case OP_ATOMOR:
+   case OP_ATOMXOR:
+   case OP_ATOMXCHG:
+   case OP_ATOMCAS:
+      return handleATOM(i);
    default:
       break;
    }

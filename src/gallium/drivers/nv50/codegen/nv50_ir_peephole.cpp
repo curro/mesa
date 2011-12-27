@@ -1720,7 +1720,8 @@ MemoryOpt::runOpt(BasicBlock *bb)
 
       // TODO: maybe have all fixed ops act as barrier ?
       if (ldst->op == OP_CALL || ldst->op == OP_BAR ||
-          ldst->op == OP_MEMBAR || ldst->atomic) {
+          ldst->op == OP_MEMBAR || ldst->atomic ||
+          ldst->lock || ldst->unlock) {
          purgeRecords(NULL, FILE_MEMORY_LOCAL);
          purgeRecords(NULL, FILE_MEMORY_GLOBAL);
          purgeRecords(NULL, FILE_MEMORY_SHARED);

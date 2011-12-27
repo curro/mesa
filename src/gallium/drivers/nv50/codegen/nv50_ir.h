@@ -709,6 +709,8 @@ public:
    unsigned lanes      : 4;
    unsigned perPatch   : 1;
    unsigned exit       : 1; // terminate program after insn
+   unsigned lock       : 1;
+   unsigned unlock     : 1;
 
    int8_t postFactor; // MUL/DIV(if < 0) by 1 << postFactor
 

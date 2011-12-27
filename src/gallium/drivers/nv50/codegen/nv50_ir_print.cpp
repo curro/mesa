@@ -473,6 +473,10 @@ void Instruction::print() const
 
    if (join)
       PRINT("join ");
+   if (lock)
+      PRINT("lock ");
+   if (unlock)
+      PRINT("unlock ");
 
    if (predSrc >= 0) {
       const size_t pre = pos;

@@ -569,6 +569,8 @@ void Instruction::init()
    fixed = 0;
    encSize = 0;
    ipa = 0;
+   lock = 0;
+   unlock = 0;
 
    lanes = 0xf;
 
@@ -734,6 +736,8 @@ Instruction::clone(ClonePolicy<Function>& pol, Instruction *i) const
    i->ipa = ipa;
    i->lanes = lanes;
    i->perPatch = perPatch;
+   i->lock = lock;
+   i->unlock = unlock;
 
    i->postFactor = postFactor;
 
