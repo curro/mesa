@@ -291,9 +291,13 @@ BasicBlock::splitCommon(Instruction *insn, BasicBlock *bb, bool attach)
 
    if (insn) {
       exit = insn->prev;
-      exit->next = NULL;
       insn->prev = NULL;
    }
+
+   if (exit)
+      exit->next = NULL;
+   else
+      entry = NULL;
 
    while (!cfg.outgoing().end()) {
       Graph::Edge *edge = cfg.outgoing().getEdge();
@@ -316,7 +320,7 @@ BasicBlock *
 BasicBlock::splitBefore(Instruction *insn, bool attach)
 {
    BasicBlock *bb = new BasicBlock(func);
-   assert(insn->op != OP_PHI);
+   assert(!insn || insn->op != OP_PHI);
 
    splitCommon(insn, bb, attach);
    return bb;
@@ -326,12 +330,12 @@ BasicBlock *
 BasicBlock::splitAfter(Instruction *insn, bool attach)
 {
    BasicBlock *bb = new BasicBlock(func);
-   assert(insn && insn->op != OP_PHI);
+   assert(!insn || insn->op != OP_PHI);
 
    bb->joinAt = joinAt;
    joinAt = NULL;
 
-   splitCommon(insn->next, bb, attach);
+   splitCommon(insn ? insn->next : NULL, bb, attach);
    return bb;
 }
 
