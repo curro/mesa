@@ -1042,6 +1042,9 @@ AlgebraicOpt::handleLOGOP(Instruction *logop)
       // try AND(SET, SET) -> SET_AND(SET)
       Instruction *set0 = src0->getInsn();
       Instruction *set1 = src1->getInsn();
+      operation redop = (logop->op == OP_AND ? OP_SET_AND :
+                         logop->op == OP_OR ? OP_SET_OR :
+                         OP_SET_XOR);
 
       if (!set0 || set0->fixed || !set1 || set1->fixed)
          return;
@@ -1052,6 +1055,8 @@ AlgebraicOpt::handleLOGOP(Instruction *logop)
          if (set1->op != OP_SET)
             return;
       }
+      if (!prog->getTarget()->isOpSupported(redop, set1->sType))
+         return;
       if (set0->op != OP_SET &&
           set0->op != OP_SET_AND &&
           set0->op != OP_SET_OR &&
@@ -1077,14 +1082,7 @@ AlgebraicOpt::handleLOGOP(Instruction *logop)
       set0->getDef(0)->reg.file = FILE_PREDICATE;
       set0->getDef(0)->reg.size = 1;
       set1->setSrc(2, set0->getDef(0));
-      switch (logop->op) {
-      case OP_AND: set1->op = OP_SET_AND; break;
-      case OP_OR:  set1->op = OP_SET_OR; break;
-      case OP_XOR: set1->op = OP_SET_XOR; break;
-      default:
-         assert(0);
-         break;
-      }
+      set1->op = redop;
       set1->setDef(0, logop->getDef(0));
       delete_Instruction(prog, logop);
    }
