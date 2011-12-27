@@ -218,8 +218,13 @@ static void init_tex(struct context *ctx, int slot,
         pipe->transfer_destroy(pipe, xfer);
 }
 
+static bool default_check(void *x, void *y, int sz) {
+        return !memcmp(x, y, sz);
+}
+
 static void check_tex(struct context *ctx, int slot,
-                      void (*check)(void *, int, int, int))
+                      void (*expect)(void *, int, int, int),
+                      bool (*check)(void *, void *, int))
 {
         struct pipe_context *pipe = ctx->pipe;
         struct pipe_resource *tex = ctx->tex[slot];
@@ -231,8 +236,11 @@ static void check_tex(struct context *ctx, int slot,
                   util_format_get_nblocksy(tex->format, tex->height0));
         struct pipe_transfer *xfer;
         char *map;
-        int x, y;
+        int x, y, i;
         int err = 0;
+
+        if (!check)
+                check = default_check;
 
         xfer = pipe->get_transfer(pipe, tex, 0, PIPE_TRANSFER_READ,
                                   &(struct pipe_box) { .width = tex->width0,
@@ -245,15 +253,29 @@ static void check_tex(struct context *ctx, int slot,
 
         for (y = 0; y < ny; ++y) {
                 for (x = 0; x < nx; ++x) {
-                        uint32_t expect[4];
-                        uint32_t *result = (uint32_t *)(map + y * dy + x * dx);
+                        uint32_t exp[4];
+                        uint32_t *res = (uint32_t *)(map + y * dy + x * dx);
 
-                        check(expect, slot, x, y);
-                        if (memcmp(result, expect, dx) && (++err) < 20) {
-                                printf("(%d, %d): got 0x%x/%d/%f,"
-                                       " expected 0x%x/%d/%f\n", x, y,
-                                       *result, *result, *(float *)result,
-                                       *expect, *expect, *(float *)expect);
+                        expect(exp, slot, x, y);
+                        if (check(res, exp, dx) || (++err) > 20)
+                                continue;
+
+                        if (dx < 4) {
+                                uint32_t u = 0, v = 0;
+
+                                for (i = 0; i < dx; i++) {
+                                        u |= ((uint8_t *)exp)[i] << (8 * i);
+                                        v |= ((uint8_t *)res)[i] << (8 * i);
+                                }
+                                printf("(%d, %d): got 0x%x, expected 0x%x\n",
+                                       x, y, v, u);
+                        } else {
+                                for (i = 0; i < dx / 4; i++) {
+                                        printf("(%d, %d)[%d]: got 0x%x/%f,"
+                                               " expected 0x%x/%f\n", x, y, i,
+                                               res[i], ((float *)res)[i],
+                                               exp[i], ((float *)exp)[i]);
+                                }
                         }
                 }
         }
@@ -409,7 +431,7 @@ static void test_system_values(struct context *ctx)
         void init(void *p, int s, int x, int y) {
                 *(uint32_t *)p = 0xdeadbeef;
         }
-        void check(void *p, int s, int x, int y) {
+        void expect(void *p, int s, int x, int y) {
                 int id = x / 16, sv = (x % 16) / 4, c = x % 4;
                 int tid[] = { id % 20, (id % 240) / 20, id / 240, 0 };
                 int bsz[] = { 4, 3, 5, 1};
@@ -438,7 +460,7 @@ static void test_system_values(struct context *ctx)
                  76800, 0, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
         launch_grid(ctx, (uint []){4, 3, 5}, (uint []){5, 4, 1}, 0, NULL);
-        check_tex(ctx, 0, check);
+        check_tex(ctx, 0, expect, NULL);
         destroy_sampler_views(ctx);
         destroy_tex(ctx);
         destroy_prog(ctx);
@@ -476,14 +498,14 @@ static void test_resource_access(struct context *ctx)
 
         printf("- %s\n", __func__);
 
-        init_prog(ctx, 0, 0, 0, src);
+        init_prog(ctx, 0, 0, 0, src, NULL);
         init_tex(ctx, 0, PIPE_BUFFER, true, PIPE_FORMAT_R32_FLOAT,
                  256, 0, init0);
         init_tex(ctx, 1, PIPE_TEXTURE_2D, true, PIPE_FORMAT_R32_FLOAT,
                  60, 12, init1);
         init_sampler_views(ctx, (int []) { 0, 1, -1 });
         launch_grid(ctx, (uint []){1, 1, 1}, (uint []){15, 12, 1}, 0, NULL);
-        check_tex(ctx, 1, check);
+        check_tex(ctx, 1, expect, NULL);
         destroy_sampler_views(ctx);
         destroy_tex(ctx);
         destroy_prog(ctx);
@@ -533,7 +555,7 @@ static void test_function_calls(struct context *ctx)
         void init(void *p, int s, int x, int y) {
                 *(uint32_t *)p = 15 * y + x;
         }
-        void check(void *p, int s, int x, int y) {
+        void expect(void *p, int s, int x, int y) {
                 *(uint32_t *)p = (15 * y + x) < 4 ? 2 : 1 ;
         }
 
@@ -544,7 +566,7 @@ static void test_function_calls(struct context *ctx)
                  15, 12, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
         launch_grid(ctx, (uint []){3, 3, 3}, (uint []){5, 4, 1}, 15, NULL);
-        check_tex(ctx, 0, check);
+        check_tex(ctx, 0, expect, NULL);
         destroy_sampler_views(ctx);
         destroy_tex(ctx);
         destroy_prog(ctx);
@@ -569,7 +591,7 @@ static void test_input_global(struct context *ctx)
         void init(void *p, int s, int x, int y) {
                 *(uint32_t *)p = 0xdeadbeef;
         }
-        void check(void *p, int s, int x, int y) {
+        void expect(void *p, int s, int x, int y) {
                 *(uint32_t *)p = 0xdeadbeef - (x == 0 ? 0x10001 + 2 * s : 0);
         }
         uint32_t input[8] = { 0x10001, 0x10002, 0x10003, 0x10004,
@@ -586,10 +608,10 @@ static void test_input_global(struct context *ctx)
                      (uint32_t *[]){ &input[1], &input[3],
                                      &input[5], &input[7] });
         launch_grid(ctx, (uint []){4, 1, 1}, (uint []){1, 1, 1}, 0, input);
-        check_tex(ctx, 0, check);
-        check_tex(ctx, 1, check);
-        check_tex(ctx, 2, check);
-        check_tex(ctx, 3, check);
+        check_tex(ctx, 0, expect, NULL);
+        check_tex(ctx, 1, expect, NULL);
+        check_tex(ctx, 2, expect, NULL);
+        check_tex(ctx, 3, expect, NULL);
         destroy_globals(ctx);
         destroy_tex(ctx);
         destroy_prog(ctx);
@@ -639,7 +661,7 @@ static void test_private(struct context *ctx)
         void init(void *p, int s, int x, int y) {
                 *(uint32_t *)p = 0xdeadbeef;
         }
-        void check(void *p, int s, int x, int y) {
+        void expect(void *p, int s, int x, int y) {
                 *(uint32_t *)p = (x / 32) + x % 32;
         }
 
@@ -650,7 +672,7 @@ static void test_private(struct context *ctx)
                  32768, 0, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
         launch_grid(ctx, (uint []){16, 1, 1}, (uint []){16, 1, 1}, 0, NULL);
-        check_tex(ctx, 0, check);
+        check_tex(ctx, 0, expect, NULL);
         destroy_sampler_views(ctx);
         destroy_tex(ctx);
         destroy_prog(ctx);
@@ -721,7 +743,7 @@ static void test_local(struct context *ctx)
         void init(void *p, int s, int x, int y) {
                 *(uint32_t *)p = 0xdeadbeef;
         }
-        void check(void *p, int s, int x, int y) {
+        void expect(void *p, int s, int x, int y) {
                 *(uint32_t *)p = x & 0x20 ? 2 : 1;
         }
 
@@ -732,7 +754,7 @@ static void test_local(struct context *ctx)
                  4096, 0, init);
         init_sampler_views(ctx, (int []) { 0, -1 });
         launch_grid(ctx, (uint []){64, 1, 1}, (uint []){16, 1, 1}, 0, NULL);
-        check_tex(ctx, 0, check);
+        check_tex(ctx, 0, expect, NULL);
         destroy_sampler_views(ctx);
         destroy_tex(ctx);
         destroy_prog(ctx);
@@ -761,7 +783,7 @@ static void test_sample(struct context *ctx)
         void init(void *p, int s, int x, int y) {
                 *(float *)p = s ? 1 : x * y;
         }
-        void check(void *p, int s, int x, int y) {
+        void expect(void *p, int s, int x, int y) {
                 switch (x % 4) {
                 case 0:
                         *(float *)p = x / 4 * y;
@@ -786,7 +808,7 @@ static void test_sample(struct context *ctx)
         init_sampler_views(ctx, (int []) { 0, 1, -1 });
         init_sampler_states(ctx, 2);
         launch_grid(ctx, (uint []){1, 1, 1}, (uint []){128, 32, 1}, 0, NULL);
-        check_tex(ctx, 1, check);
+        check_tex(ctx, 1, expect, NULL);
         destroy_sampler_states(ctx);
         destroy_sampler_views(ctx);
         destroy_tex(ctx);
@@ -831,6 +853,212 @@ static void test_constant(struct context *ctx)
         destroy_prog(ctx);
 }
 
+enum pipe_format surface_fmts[] = {
+        PIPE_FORMAT_B8G8R8A8_UNORM,
+        PIPE_FORMAT_B8G8R8X8_UNORM,
+        PIPE_FORMAT_A8R8G8B8_UNORM,
+        PIPE_FORMAT_X8R8G8B8_UNORM,
+        PIPE_FORMAT_X8R8G8B8_UNORM,
+        PIPE_FORMAT_L8_UNORM,
+        PIPE_FORMAT_A8_UNORM,
+        PIPE_FORMAT_I8_UNORM,
+        PIPE_FORMAT_L8A8_UNORM,
+        PIPE_FORMAT_R32_FLOAT,
+        PIPE_FORMAT_R32G32_FLOAT,
+        PIPE_FORMAT_R32G32B32A32_FLOAT,
+        PIPE_FORMAT_R32_UNORM,
+        PIPE_FORMAT_R32G32_UNORM,
+        PIPE_FORMAT_R32G32B32A32_UNORM,
+        PIPE_FORMAT_R32_SNORM,
+        PIPE_FORMAT_R32G32_SNORM,
+        PIPE_FORMAT_R32G32B32A32_SNORM,
+        PIPE_FORMAT_R8_UINT,
+        PIPE_FORMAT_R8G8_UINT,
+        PIPE_FORMAT_R8G8B8A8_UINT,
+        PIPE_FORMAT_R8_SINT,
+        PIPE_FORMAT_R8G8_SINT,
+        PIPE_FORMAT_R8G8B8A8_SINT,
+        PIPE_FORMAT_R32_UINT,
+        PIPE_FORMAT_R32G32_UINT,
+        PIPE_FORMAT_R32G32B32A32_UINT,
+        PIPE_FORMAT_R32_SINT,
+        PIPE_FORMAT_R32G32_SINT,
+        PIPE_FORMAT_R32G32B32A32_SINT
+};
+
+static void test_surface_ld(struct context *ctx)
+{
+        const char *src = "COMP\n"
+                "DCL RES[0], 2D, FLOAT\n"
+                "DCL RES[1], 2D, RAW, WR\n"
+                "DCL SV[0], BLOCK_ID[0]\n"
+                "DCL TEMP[0], LOCAL\n"
+                "DCL TEMP[1], LOCAL\n"
+                "IMM UINT32 { 16, 1, 0, 0 }\n"
+                "\n"
+                "    BGNSUB\n"
+                "       LOAD TEMP[1], RES[0], SV[0]\n"
+                "       UMUL TEMP[0], SV[0], IMM[0]\n"
+                "       STORE RES[1].xyzw, TEMP[0], TEMP[1]\n"
+                "       RET\n"
+                "    ENDSUB\n";
+        int i = 0;
+        void init0f(void *p, int s, int x, int y) {
+                float v[] = { 1.0, -.75, .50, -.25 };
+                util_format_write_4f(surface_fmts[i], v, 0,
+                                     p, 0, 0, 0, 1, 1);
+        }
+        void init0i(void *p, int s, int x, int y) {
+                int v[] = { 0xffffffff, 0xffff, 0xff, 0xf };
+                util_format_write_4i(surface_fmts[i], v, 0,
+                                     p, 0, 0, 0, 1, 1);
+        }
+        void init1(void *p, int s, int x, int y) {
+                *(uint32_t *)p = 0xdeadbeef;
+        }
+        void expectf(void *p, int s, int x, int y) {
+                float v[4], w[4];
+                init0f(v, s, x / 4, y);
+                util_format_read_4f(surface_fmts[i], w, 0,
+                                    v, 0, 0, 0, 1, 1);
+                *(float *)p = w[x % 4];
+        }
+        void expecti(void *p, int s, int x, int y) {
+                int32_t v[4], w[4];
+                init0i(v, s, x / 4, y);
+                util_format_read_4i(surface_fmts[i], w, 0,
+                                    v, 0, 0, 0, 1, 1);
+                *(uint32_t *)p = w[x % 4];
+        }
+
+        printf("- %s\n", __func__);
+
+        init_prog(ctx, 0, 0, 0, src, NULL);
+
+        for (i = 0; i < Elements(surface_fmts); i++) {
+                bool is_int = util_format_is_pure_integer(surface_fmts[i]);
+
+                printf("   - %s\n", util_format_name(surface_fmts[i]));
+
+                init_tex(ctx, 0, PIPE_TEXTURE_2D, true, surface_fmts[i],
+                         128, 32, (is_int ? init0i : init0f));
+                init_tex(ctx, 1, PIPE_TEXTURE_2D, true, PIPE_FORMAT_R32_FLOAT,
+                         512, 32, init1);
+                init_sampler_views(ctx, (int []) { 0, 1, -1 });
+                init_sampler_states(ctx, 2);
+                launch_grid(ctx, (uint []){1, 1, 1}, (uint []){128, 32, 1}, 0,
+                            NULL);
+                check_tex(ctx, 1, (is_int ? expecti : expectf), NULL);
+                destroy_sampler_states(ctx);
+                destroy_sampler_views(ctx);
+                destroy_tex(ctx);
+        }
+
+        destroy_prog(ctx);
+}
+
+static void test_surface_st(struct context *ctx)
+{
+        const char *src = "COMP\n"
+                "DCL RES[0], 2D, RAW\n"
+                "DCL RES[1], 2D, WR, FLOAT\n"
+                "DCL SV[0], BLOCK_ID[0]\n"
+                "DCL TEMP[0], LOCAL\n"
+                "DCL TEMP[1], LOCAL\n"
+                "IMM UINT32 { 0, 0, 0, 0 }\n"
+                "\n"
+                "    BGNSUB\n"
+                "       UMUL TEMP[0], SV[0], IMM[0]\n"
+                "       LOAD TEMP[1], RES[0], TEMP[0]\n"
+                "       STORE RES[1], SV[0], TEMP[1]\n"
+                "       RET\n"
+                "    ENDSUB\n";
+        int i = 0;
+        void init0f(void *p, int s, int x, int y) {
+                float v[] = { 1.0, -.75, 0.5, -.25 };
+                *(float *)p = v[x % 4];
+        }
+        void init0i(void *p, int s, int x, int y) {
+                int v[] = { 0xffffffff, 0xffff, 0xff, 0xf };
+                *(int32_t *)p = v[x % 4];
+        }
+        void init1(void *p, int s, int x, int y) {
+                memset(p, 1, util_format_get_blocksize(surface_fmts[i]));
+        }
+        void expectf(void *p, int s, int x, int y) {
+                float vf[4];
+                int j;
+
+                for (j = 0; j < 4; j++)
+                        init0f(&vf[j], s, 4 * x + j, y);
+                util_format_write_4f(surface_fmts[i], vf, 0,
+                                     p, 0, 0, 0, 1, 1);
+        }
+        void expects(void *p, int s, int x, int y) {
+                int32_t v[4];
+                int j;
+
+                for (j = 0; j < 4; j++)
+                        init0i(&v[j], s, 4 * x + j, y);
+                util_format_write_4i(surface_fmts[i], v, 0,
+                                     p, 0, 0, 0, 1, 1);
+        }
+        void expectu(void *p, int s, int x, int y) {
+                uint32_t v[4];
+                int j;
+
+                for (j = 0; j < 4; j++)
+                        init0i(&v[j], s, 4 * x + j, y);
+                util_format_write_4ui(surface_fmts[i], v, 0,
+                                      p, 0, 0, 0, 1, 1);
+        }
+        bool check(void *x, void *y, int sz) {
+                int j;
+
+                if (util_format_is_float(surface_fmts[i])) {
+                        return fabs(*(float *)x - *(float *)y) < 3.92156863e-3;
+
+                } else if ((sz % 4) == 0) {
+                        for (j = 0; j < sz / 4; j++)
+                                if (abs(((uint32_t *)x)[j] -
+                                        ((uint32_t *)y)[j]) > 1)
+                                        return false;
+                        return true;
+                } else {
+                        return !memcmp(x, y, sz);
+                }
+        }
+
+        printf("- %s\n", __func__);
+
+        init_prog(ctx, 0, 0, 0, src, NULL);
+
+        for (i = 0; i < Elements(surface_fmts); i++) {
+                bool is_signed = (util_format_description(surface_fmts[i])
+                                  ->channel[0].type == UTIL_FORMAT_TYPE_SIGNED);
+                bool is_int = util_format_is_pure_integer(surface_fmts[i]);
+
+                printf("   - %s\n", util_format_name(surface_fmts[i]));
+
+                init_tex(ctx, 0, PIPE_TEXTURE_2D, true, PIPE_FORMAT_R32_FLOAT,
+                         512, 32, (is_int ? init0i : init0f));
+                init_tex(ctx, 1, PIPE_TEXTURE_2D, true, surface_fmts[i],
+                         128, 32, init1);
+                init_sampler_views(ctx, (int []) { 0, 1, -1 });
+                init_sampler_states(ctx, 2);
+                launch_grid(ctx, (uint []){1, 1, 1}, (uint []){128, 32, 1}, 0,
+                            NULL);
+                check_tex(ctx, 1, (is_int && is_signed ? expects :
+                                   is_int && !is_signed ? expectu :
+                                   expectf), check);
+                destroy_sampler_states(ctx);
+                destroy_sampler_views(ctx);
+                destroy_tex(ctx);
+        }
+
+        destroy_prog(ctx);
+}
+
 int main(int argc, char *argv[])
 {
 	struct context *ctx = CALLOC_STRUCT(context);
@@ -844,6 +1072,8 @@ int main(int argc, char *argv[])
 	test_local(ctx);
 	test_sample(ctx);
 	test_constant(ctx);
+	test_surface_ld(ctx);
+	test_surface_st(ctx);
 	destroy_ctx(ctx);
 
 	return 0;
