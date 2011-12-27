@@ -259,17 +259,13 @@ BuildUtil::mkQuadop(uint8_t q, Value *def, uint8_t l, Value *src0, Value *src1)
 Instruction *
 BuildUtil::mkSelect(Value *pred, Value *dst, Value *trSrc, Value *flSrc)
 {
-   Instruction *insn;
    LValue *def0 = getSSA();
    LValue *def1 = getSSA();
 
    mkMov(def0, trSrc)->setPredicate(CC_P, pred);
    mkMov(def1, flSrc)->setPredicate(CC_NOT_P, pred);
 
-   insn = mkOp2(OP_UNION, typeOfSize(dst->reg.size), dst, def0, def1);
-
-   insert(insn);
-   return insn;
+   return mkOp2(OP_UNION, typeOfSize(dst->reg.size), dst, def0, def1);
 }
 
 FlowInstruction *
