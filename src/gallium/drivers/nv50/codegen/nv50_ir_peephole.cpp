@@ -2162,7 +2162,8 @@ DeadCodeElim::visit(BasicBlock *bb)
          ++deadCount;
          delete_Instruction(prog, i);
       } else
-      if (i->defExists(1) && (i->op == OP_VFETCH || i->op == OP_LOAD)) {
+      if (i->defExists(1) && (i->op == OP_VFETCH || i->op == OP_LOAD) &&
+          !i->writesPredicate()) {
          checkSplitLoad(i);
       }
    }
