@@ -13,106 +13,9 @@
 #include "r600_shader.h"
 #include "radeon_llvm.h"
 
-#include <llvm-c/Transforms/Scalar.h>
 #include <stdio.h>
 
-static unsigned reg_index_soa(
- unsigned index,
- unsigned chan)
-{
- return (index * 4) + chan;
-}
 
-static LLVMValueRef
-emit_array_index(
- struct lp_build_tgsi_soa_context *bld,
- const struct tgsi_full_src_register *reg,
- unsigned swizzle)
-{
- struct gallivm_state * gallivm = bld->bld_base.base.gallivm;
-
- LLVMValueRef addr = LLVMBuildLoad(gallivm->builder,
- bld->addr[reg->Indirect.Index][swizzle], "");
- LLVMValueRef offset = lp_build_const_int32(gallivm, reg->Register.Index);
- LLVMValueRef hw_index = LLVMBuildAdd(gallivm->builder, addr, offset, "");
- LLVMValueRef soa_index = LLVMBuildMul(gallivm->builder, hw_index,
-lp_build_const_int32(gallivm, 4), "");
- LLVMValueRef array_index = LLVMBuildAdd(gallivm->builder, soa_index,
-lp_build_const_int32(gallivm, swizzle), "");
-
- return array_index;
-}
-
-static LLVMValueRef
-emit_fetch_immediate(
- struct lp_build_tgsi_context *bld_base,
- const struct tgsi_full_src_register *reg,
- unsigned swizzle)
-{
- struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
- return bld->immediates[reg->Register.Index][swizzle];
-}
-
-static LLVMValueRef
-emit_fetch_input(
- struct lp_build_tgsi_context *bld_base,
- const struct tgsi_full_src_register *reg,
- unsigned swizzle)
-{
-	struct radeon_llvm_context * ctx = bld_base->userdata;
-	if (swizzle == ~0) {
-		LLVMValueRef values[TGSI_NUM_CHANNELS] = {};
-		unsigned chan;
-		for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
-			values[chan] = ctx->inputs[reg_index_soa(
-						reg->Register.Index, chan)];
-		}
-		return lp_build_gather_values(bld_base->base.gallivm, values,
-						TGSI_NUM_CHANNELS);
-	} else {
-		return ctx->inputs[reg_index_soa(reg->Register.Index, swizzle)];
-	}
-}
-
-static LLVMValueRef
-emit_fetch_temporary(
- struct lp_build_tgsi_context *bld_base,
- const struct tgsi_full_src_register *reg,
- unsigned swizzle)
-{
- struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
- LLVMBuilderRef builder = bld_base->base.gallivm->builder;
- if (reg->Register.Indirect) {
-LLVMValueRef array_index = emit_array_index(bld, reg, swizzle);
-LLVMValueRef ptr = LLVMBuildGEP(builder, bld->temps_array, &array_index,
-1, "");
-return LLVMBuildLoad(builder, ptr, "");
- } else {
-LLVMValueRef temp_ptr;
-temp_ptr = lp_get_temp_ptr_soa(bld, reg->Register.Index, swizzle);
-return LLVMBuildLoad(builder, temp_ptr, "");
- }
-}
-
-static LLVMValueRef
-emit_fetch_output(
- struct lp_build_tgsi_context *bld_base,
- const struct tgsi_full_src_register *reg,
- unsigned swizzle)
-{
- struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
- LLVMBuilderRef builder = bld_base->base.gallivm->builder;
- if (reg->Register.Indirect) {
-LLVMValueRef array_index = emit_array_index(bld, reg, swizzle);
-LLVMValueRef ptr = LLVMBuildGEP(builder, bld->outputs_array, &array_index,
-1, "");
-return LLVMBuildLoad(builder, ptr, "");
- } else {
-LLVMValueRef temp_ptr;
-temp_ptr = lp_get_output_ptr(bld, reg->Register.Index, swizzle);
-return LLVMBuildLoad(builder, temp_ptr, "");
- }
-}
 
 static LLVMValueRef llvm_fetch_const(
 	struct lp_build_tgsi_context * bld_base,
@@ -122,7 +25,7 @@ static LLVMValueRef llvm_fetch_const(
 	return lp_build_intrinsic_unary(bld_base->base.gallivm->builder,
 		"llvm.AMDISA.load.const", bld_base->base.elem_type,
 		lp_build_const_int32(bld_base->base.gallivm,
-			reg_index_soa(reg->Register.Index, swizzle)));
+			radeon_llvm_reg_index_soa(reg->Register.Index, swizzle)));
 }
 
 static void llvm_load_input(
@@ -133,7 +36,7 @@ static void llvm_load_input(
 	unsigned chan;
 
 	for (chan = 0; chan < 4; chan++) {
-		unsigned soa_index = reg_index_soa(input_index, chan);
+		unsigned soa_index = radeon_llvm_reg_index_soa(input_index, chan);
 
 		/* The * 4 is assuming that we are in soa mode. */
 		LLVMValueRef reg = lp_build_const_int32(
@@ -159,7 +62,7 @@ static void llvm_emit_prologue(struct lp_build_tgsi_context * bld_base)
 			LLVMValueRef reg;
 			LLVMValueRef reg_index = lp_build_const_int32(
 					base->gallivm,
-					reg_index_soa(i, chan));
+					radeon_llvm_reg_index_soa(i, chan));
 			reg = lp_build_intrinsic_unary(base->gallivm->builder,
 						"llvm.AMDISA.reserve.reg",
 						base->elem_type, reg_index);
@@ -187,7 +90,7 @@ static void llvm_emit_epilogue(struct lp_build_tgsi_context * bld_base)
 					ctx->reserved_reg_count;
 			LLVMValueRef reg_index = lp_build_const_int32(
 				base->gallivm,
-				reg_index_soa(adjusted_reg_idx, chan));
+				radeon_llvm_reg_index_soa(adjusted_reg_idx, chan));
 
 			output = LLVMBuildLoad(base->gallivm->builder,
 				ctx->soa.outputs[i][chan], "");
@@ -320,10 +223,6 @@ LLVMModuleRef r600_tgsi_llvm(
 	bld_base->info = &shader_info;
 	bld_base->userdata = ctx;
 	bld_base->emit_fetch_funcs[TGSI_FILE_CONSTANT] = llvm_fetch_const;
-	bld_base->emit_fetch_funcs[TGSI_FILE_IMMEDIATE] = emit_fetch_immediate;
-	bld_base->emit_fetch_funcs[TGSI_FILE_INPUT] = emit_fetch_input;
-	bld_base->emit_fetch_funcs[TGSI_FILE_TEMPORARY] = emit_fetch_temporary;
-	bld_base->emit_fetch_funcs[TGSI_FILE_OUTPUT] = emit_fetch_output;
 	bld_base->emit_prologue = llvm_emit_prologue;
 	bld_base->emit_epilogue = llvm_emit_epilogue;
 	ctx->userdata = ctx;
@@ -342,25 +241,7 @@ LLVMModuleRef r600_tgsi_llvm(
 
 	lp_build_tgsi_llvm(bld_base, tokens);
 
-	/* End the main function with */
-	LLVMBuildRetVoid(bld_base->base.gallivm->builder);
-
-	/* Create the pass manager */
-	ctx->gallivm.passmgr = LLVMCreateFunctionPassManagerForModule(
-				bld_base->base.gallivm->module);
-
-	/* This pass should eliminate all the load and store instructions */
-	LLVMAddPromoteMemoryToRegisterPass(bld_base->base.gallivm->passmgr);
-
-	/* Add some optimization passes */
-	LLVMAddScalarReplAggregatesPass(bld_base->base.gallivm->passmgr);
-	LLVMAddCFGSimplificationPass(bld_base->base.gallivm->passmgr);
-
-	/* Run the passs */
-	LLVMRunFunctionPassManager(bld_base->base.gallivm->passmgr, ctx->main_fn);
-
-	LLVMDisposeBuilder(bld_base->base.gallivm->builder);
-	LLVMDisposePassManager(bld_base->base.gallivm->passmgr);
+	radeon_llvm_finalize_module(ctx);
 
 	return ctx->gallivm.module;
 }

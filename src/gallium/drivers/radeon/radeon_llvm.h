@@ -126,6 +126,10 @@ inline static struct radeon_llvm_context * radeon_llvm_context(
 	return (struct radeon_llvm_context*)bld_base;
 }
 
+unsigned radeon_llvm_reg_index_soa(unsigned index, unsigned chan);
+
+void radeon_llvm_finalize_module(struct radeon_llvm_context * ctx);
+
 #ifdef __cplusplus
 }
 #endif
