@@ -141,7 +141,6 @@ emit_store(
 	LLVMValueRef dst[4])
 {
 	struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
-	struct radeon_llvm_context * ctx = radeon_llvm_context(bld_base);
 	struct gallivm_state *gallivm = bld->bld_base.base.gallivm;
 	struct lp_build_context base = bld->bld_base.base;
 	const struct tgsi_full_dst_register *reg = &inst->Dst[0];
