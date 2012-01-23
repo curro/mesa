@@ -233,6 +233,52 @@ nv50_screen_get_paramf(struct pipe_screen *pscreen, enum pipe_capf param)
    }
 }
 
+<<<<<<< HEAD
+=======
+static int
+nv50_screen_get_compute_param(struct pipe_screen *pscreen,
+                              enum pipe_compute_cap param,
+                              uint64_t *ret)
+{
+   switch (param) {
+   case PIPE_COMPUTE_CAP_GRID_DIMENSION:
+      if (ret)
+	 ret[0] = 3;
+      return 1;
+
+   case PIPE_COMPUTE_CAP_MAX_GRID_SIZE:
+      if (ret) {
+	 ret[0] = 65535;
+	 ret[1] = 65535;
+	 ret[2] = 1;
+      }
+      return 3;
+
+   case PIPE_COMPUTE_CAP_MAX_BLOCK_SIZE:
+      if (ret) {
+	 ret[0] = 512;
+	 ret[1] = 512;
+	 ret[2] = 64;
+      }
+      return 3;
+
+   case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
+      if (ret)
+	 ret[0] = 1ull << 40;
+      return 1;
+
+   case PIPE_COMPUTE_CAP_MAX_LOCAL_SIZE:
+      if (ret)
+	 ret[0] = 16384;
+      return 1;
+
+   default:
+      NOUVEAU_ERR("unknown PIPE_COMPUTE_CAP %d\n", param);
+      return 0;
+   }
+}
+
+>>>>>>> Misc fixes.
 static void
 nv50_screen_destroy(struct pipe_screen *pscreen)
 {

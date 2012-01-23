@@ -77,8 +77,6 @@ ws_loader_sw_release(struct ws_loader_device **dev)
 
    if (sdev->lib)
       util_dl_close(sdev->lib);
-   if (sdev->ws)
-      sdev->ws->destroy(sdev->ws);
 
    FREE(sdev);
    *dev = NULL;
