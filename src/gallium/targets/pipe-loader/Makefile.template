@@ -4,7 +4,6 @@
 #
 # Input variables: PIPE_INSTALL_DIR, PIPE_PREFIX (optional)
 #
-include $(TOP)/configs/current
 CUR = $(TOP)/src/gallium/targets/pipe-loader
 
 PIPE_PREFIX ?= pipe_
@@ -164,7 +163,7 @@ $(PIPE_OBJECTS): %.o: $(CUR)/%.c
 
 install-pipes: $(PIPE_TARGETS)
 	$(INSTALL) -d $(DESTDIR)$(PIPE_INSTALL_DIR)
-	for tgt in $(GBM_EXTRA_TARGETS); do \
+	for tgt in $(PIPE_TARGETS); do \
 		$(MINSTALL) "$$tgt" $(DESTDIR)$(PIPE_INSTALL_DIR); \
 	done
 

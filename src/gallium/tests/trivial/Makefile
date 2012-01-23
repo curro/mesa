@@ -16,7 +16,6 @@ LINKS += \
 	$(TOP)/src/gallium/drivers/trace/libtrace.a \
 	$(TOP)/src/gallium/drivers/galahad/libgalahad.a \
 	$(TOP)/src/gallium/winsys/loader/libws_loader.a \
-	$(TOP)/src/gallium/winsys/loader/drm/libws_loader_drm.a \
 	$(GALLIUM_AUXILIARIES) \
 	$(PROG_LINKS) $(LIBUDEV_LIBS)
 
