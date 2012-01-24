@@ -319,8 +319,7 @@ AMDILPrintfConvert::expandPrintf(BasicBlock::iterator *bbb)
 AMDILPrintfConvert::runOnFunction(Function &MF)
 {
     mChanged = false;
-    mKM = (AMDILKernelManager*)(TM.getSubtarget<AMDILSubtarget>()
-        .getKernelManager());
+    mKM = TM.getSubtarget<AMDILSubtarget>().getKernelManager();
     mMFI = getAnalysis<MachineFunctionAnalysis>().getMF()
           .getInfo<AMDILMachineFunctionInfo>();
     bVecMap.clear();

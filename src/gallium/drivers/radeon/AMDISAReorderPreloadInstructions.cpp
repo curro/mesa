@@ -78,4 +78,5 @@ bool AMDISAReorderPreloadInstructionsPass::runOnMachineFunction(MachineFunction 
       }
     }
   }
+  return false;
 }

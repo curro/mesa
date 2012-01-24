@@ -652,25 +652,6 @@ AMDILAsmPrinter::EmitEndOfAsmFile(Module &M)
   OutStreamer.EmitRawText(O.str());
 #endif
 }
-void
-AMDILAsmPrinter::PrintSpecial(const MachineInstr *MI, const char *Code) const
-{
-  assert(0 && "When is this function hit!");
-}
-  bool
-AMDILAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned int OpNo,
-    unsigned int AsmVariant, const char *ExtraCode)
-{
-  assert(0 && "When is this function hit!");
-  return false;
-}
-  bool
-AMDILAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
-    unsigned int OpNo, unsigned int AsmVariant, const char *ExtraCode)
-{
-  assert(0 && "When is this function hit!");
-  return false;
-}
   void
 AMDILAsmPrinter::EmitMachineConstantPoolValue(MachineConstantPoolValue *MCPV)
 {

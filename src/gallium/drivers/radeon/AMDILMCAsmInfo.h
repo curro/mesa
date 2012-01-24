@@ -62,7 +62,6 @@ namespace llvm {
       AMDILMCAsmInfo(const Triple &Triple);
       const char*
         getDataASDirective(unsigned int Size, unsigned int AS) const;
-      MCSection* getNonexecutableStackSection(MCContext &CTX);
   };
 } // namespace llvm
 #endif // AMDILMCASMINFO_H_

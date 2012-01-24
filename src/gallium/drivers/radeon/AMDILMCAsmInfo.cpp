@@ -161,9 +161,3 @@ AMDILMCAsmInfo::getDataASDirective(unsigned int Size, unsigned int AS) const
   };
   return NULL;
 }
-
-MCSection*
-AMDILMCAsmInfo::getNonexecutableStackSection(MCContext &CTX)
-{
-  return NULL;
-}

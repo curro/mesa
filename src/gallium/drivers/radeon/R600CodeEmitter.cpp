@@ -150,26 +150,11 @@ enum TextureTypes {
   TEXTURE_SHADOW2D_ARRAY
 };
 
-static bool isTrans(unsigned int opcode);
-
-static unsigned int getLastBit(unsigned int writeMask);
-
-static RegElement maskBitToElement(unsigned int maskBit);
-
-static unsigned int dstSwizzleToWriteMask(unsigned swizzle);
-
-static unsigned getRegElement(unsigned swizzle,
-    unsigned int writeMaskBit);
-
-
-
-
 char R600CodeEmitter::ID = 0;
 
 FunctionPass *llvm::createR600CodeEmitterPass(formatted_raw_ostream &OS) {
   return new R600CodeEmitter(OS);
 }
-
 
 bool R600CodeEmitter::runOnMachineFunction(MachineFunction &MF) {
 
@@ -254,11 +239,6 @@ void R600CodeEmitter::emitALUInstr(MachineInstr &MI)
     return;
   }
   const MachineOperand dstOp = MI.getOperand(0);
-  unsigned int writemask = dstSwizzleToWriteMask(dstOp.getTargetFlags());
-
-  if (isTrans(MI.getOpcode())) {
-    writemask = WRITE_MASK_X;
-  }
 
   /* Emit instruction type */
   emitByte(0);
@@ -266,28 +246,22 @@ void R600CodeEmitter::emitALUInstr(MachineInstr &MI)
   unsigned int opIndex;
   for (opIndex = 1; opIndex < numOperands; opIndex++) {
     emitSrc(MI.getOperand(opIndex));
-//      fprintf(stderr, "Src %u -> bytes in buffer = %u\n", opIndex - 1, _OS.GetNumBytesInBuffer());
   }
 
     /* Emit zeros for unused sources */
   for ( ; opIndex < 4; opIndex++) {
     emitNullBytes(SRC_BYTE_COUNT);
-//    fprintf(stderr, "Src %u -> bytes in buffer = %u\n", opIndex - 1, _OS.GetNumBytesInBuffer());
   }
 
   emitDst(dstOp);
-//      fprintf(stderr, "Dst -> bytes in buffer = %u\n", _OS.GetNumBytesInBuffer());
 
   emitALU(MI, numOperands - 1);
-//      fprintf(stderr, "ALU -> bytes in buffer = %u\n", _OS.GetNumBytesInBuffer());
 }
 
 void R600CodeEmitter::emitSrc(const MachineOperand & MO)
 {
 
   uint32_t value = 0;
-  unsigned select = 0;
-  unsigned element = 0;
   /* Emit the source select (2 bytes).  For GPRs, this is the register index.
    * For other potential instruction operands, (e.g. constant registers) the
    * value of the source select is defined in the r600isa docs. */
@@ -605,8 +579,6 @@ void R600CodeEmitter::emitNullBytes(unsigned int byteCount)
   }
 }
 
-//void R600CodeEmitter::emitByte(unsigned int byte) { }
-
 void R600CodeEmitter::emitByte(unsigned int byte)
 {
   _OS.write((uint8_t) byte & 0xff);
@@ -668,27 +640,6 @@ int R600CodeEmitter::getElement(MachineInstr &MI)
   }
 }
 
-bool isTrans(unsigned int opcode)
-{
-  switch(opcode) {
-    default: return false;
-    case AMDIL::RSQVEC_v4f32: return true;
-  }
-}
-
-
-unsigned int getLastBit(unsigned int writeMask)
-{
-  int i;
-  for (i = 3; i >=0; i++) {
-    unsigned int bit = 1 << i;
-    if (bit & writeMask) {
-     return bit;
-    }
-  }
-  return 0;
-}
-
 RegElement maskBitToElement(unsigned int maskBit)
 {
   switch (maskBit) {
@@ -739,13 +690,6 @@ unsigned int dstSwizzleToWriteMask(unsigned swizzle)
   case AMDIL_DST_SWIZZLE__Y_W:
     return WRITE_MASK_Y | WRITE_MASK_W;
   }
-}
-
-unsigned getRegElement(unsigned swizzle,
-    unsigned int writeMaskBit)
-{
-  unsigned chan = maskBitToElement(writeMaskBit);
-  return (swizzle >> (2 * chan)) & 0x3;
 }
 
 #include "AMDISAGenCodeEmitter.inc"

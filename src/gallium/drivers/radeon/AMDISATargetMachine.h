@@ -85,7 +85,6 @@ public:
    virtual bool addInstSelector(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
    virtual bool addPreEmitPass(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
    virtual bool addPreRegAlloc(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
-   virtual bool addPostRegAlloc(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
    virtual bool addPassesToEmitFile(PassManagerBase &PM,
                                     formatted_raw_ostream &Out,
                                     CodeGenFileType FileType,

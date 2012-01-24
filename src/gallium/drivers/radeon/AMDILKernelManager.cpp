@@ -964,8 +964,6 @@ void AMDILKernelManager::printKernelArgs(OSTREAM_TYPE &O) {
 void AMDILKernelManager::printArgCopies(OSTREAM_TYPE &O,
     AMDILAsmPrinter *RegNames)
 {
-  MachineFunction::const_iterator MFI = mMF->begin();
-  MachineBasicBlock::const_iterator MBI = MFI->begin();
   Function::const_arg_iterator I = mMF->getFunction()->arg_begin();
   Function::const_arg_iterator Ie = mMF->getFunction()->arg_end();
   uint32_t Counter = 0;

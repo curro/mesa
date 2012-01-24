@@ -255,7 +255,7 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
             break;
           default:
             chan = 0;
-            fprintf(stderr, "swizzle: %d\n", swz);
+            fprintf(stderr, "swizzle: %ld\n", swz);
             abort();
             break;
           }

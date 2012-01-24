@@ -296,7 +296,7 @@ allocateDefaultID(
       MI->getOperand(MI->getNumOperands()-1)
         .setImm(curRes.bits.ResourceID);
     }
-    AMDILKernelManager *KM = (AMDILKernelManager*)STM->getKernelManager();
+    AMDILKernelManager *KM = STM->getKernelManager();
     if (curRes.bits.ResourceID == 8 
         && !STM->device()->isSupported(AMDILDeviceInfo::ArenaSegment)) {
         KM->setUAVID(NULL, curRes.bits.ResourceID);
@@ -334,7 +334,7 @@ allocateDefaultID(
     // Set the resource ID accordingly, otherwise use the default constant ID.
     // FIXME: this should not require the base pointer to know what constant
     // it is from.
-    AMDILGlobalManager *GM = (AMDILGlobalManager*)STM->getGlobalManager();
+    AMDILGlobalManager *GM = STM->getGlobalManager();
     MachineFunction *MF = MI->getParent()->getParent();
     if (GM->isKernel(MF->getFunction()->getName())) {
       const kernel &krnl = GM->getKernel(MF->getFunction()->getName());
@@ -369,7 +369,7 @@ allocateDefaultID(
         curRes.bits.ByteStore = 1;
       }
       curRes.bits.ResourceID = STM->device()->getResourceID(AMDILDevice::GLOBAL_ID);
-      AMDILKernelManager *KM = (AMDILKernelManager*)STM->getKernelManager();
+      AMDILKernelManager *KM = STM->getKernelManager();
       KM->setUAVID(NULL, curRes.bits.ResourceID);
       mMFI->uav_insert(curRes.bits.ResourceID);
     }
@@ -408,8 +408,6 @@ parseArguments(MachineFunction &MF,
   cachedKernelName.append(MF.getFunction()->getName());
   GlobalVariable *GV = MF.getFunction()->getParent()
     ->getGlobalVariable(cachedKernelName);
-  MachineBasicBlock::livein_iterator LII = MF.begin()->livein_begin();
-  MachineBasicBlock::livein_iterator LIE = MF.begin()->livein_end();
   unsigned cbNum = 0;
   unsigned regNum = AMDIL::R1;
   AMDILMachineFunctionInfo *mMFI = MF.getInfo<AMDILMachineFunctionInfo>();
@@ -1919,7 +1917,7 @@ annotateBytePtrs(
     )
 {
   const AMDILSubtarget *STM = &TM.getSubtarget<AMDILSubtarget>();
-  AMDILKernelManager *KM = (AMDILKernelManager*)STM->getKernelManager();
+  AMDILKernelManager *KM = STM->getKernelManager();
   PtrSet::iterator siBegin, siEnd;
   std::vector<MachineInstr*>::iterator miBegin, miEnd;
   uint32_t arenaID = STM->device()
@@ -1954,7 +1952,7 @@ annotateBytePtrs(
         // If hardware constant mem is enabled, then we need to
         // get the constant pointer CB number and use that to specify
         // the resource ID.
-        AMDILGlobalManager *GM = (AMDILGlobalManager*)STM->getGlobalManager();
+        AMDILGlobalManager *GM = STM->getGlobalManager();
         const StringRef funcName = (*miBegin)->getParent()->getParent()
           ->getFunction()->getName();
         if (GM->isKernel(funcName)) {
@@ -2111,7 +2109,7 @@ annotateRawPtrs(
     )
 {
   const AMDILSubtarget *STM = &TM.getSubtarget<AMDILSubtarget>();
-  AMDILKernelManager *KM = (AMDILKernelManager*)STM->getKernelManager();
+  AMDILKernelManager *KM = STM->getKernelManager();
   PtrSet::iterator siBegin, siEnd;
   std::vector<MachineInstr*>::iterator miBegin, miEnd;
   AMDILMachineFunctionInfo *mMFI = NULL;
@@ -2148,7 +2146,7 @@ annotateRawPtrs(
         // If hardware constant mem is enabled, then we need to
         // get the constant pointer CB number and use that to specify
         // the resource ID.
-        AMDILGlobalManager *GM = (AMDILGlobalManager*)STM->getGlobalManager();
+        AMDILGlobalManager *GM = STM->getGlobalManager();
         const StringRef funcName = (*miBegin)->getParent()->getParent()
           ->getFunction()->getName();
         if (GM->isKernel(funcName)) {
@@ -2317,7 +2315,7 @@ allocateMultiUAVPointers(
     curUAV = STM->device()->getResourceID(AMDILDevice::RAW_UAV_ID);
     increment = false;
   }
-  AMDILKernelManager *KM = (AMDILKernelManager*)STM->getKernelManager();
+  AMDILKernelManager *KM = STM->getKernelManager();
   PtrSet::iterator siBegin, siEnd;
   std::vector<MachineInstr*>::iterator miBegin, miEnd;
   // First lets handle the raw pointers.

@@ -123,15 +123,6 @@ namespace llvm
       void
         EmitEndOfAsmFile(Module &M);
       void
-        PrintSpecial(const MachineInstr *MI, const char *Code) const;
-      bool
-        PrintAsmOperand(const MachineInstr *MI, unsigned int OpNo,
-            unsigned int AsmVariant, const char *ExtraCode);
-      bool
-        PrintAsmMemoryOperand(const MachineInstr *MI, unsigned int OpNo,
-            unsigned int AsmVariant,
-            const char *ExtraCode);
-      void
         EmitMachineConstantPoolValue(MachineConstantPoolValue *MCPV);
       void
         printPICJumpTableSetLabel(unsigned uid,

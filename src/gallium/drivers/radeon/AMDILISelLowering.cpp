@@ -2324,7 +2324,6 @@ AMDILTargetLowering::LowerFormalArguments(SDValue Chain,
 const
 {
 
-  SDValue Orig = Chain;
   MachineFunction &MF = DAG.getMachineFunction();
   AMDILMachineFunctionInfo *FuncInfo
     = MF.getInfo<AMDILMachineFunctionInfo>();
@@ -2349,7 +2348,6 @@ const
     CCValAssign &VA = ArgLocs[i];
     if (VA.isRegLoc()) {
       EVT RegVT = VA.getLocVT();
-      EVT ValVT = VA.getValVT();
       const TargetRegisterClass *RC = getRegClassFromType(
           RegVT.getSimpleVT().SimpleTy);
 
@@ -2514,7 +2512,6 @@ const
   // Walk the register/memloc assignments, insert copies/loads
   for (unsigned int i = 0, e = ArgLocs.size(); i != e; ++i) {
     CCValAssign &VA = ArgLocs[i];
-    ISD::ArgFlagsTy Flags = Outs[i].Flags;
     //bool isByVal = Flags.isByVal(); // handle byval/bypointer registers
     // Arguments start after the 5 first operands of ISD::CALL
 #if LLVM_VERSION >= 2500
@@ -2784,7 +2781,6 @@ AMDILTargetLowering::LowerADD(SDValue Op, SelectionDAG &DAG) const
             || RHS.getOpcode() == ISD::MUL) {
           SDValue Op1, Op2, Op3;
           // FIXME: Fix this so that it works for unsigned 24bit ops.
-          bool signedOnly = true;
           if (LHS.getOpcode() == ISD::MUL) {
             Op1 = LHS.getOperand(0);
             Op2 = LHS.getOperand(1);
@@ -2798,13 +2794,11 @@ AMDILTargetLowering::LowerADD(SDValue Op, SelectionDAG &DAG) const
             Op2 = DAG.getConstant(
                 1 << LHSConstOpCode->getZExtValue(), MVT::i32);
             Op3 = RHS;
-            signedOnly = LHSConstOpCode->getSExtValue() < 0;
           } else if (RHS.getOpcode() == ISD::SHL && RHSConstOpCode) {
             Op1 = RHS.getOperand(0);
             Op2 = DAG.getConstant(
                 1 << RHSConstOpCode->getZExtValue(), MVT::i32);
             Op3 = LHS;
-            signedOnly = RHSConstOpCode->getSExtValue() < 0;
           }
           checkMADType(Op, stm, is24bitMAD, is32bitMAD);
           // We can possibly do a MAD transform!
@@ -3296,7 +3290,6 @@ AMDILTargetLowering::genf64toi32(SDValue RHS, SelectionDAG &DAG,
   }
   */
   SDValue c11 = DAG.getConstant( 63 - 52, INTVT );
-  SDValue c32 = DAG.getConstant( 32, INTVT );
 
   // Convert d in to 32-bit components
   SDValue d = RHS;
@@ -3522,7 +3515,6 @@ AMDILTargetLowering::genu64tof64(SDValue RHS, EVT LHSVT,
     SelectionDAG &DAG) const
 {
   EVT RHSVT = RHS.getValueType();
-  MVT RST = RHSVT.getScalarType().getSimpleVT();
   DebugLoc DL = RHS.getDebugLoc();
   EVT INTVT;
   EVT LONGVT;
@@ -3534,8 +3526,6 @@ AMDILTargetLowering::genu64tof64(SDValue RHS, EVT LHSVT,
     INTVT = EVT(MVT::i32);
   }
   LONGVT = RHSVT;
-  MVT IST = INTVT.getSimpleVT();
-  MVT LST = LONGVT.getSimpleVT();
   SDValue x = RHS;
   const AMDILSubtarget *stm = reinterpret_cast<const AMDILTargetMachine*>(
       &this->getTargetMachine())->getSubtargetImpl();
@@ -4256,7 +4246,6 @@ AMDILTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const
   SDValue LHS = Op.getOperand(1);
   SDValue RHS = Op.getOperand(2);
   DebugLoc DL = Op.getDebugLoc();
-  EVT OVT = Op.getValueType();
   Cond = getConversionNode(DAG, Cond, Op, true);
   Cond = DAG.getNode(AMDILISD::CMOVLOG,
       DL,
@@ -4325,7 +4314,6 @@ AMDILTargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const
   SDValue RHS = Op.getOperand(1);
   SDValue CC  = Op.getOperand(2);
   DebugLoc DL = Op.getDebugLoc();
-  EVT OVT = Op.getValueType();
   ISD::CondCode SetCCOpcode = cast<CondCodeSDNode>(CC)->get();
   unsigned int AMDILCC = CondCCodeToCC(
       SetCCOpcode,
@@ -4409,7 +4397,6 @@ AMDILTargetLowering::LowerBITCAST(SDValue Op, SelectionDAG &DAG) const
 AMDILTargetLowering::LowerBIT_CONVERT(SDValue Op, SelectionDAG &DAG) const
 #endif
 {
-  SDValue orig = Op;
   SDValue Src = Op.getOperand(0);
   SDValue Dst = Op;
   SDValue Res;
@@ -4715,7 +4702,6 @@ SDValue
 AMDILTargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const
 {
   SDValue Chain = Op.getOperand(0);
-  SDValue Entry = Op.getOperand(1);
   SDValue Cond  = Op.getOperand(1);
   SDValue Jump  = Op.getOperand(2);
   SDValue Result;
@@ -4789,7 +4775,6 @@ AMDILTargetLowering::LowerReturn(SDValue Chain,
     DebugLoc dl, SelectionDAG &DAG)
 const
 {
-  SDValue Orig = Chain;
   //MachineFunction& MF = DAG.getMachineFunction();
   // CCValAssign - represent the assignment of the return value
   // to a location

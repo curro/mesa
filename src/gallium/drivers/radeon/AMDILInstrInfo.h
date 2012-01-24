@@ -139,7 +139,8 @@ public:
   unsigned
   InsertBranch(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
                MachineBasicBlock *FBB,
-               const SmallVectorImpl<MachineOperand> &Cond) const;
+               const SmallVectorImpl<MachineOperand> &Cond,
+               DebugLoc DL) const;
 
   bool copyRegToReg(MachineBasicBlock &MBB,
                     MachineBasicBlock::iterator I,

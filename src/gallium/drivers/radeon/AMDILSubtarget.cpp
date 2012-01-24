@@ -176,24 +176,24 @@ AMDILSubtarget::calVersion() const
   return mVersion;
 }
 
-const AMDILGlobalManager*
+AMDILGlobalManager*
 AMDILSubtarget::getGlobalManager() const
 {
   return mGM;
 }
 void
-AMDILSubtarget::setGlobalManager(const AMDILGlobalManager *gm) const
+AMDILSubtarget::setGlobalManager(AMDILGlobalManager *gm) const
 {
   mGM = gm;
 }
 
-const AMDILKernelManager*
+AMDILKernelManager*
 AMDILSubtarget::getKernelManager() const
 {
   return mKM;
 }
 void
-AMDILSubtarget::setKernelManager(const AMDILKernelManager *km) const
+AMDILSubtarget::setKernelManager(AMDILKernelManager *km) const
 {
   mKM = km;
 }

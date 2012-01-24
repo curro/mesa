@@ -489,17 +489,17 @@ OpSwizzle getCustomSrcSwizzle(MachineInstr *MI, unsigned opNum) {
       opSwiz.bits.swizzle = AMDIL_SRC_SWIZZLE_X;
       break;
     case AMDIL::UBIT_INSERT_i32:
-      assert(opNum == 1 || opNum == 2
+      assert((opNum == 1 || opNum == 2)
           && "Only operand numbers 1 or 2 is custom!");
       opSwiz.bits.swizzle = AMDIL_SRC_SWIZZLE_X;
       break;
     case AMDIL::UBIT_INSERT_v2i32:
-      assert(opNum == 1 || opNum == 2
+      assert((opNum == 1 || opNum == 2)
           && "Only operand numbers 1 or 2 is custom!");
       opSwiz.bits.swizzle = AMDIL_SRC_SWIZZLE_XY;
       break;
     case AMDIL::UBIT_INSERT_v4i32:
-      assert(opNum == 1 || opNum == 2
+      assert((opNum == 1 || opNum == 2)
           && "Only operand numbers 1 or 2 is custom!");
       opSwiz.bits.swizzle = AMDIL_SRC_SWIZZLE_XYZW;
       break;

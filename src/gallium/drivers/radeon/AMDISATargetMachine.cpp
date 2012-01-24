@@ -65,8 +65,8 @@ AMDISATargetMachine::AMDISATargetMachine(const Target &T, StringRef TT,
 :
   AMDILTargetMachine(T, TT, CPU, FS, RM, CM),
   Subtarget(TT, CPU, FS),
-  InstrInfo(new R600InstrInfo(*this)),
   TLInfo(*this),
+  InstrInfo(new R600InstrInfo(*this)),
   mGM(new AMDILGlobalManager(0 /* Debug mode */)),
   mKM(new AMDILKernelManager(this, mGM)),
   mDump(false)
@@ -125,11 +125,6 @@ bool AMDISATargetMachine::addPreRegAlloc(PassManagerBase &PM,
   }
   PM.add(createAMDISAConvertToISAPass(*this));
   return false;
-}
-
-bool AMDISATargetMachine::addPostRegAlloc(PassManagerBase &PM,
-    CodeGenOpt::Level OptLevel) {
-//  PM.add(createAMDISADelimitInstGroupsPass(*this));
 }
 
 /*XXX: We should use addPassesToEmitMC in llvm 3.0 */
@@ -201,7 +196,6 @@ bool AMDISATargetMachine::addPassesToEmitFile(PassManagerBase &PM,
                                                  *getRegisterInfo(),
                                      (MCObjectFileInfo*)&getTargetLowering()->getObjFileLowering());
   PM.add(MMI);
-  MCContext &OutContext = MMI->getContext(); // Return the MCContext specifically by-ref.
 
   // Set up a MachineFunction for the rest of CodeGen to work on.
   PM.add(new MachineFunctionAnalysis(*this, OptLevel));

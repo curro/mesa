@@ -317,7 +317,7 @@ AMDILPeepholeOpt::doAtomicConversionIfNeeded(Function &F)
   // arena path.
   Function::arg_iterator argB = F.arg_begin();
   Function::arg_iterator argE = F.arg_end();
-  AMDILKernelManager *KM = (AMDILKernelManager *) mSTM->getKernelManager();
+  AMDILKernelManager *KM = mSTM->getKernelManager();
   AMDILMachineFunctionInfo *mMFI = getAnalysis<MachineFunctionAnalysis>().getMF()
     .getInfo<AMDILMachineFunctionInfo>();
   for (; argB != argE; ++argB) {
@@ -346,7 +346,7 @@ AMDILPeepholeOpt::runOnFunction(Function &MF)
     for (Function::const_arg_iterator cab = MF.arg_begin(),
          cae = MF.arg_end(); cab != cae; ++cab) {
       const Argument *arg = cab;
-      AMDILKernelManager *KM = (AMDILKernelManager *)mSTM->getKernelManager();
+      AMDILKernelManager *KM = mSTM->getKernelManager();
       KM->setUAVID(getBasePointerValue(arg),
           mSTM->device()->getResourceID(AMDILDevice::GLOBAL_ID));
     }
@@ -513,7 +513,7 @@ AMDILPeepholeOpt::optimizeCallInst(BasicBlock::iterator *bbb)
     const Value *basePtr = getBasePointerValue(ptr);
     const Argument *Arg = dyn_cast<Argument>(basePtr);
     if (Arg) {
-      AMDILGlobalManager *GM = (AMDILGlobalManager*)mSTM->getGlobalManager();
+      AMDILGlobalManager *GM = mSTM->getGlobalManager();
       int32_t id = GM->getArgID(Arg);
       if (id >= 0) {
         std::stringstream ss;

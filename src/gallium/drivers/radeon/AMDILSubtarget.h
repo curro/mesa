@@ -73,8 +73,8 @@ namespace llvm {
   class AMDILSubtarget : public AMDILGenSubtargetInfo {
     private:
       bool CapsOverride[AMDILDeviceInfo::MaxNumberCapabilities];
-      mutable const AMDILGlobalManager *mGM;
-      mutable const AMDILKernelManager *mKM;
+      mutable AMDILGlobalManager *mGM;
+      mutable AMDILKernelManager *mKM;
       const AMDILDevice *mDevice;
       size_t mDefaultSize[3];
       size_t mMinimumSize[3];
@@ -90,10 +90,10 @@ namespace llvm {
 
       // Helper functions to simplify if statements
       bool isTargetELF() const;
-      const AMDILGlobalManager* getGlobalManager() const;
-      void setGlobalManager(const AMDILGlobalManager *gm) const;
-      const AMDILKernelManager* getKernelManager() const;
-      void setKernelManager(const AMDILKernelManager *gm) const;
+      AMDILGlobalManager* getGlobalManager() const;
+      void setGlobalManager(AMDILGlobalManager *gm) const;
+      AMDILKernelManager* getKernelManager() const;
+      void setKernelManager(AMDILKernelManager *gm) const;
       const AMDILDevice* device() const;
       std::string getDataLayout() const;
       std::string getDeviceName() const;
