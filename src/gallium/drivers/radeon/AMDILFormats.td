@@ -58,15 +58,14 @@ include "AMDILTokenDesc.td"
 //===--------------------------------------------------------------------===//
 class ILFormat<ILOpCode op, dag outs, dag ins, string asmstr, list<dag> pattern>
 : Instruction {
-     field bits<32> Inst;
 
-     let Inst = 0xffffffff;
      let Namespace = "AMDIL";
      dag OutOperandList = outs;
      dag InOperandList = ins;
      ILOpCode operation = op;
      let Pattern = pattern;
      let AsmString = !strconcat(asmstr, "\n");
+     let isPseudo = 1;
      bit hasIEEEFlag = 0;
      bit hasZeroOpFlag = 0;
 }

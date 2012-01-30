@@ -542,10 +542,6 @@ void R600CodeEmitter::emitFCInstr(MachineInstr &MI)
 
 unsigned int R600CodeEmitter::getHWInst(const MachineInstr &MI)
 {
-  unsigned hwInst = getBinaryCodeForInstr(MI);
-  if (hwInst != 0xffffffff) {
-    return hwInst;
-  }
 
   /* XXX: Lower these to MOV before the code emitter. */
   switch (MI.getOpcode()) {
@@ -566,9 +562,7 @@ unsigned int R600CodeEmitter::getHWInst(const MachineInstr &MI)
       return 0x19;
 
   default:
-    fprintf(stderr, "Unhandled opcode: %s\n", MI.getDesc().getName());
-    abort();
-    return 0;
+    return getBinaryCodeForInstr(MI);
   }
 }
 
