@@ -25,6 +25,8 @@
  */
 
 include "AMDIL.td"
+include "R600Schedule.td"
+include "Processors.td"
 include "AMDISAIntrinsics.td"
 include "AMDISARegisterInfo.td"
 include "AMDISAInstructions.td"

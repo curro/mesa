@@ -27,7 +27,8 @@
 
 include "R600Intrinsics.td"
 
-class InstR600 <bits<32> inst, dag outs, dag ins, string asm, list<dag> pattern>
+class InstR600 <bits<32> inst, dag outs, dag ins, string asm, list<dag> pattern,
+                InstrItinClass itin>
     : AMDISAInst <outs, ins, asm, pattern> {
 
   field bits<32> Inst;
@@ -40,51 +41,63 @@ class InstR600 <bits<32> inst, dag outs, dag ins, string asm, list<dag> pattern>
   let InOperandList = ins;
   let AsmString = asm;
   let Pattern = pattern;
+  let Itinerary = itin;
 
   let TSFlags{4} = Trig;
   let TSFlags{5} = Op3;
 }
 
-class R600_1OP <bits<32> inst, string opName, list<dag> pattern> :
+class R600_1OP <bits<32> inst, string opName, list<dag> pattern,
+                InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg32:$dst),
           (ins R600_Reg32:$src),
           !strconcat(opName, " $dst, $src"),
-          pattern
+          pattern,
+          itin
   >;
 
-class R600_2OP <bits<32> inst, string opName, list<dag> pattern> :
+class R600_2OP <bits<32> inst, string opName, list<dag> pattern,
+                InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg32:$dst),
           (ins R600_Reg32:$src0, R600_Reg32:$src1),
           !strconcat(opName, " $dst, $src0, $src1"),
-          pattern
+          pattern,
+          itin
   >;
 
-class R600_3OP <bits<32> inst, string opName, list<dag> pattern> :
+class R600_3OP <bits<32> inst, string opName, list<dag> pattern,
+                InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg32:$dst),
           (ins R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2),
           !strconcat(opName, "$dst $src0, $src1, $src2"),
-          pattern>{
+          pattern,
+          itin>{
 
     let Op3 = 1;
   }
 
-class R600_REDUCTION <bits<32> inst, dag ins, string asm, list<dag> pattern> :
+class R600_REDUCTION <bits<32> inst, dag ins, string asm, list<dag> pattern,
+                      InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg32:$dst),
           ins,
           asm,
-          pattern
+          pattern,
+          itin
+
   >;
 
-class R600_TEX <bits<32> inst, string opName, list<dag> pattern> :
+class R600_TEX <bits<32> inst, string opName, list<dag> pattern,
+                InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs REPL:$dst),
           (ins REPL:$src0, i32imm:$src1, i32imm:$src2),
           !strconcat(opName, "$dst, $src0, $src1, $src2"),
-          pattern
+          pattern,
+          itin
   >;
 
 def TEX_SHADOW : PatLeaf<
