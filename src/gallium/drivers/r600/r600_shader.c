@@ -1012,11 +1012,10 @@ static int r600_shader_from_tgsi(struct r600_context * rctx, struct r600_pipe_sh
 	unsigned opcode;
 	int i, j, k, r = 0;
 	int next_pixel_base = 0, next_pos_base = 60, next_param_base = 0;
-	struct radeon_llvm_context radeon_llvm_ctx;
-	LLVMModuleRef mod;
+	/* Declarations used by llvm code */
+	unsigned use_llvm;
 	unsigned char * inst_bytes;
 	unsigned inst_byte_count;
-	unsigned use_llvm;
 
 	ctx.bc = &shader->bc;
 	ctx.shader = shader;
@@ -1040,18 +1039,6 @@ static int r600_shader_from_tgsi(struct r600_context * rctx, struct r600_pipe_sh
 				&& debug_get_bool_option("R600_LLVM_FS", TRUE))
 			|| (ctx.type == TGSI_PROCESSOR_VERTEX
 				&& debug_get_bool_option("R600_LLVM_VS", TRUE));
-#if HAVE_LLVM != 0x0300
-	if (use_llvm) {
-		fprintf(stderr, "Warning: R600 LLVM backend requires LLVM v3.0\n");
-		use_llvm = 0;
-	}
-#endif
-	if (use_llvm && ctx.info.indirect_files) {
-		fprintf(stderr, "Warning: R600 LLVM backend does not support "
-				"indirect adressing.  Falling back to TGSI "
-				"backend.\n");
-		use_llvm = 0;
-	}
 
 	/* register allocations */
 	/* Values [0,127] correspond to GPR[0..127].
@@ -1089,14 +1076,27 @@ static int r600_shader_from_tgsi(struct r600_context * rctx, struct r600_pipe_sh
 		ctx.file_offset[TGSI_FILE_INPUT] = evergreen_gpr_count(&ctx);
 	}
 
+#if HAVE_LLVM != 0x0300
 	if (use_llvm) {
+		fprintf(stderr, "Warning: R600 LLVM backend requires LLVM v3.0\n");
+		use_llvm = 0;
+	}
+#else
+	if (use_llvm && ctx.info.indirect_files) {
+		fprintf(stderr, "Warning: R600 LLVM backend does not support "
+				"indirect adressing.  Falling back to TGSI "
+				"backend.\n");
+		use_llvm = 0;
+	}
+	if (use_llvm) {
+		struct radeon_llvm_context radeon_llvm_ctx;
+		LLVMModuleRef mod;
 		unsigned dump = 0;
 		memset(&radeon_llvm_ctx, 0, sizeof(radeon_llvm_ctx));
 		radeon_llvm_ctx.reserved_reg_count = ctx.file_offset[TGSI_FILE_INPUT];
 		mod = r600_tgsi_llvm(&radeon_llvm_ctx, tokens);
 		if (debug_get_bool_option("R600_DUMP_SHADERS", FALSE)) {
 			dump = 1;
-			LLVMDumpModule(mod);
 		}
 		if (r600_llvm_compile(mod, &inst_bytes, &inst_byte_count,
 							rctx->family, dump)) {
@@ -1109,7 +1109,9 @@ static int r600_shader_from_tgsi(struct r600_context * rctx, struct r600_pipe_sh
 			ctx.file_offset[TGSI_FILE_OUTPUT] =
 					ctx.file_offset[TGSI_FILE_INPUT];
 		}
+		radeon_llvm_dispose(&radeon_llvm_ctx);
 	}
+#endif
 
 	if (!use_llvm) {
 		ctx.file_offset[TGSI_FILE_OUTPUT] =
@@ -1216,40 +1218,41 @@ static int r600_shader_from_tgsi(struct r600_context * rctx, struct r600_pipe_sh
 		tgsi_parse_token(&ctx.parse);
 		switch (ctx.parse.FullToken.Token.Type) {
 		case TGSI_TOKEN_TYPE_INSTRUCTION:
-			if (!use_llvm) {
-				r = tgsi_is_supported(&ctx);
-				if (r)
-					goto out_err;
-				ctx.max_driver_temp_used = 0;
-				/* reserve first tmp for everyone */
-				r600_get_temp(&ctx);
-
-				opcode = ctx.parse.FullToken.FullInstruction.Instruction.Opcode;
-				if ((r = tgsi_split_constant(&ctx)))
-					goto out_err;
-				if ((r = tgsi_split_literal_constant(&ctx)))
-					goto out_err;
-				if (ctx.bc->chip_class == CAYMAN)
-					ctx.inst_info = &cm_shader_tgsi_instruction[opcode];
-				else if (ctx.bc->chip_class >= EVERGREEN)
-					ctx.inst_info = &eg_shader_tgsi_instruction[opcode];
-				else
-					ctx.inst_info = &r600_shader_tgsi_instruction[opcode];
-				r = ctx.inst_info->process(&ctx);
-				if (r)
-					goto out_err;
+			if (use_llvm) {
+				continue;
 			}
+			r = tgsi_is_supported(&ctx);
+			if (r)
+				goto out_err;
+			ctx.max_driver_temp_used = 0;
+			/* reserve first tmp for everyone */
+			r600_get_temp(&ctx);
+				opcode = ctx.parse.FullToken.FullInstruction.Instruction.Opcode;
+			if ((r = tgsi_split_constant(&ctx)))
+				goto out_err;
+			if ((r = tgsi_split_literal_constant(&ctx)))
+				goto out_err;
+			if (ctx.bc->chip_class == CAYMAN)
+				ctx.inst_info = &cm_shader_tgsi_instruction[opcode];
+			else if (ctx.bc->chip_class >= EVERGREEN)
+				ctx.inst_info = &eg_shader_tgsi_instruction[opcode];
+			else
+				ctx.inst_info = &r600_shader_tgsi_instruction[opcode];
+			r = ctx.inst_info->process(&ctx);
+			if (r)
+				goto out_err;
 			break;
 		default:
 			break;
 		}
 	}
+
 	/* Get instructions */
 	if (use_llvm) {
 		r600_bytecode_from_byte_stream(&ctx, inst_bytes, inst_byte_count);
 		FREE(inst_bytes);
-		radeon_llvm_dispose(&radeon_llvm_ctx);
 	}
+
 	noutput = shader->noutput;
 
 	if (ctx.clip_vertex_write) {

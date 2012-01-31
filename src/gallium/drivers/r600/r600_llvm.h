@@ -2,6 +2,8 @@
 #ifndef R600_LLVM_H
 #define R600_LLVM_H
 
+#if HAVE_LLVM == 0x300
+
 #include <llvm-c/Core.h>
 
 #include "gallivm/lp_bld_tgsi.h"
@@ -21,5 +23,6 @@ unsigned r600_llvm_compile(
 	enum radeon_family family,
 	unsigned dump);
 
+#endif /* HAVE_LLVM == 0x300 */
 
 #endif /* R600_LLVM_H */

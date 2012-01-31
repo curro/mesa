@@ -107,6 +107,7 @@ radeon_llvm_compile(LLVMModuleRef M, unsigned char ** bytes,
    TargetMachine &AMDISATargetMachine = *tm;
    /* XXX: Use TargetMachine.Options in 3.0 */
    if (dump) {
+      mod->dump();
       tm->dumpCode();
    }
 #endif

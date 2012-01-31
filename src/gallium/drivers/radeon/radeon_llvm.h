@@ -27,6 +27,8 @@
 #ifndef LLVM_GPU_H
 #define LLVM_GPU_H
 
+#if HAVE_LLVM == 0x300
+
 #include <llvm-c/Core.h>
 #include "gallivm/lp_bld_init.h"
 #include "gallivm/lp_bld_tgsi.h"
@@ -131,6 +133,9 @@ unsigned radeon_llvm_reg_index_soa(unsigned index, unsigned chan);
 void radeon_llvm_finalize_module(struct radeon_llvm_context * ctx);
 
 #ifdef __cplusplus
-}
+} /* Extern "C" */
 #endif
+
+#endif /* HAVE_LLVM = 0x300 */
+
 #endif /* LLVM_GPU_H */

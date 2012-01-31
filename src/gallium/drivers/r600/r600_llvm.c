@@ -1,4 +1,6 @@
 
+#if HAVE_LLVM == 0x300
+
 #include "r600_llvm.h"
 
 #include "gallivm/lp_bld_const.h"
@@ -312,3 +314,5 @@ unsigned r600_llvm_compile(
 	return radeon_llvm_compile(mod, inst_bytes, inst_byte_count,
 							gpu_family, dump);
 }
+
+#endif /* HAVE_LLVM == 0x300 */
