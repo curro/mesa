@@ -27,7 +27,7 @@
 #ifndef LLVM_GPU_H
 #define LLVM_GPU_H
 
-#if HAVE_LLVM == 0x300
+#if HAVE_LLVM >= 0x300
 
 #include <llvm-c/Core.h>
 #include "gallivm/lp_bld_init.h"

@@ -19,7 +19,6 @@ CPP_SOURCES := \
 	AMDIL7XXDevice.cpp		\
 	AMDIL7XXIOExpansion.cpp		\
 	AMDIL789IOExpansion.cpp		\
-	AMDILAsmBackend.cpp		\
 	AMDILBarrierDetect.cpp		\
 	AMDILCFGStructurizer.cpp	\
 	AMDILDevice.cpp			\

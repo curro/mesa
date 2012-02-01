@@ -100,7 +100,7 @@ namespace llvm {
       bool runOnMachineFunction(MachineFunction &MF);
       static char ID;
     protected:
-      AMDILIOExpansion(TargetMachine &tm, CodeGenOpt::Level OptLevel);
+      AMDILIOExpansion(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
       //
       // @param MI Machine instruction to check.
       // @brief checks to see if the machine instruction
@@ -205,7 +205,7 @@ namespace llvm {
       virtual ~AMDIL789IOExpansion();
       virtual const char* getPassName() const;
     protected:
-      AMDIL789IOExpansion(TargetMachine &tm, CodeGenOpt::Level OptLevel);
+      AMDIL789IOExpansion(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
        virtual void
         expandGlobalStore(MachineInstr *MI) = 0;
       virtual void
@@ -241,7 +241,7 @@ namespace llvm {
   // Class that handles I/O emission for the 7XX family of devices.
   class AMDIL7XXIOExpansion : public AMDIL789IOExpansion {
     public:
-      AMDIL7XXIOExpansion(TargetMachine &tm, CodeGenOpt::Level OptLevel);
+      AMDIL7XXIOExpansion(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
 
       ~AMDIL7XXIOExpansion();
       const char* getPassName() const;
@@ -264,7 +264,7 @@ namespace llvm {
   // correct set of I/O instructions.
   class AMDILImageExpansion : public AMDIL789IOExpansion {
     public:
-      AMDILImageExpansion(TargetMachine &tm, CodeGenOpt::Level OptLevel);
+      AMDILImageExpansion(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
 
       virtual ~AMDILImageExpansion();
     protected:
@@ -321,7 +321,7 @@ namespace llvm {
   // Island family of devices.
   class AMDILEGIOExpansion : public AMDILImageExpansion  {
     public:
-      AMDILEGIOExpansion(TargetMachine &tm, CodeGenOpt::Level OptLevel);
+      AMDILEGIOExpansion(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
 
       virtual ~AMDILEGIOExpansion();
       const char* getPassName() const;

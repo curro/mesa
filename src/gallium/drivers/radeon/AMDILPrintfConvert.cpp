@@ -78,7 +78,7 @@ namespace
         public:
             TargetMachine &TM;
             static char ID;
-            AMDILPrintfConvert(TargetMachine &tm, CodeGenOpt::Level OL);
+            AMDILPrintfConvert(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
             ~AMDILPrintfConvert();
             const char* getPassName() const;
             bool runOnFunction(Function &F);
@@ -99,12 +99,12 @@ namespace
 namespace llvm
 {
     FunctionPass*
-        createAMDILPrintfConvert(TargetMachine &tm, CodeGenOpt::Level OL)
+        createAMDILPrintfConvert(TargetMachine &tm AMDIL_OPT_LEVEL_DECL)
         {
-            return new AMDILPrintfConvert(tm, OL);
+            return new AMDILPrintfConvert(tm AMDIL_OPT_LEVEL_VAR);
         }
 } // llvm namespace
-AMDILPrintfConvert::AMDILPrintfConvert(TargetMachine &tm, CodeGenOpt::Level OL)
+AMDILPrintfConvert::AMDILPrintfConvert(TargetMachine &tm AMDIL_OPT_LEVEL_DECL)
 #if LLVM_VERSION >= 2500
     : FunctionPass(ID), TM(tm)
 #else

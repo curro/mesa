@@ -121,6 +121,16 @@
 /// internal compiler usage.
 const unsigned int RESERVED_FUNCS = 1024;
 
+#if LLVM_VERSION <= 3000
+#define AMDIL_OPT_LEVEL_DECL ,CodeGenOpt::Level OptLevel
+#define  AMDIL_OPT_LEVEL_VAR ,OptLevel
+#define AMDIL_OPT_LEVEL_VAR_NO_COMMA OptLevel
+#else
+#define AMDIL_OPT_LEVEL_DECL
+#define  AMDIL_OPT_LEVEL_VAR
+#define AMDIL_OPT_LEVEL_VAR_NO_COMMA
+#endif
+
 namespace llvm {
 class AMDILInstrPrinter;
 class AMDILTargetMachine;
@@ -132,33 +142,33 @@ class TargetMachine;
 
 /// Instruction selection passes.
 FunctionPass*
-  createAMDILISelDag(AMDILTargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILISelDag(AMDILTargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 FunctionPass*
-  createAMDILBarrierDetect(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILBarrierDetect(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 FunctionPass*
-  createAMDILPrintfConvert(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILPrintfConvert(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 FunctionPass*
-  createAMDILInlinePass(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILInlinePass(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 FunctionPass*
-  createAMDILPeepholeOpt(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILPeepholeOpt(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 
 /// Pre regalloc passes.
 FunctionPass*
-  createAMDILPointerManager(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILPointerManager(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 FunctionPass*
-  createAMDILMachinePeephole(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILMachinePeephole(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 
 /// Pre emit passes.
 FunctionPass*
-  createAMDILCFGPreparationPass(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILCFGPreparationPass(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 FunctionPass*
-  createAMDILCFGStructurizerPass(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILCFGStructurizerPass(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 FunctionPass*
-  createAMDILLiteralManager(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILLiteralManager(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 FunctionPass*
-  createAMDILIOExpansion(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILIOExpansion(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 FunctionPass*
-  createAMDILSwizzleEncoder(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+  createAMDILSwizzleEncoder(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 
 /// Instruction Emission Passes
 AMDILInstPrinter *createAMDILInstPrinter(const MCAsmInfo &MAI);

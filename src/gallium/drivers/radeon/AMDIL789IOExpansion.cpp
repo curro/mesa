@@ -69,9 +69,9 @@
 #include <cstdio>
 
 using namespace llvm;
-AMDIL789IOExpansion::AMDIL789IOExpansion(TargetMachine &tm,
-    CodeGenOpt::Level OptLevel) 
-: AMDILIOExpansion(tm, OptLevel)
+AMDIL789IOExpansion::AMDIL789IOExpansion(TargetMachine &tm
+    AMDIL_OPT_LEVEL_DECL) 
+: AMDILIOExpansion(tm  AMDIL_OPT_LEVEL_VAR)
 {
 }
 
@@ -93,25 +93,26 @@ void
 AMDIL789IOExpansion::emitComponentExtract(MachineInstr *MI, 
     unsigned flag, unsigned src, unsigned dst, bool before)
 {
+  MachineBasicBlock::iterator I = *MI;
   DebugLoc DL = MI->getDebugLoc();
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
     .addReg(src)
     .addImm(2);
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_Y_i32), AMDIL::R1007)
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_Y_i32), AMDIL::R1007)
     .addReg(flag)
     .addReg(AMDIL::R1007)
     .addReg(src);
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1006)
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1006)
     .addReg(src)
     .addImm(3);
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_Z_i32), AMDIL::R1007)
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_Z_i32), AMDIL::R1007)
     .addReg(flag)
     .addReg(AMDIL::R1006)
     .addReg(AMDIL::R1007);
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1006)
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1006)
     .addReg(src)
     .addImm(4);
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_W_i32), dst)
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_W_i32), dst)
     .addReg(flag)
     .addReg(AMDIL::R1006)
     .addReg(AMDIL::R1007);
@@ -125,6 +126,7 @@ AMDIL789IOExpansion::emitComponentExtract(MachineInstr *MI,
   void
 AMDIL789IOExpansion::emitDataLoadSelect(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   DebugLoc DL = MI->getDebugLoc();
   emitComponentExtract(MI, AMDIL::R1008, AMDIL::R1011, AMDIL::R1011, false);
   if (getMemorySize(MI) == 1) {
@@ -141,21 +143,21 @@ AMDIL789IOExpansion::emitDataLoadSelect(MachineInstr *MI)
     // cmov_logical r1007.x___, r1008.zzzz, r1006.xxxx, r1007.xxxx
     // mov r1006, r1011.w000
     // cmov_logical r1011.x___, r1008.wwww, r1006.xxxx, r1007.xxxx
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1006)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1006)
       .addReg(AMDIL::R1010)
       .addImm(mMFI->addi32Literal(3));
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1006)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1006)
       .addReg(AMDIL::R1006);
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1006)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1006)
       .addReg(AMDIL::R1006)
       .addImm(mMFI->addi128Literal(0xFFFFFFFFULL << 32, 
             (0xFFFFFFFEULL | (0xFFFFFFFDULL << 32))));
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::IEQ_v4i32), AMDIL::R1008)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::IEQ_v4i32), AMDIL::R1008)
       .addReg(AMDIL::R1006)
       .addImm(mMFI->addi32Literal(0));
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1011)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1011)
       .addReg(AMDIL::R1011);
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHRVEC_v4i32), AMDIL::R1011)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHRVEC_v4i32), AMDIL::R1011)
       .addReg(AMDIL::R1011)
       .addImm(mMFI->addi128Literal(8ULL << 32, 16ULL | (24ULL << 32)));
     emitComponentExtract(MI, AMDIL::R1008, AMDIL::R1011, AMDIL::R1011, false);
@@ -165,16 +167,16 @@ AMDIL789IOExpansion::emitDataLoadSelect(MachineInstr *MI)
     // iand r1008.x___, r1007.xxxx, 1
     // ishr r1007.x___, r1011.xxxx, 16
     // cmov_logical r1011.x___, r1008.xxxx, r1007.xxxx, r1011.xxxx
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1007)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1007)
       .addReg(AMDIL::R1010)
       .addImm(mMFI->addi32Literal(1));
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
       .addReg(AMDIL::R1007)
       .addImm(mMFI->addi32Literal(1));
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1007)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1007)
       .addReg(AMDIL::R1011)
       .addImm(mMFI->addi32Literal(16));
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1011)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1011)
       .addReg(AMDIL::R1008)
       .addReg(AMDIL::R1007)
       .addReg(AMDIL::R1011);
@@ -185,18 +187,19 @@ AMDIL789IOExpansion::emitDataLoadSelect(MachineInstr *MI)
   void 
 AMDIL789IOExpansion::emitVectorAddressCalc(MachineInstr *MI, bool is32bit, bool needsSelect)
 {
+  MachineBasicBlock::iterator I = *MI;
   DebugLoc DL = MI->getDebugLoc();
   // This produces the following pseudo-IL:
   // ishr r1007.x___, r1010.xxxx, (is32bit) ? 2 : 3
   // iand r1008.x___, r1007.xxxx, (is32bit) ? 3 : 1
   // ishr r1007.x___, r1007.xxxx, (is32bit) ? 2 : 1
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1007)
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1007)
     .addReg(AMDIL::R1010)
     .addImm(mMFI->addi32Literal((is32bit) ? 0x2 : 3));
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
     .addReg(AMDIL::R1007)
     .addImm(mMFI->addi32Literal((is32bit) ? 3 : 1));
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1007)
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1007)
     .addReg(AMDIL::R1007)
     .addImm(mMFI->addi32Literal((is32bit) ? 2 : 1));
   if (needsSelect) {
@@ -205,14 +208,14 @@ AMDIL789IOExpansion::emitVectorAddressCalc(MachineInstr *MI, bool is32bit, bool 
     // mov r1008, r1008.xxxx
     // iadd r1008, r1008, (is32bit) ? {0, -1, -2, -3} : {0, 0, -1, -1}
     // ieq r1008, r1008, 0
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1008)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1008)
       .addReg(AMDIL::R1008);
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1008)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1008)
       .addReg(AMDIL::R1008)
       .addImm(mMFI->addi128Literal((is32bit) ? 0xFFFFFFFFULL << 32 : 0ULL,  
             (is32bit) ? 0xFFFFFFFEULL | (0xFFFFFFFDULL << 32) :
             -1ULL));
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::IEQ_v4i32), AMDIL::R1008)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::IEQ_v4i32), AMDIL::R1008)
       .addReg(AMDIL::R1008)
       .addImm(mMFI->addi32Literal(0));
   }
@@ -222,6 +225,7 @@ AMDIL789IOExpansion::emitVectorAddressCalc(MachineInstr *MI, bool is32bit, bool 
   void
 AMDIL789IOExpansion::emitVectorSwitchWrite(MachineInstr *MI, bool is32bit) 
 {
+  MachineBasicBlock::iterator I = *MI;
   uint32_t xID = getPointerID(MI);
   assert(xID && "Found a scratch store that was incorrectly marked as zero ID!\n");
   // This section generates the following pseudo-IL:
@@ -241,41 +245,42 @@ AMDIL789IOExpansion::emitVectorSwitchWrite(MachineInstr *MI, bool is32bit)
   // break
   // endswitch
   DebugLoc DL;
-  BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::SWITCH))
+  BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::SWITCH))
     .addReg(AMDIL::R1008);
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::DEFAULT));
-  BuildMI(*mBB, *MI, DL,
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::DEFAULT));
+  BuildMI(*mBB, I, DL,
       mTII->get((is32bit) ? AMDIL::SCRATCHSTORE_X : AMDIL::SCRATCHSTORE_XY)
       , AMDIL::R1007)
     .addReg(AMDIL::R1011)
     .addImm(xID);
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BREAK));
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CASE)).addImm(1);
-  BuildMI(*mBB, *MI, DL,
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::BREAK));
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::CASE)).addImm(1);
+  BuildMI(*mBB, I, DL,
       mTII->get((is32bit) ? AMDIL::SCRATCHSTORE_Y : AMDIL::SCRATCHSTORE_ZW), AMDIL::R1007)
     .addReg(AMDIL::R1011)
     .addImm(xID);
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BREAK));
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::BREAK));
   if (is32bit) {
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CASE)).addImm(2);
-    BuildMI(*mBB, *MI, DL,
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::CASE)).addImm(2);
+    BuildMI(*mBB, I, DL,
         mTII->get(AMDIL::SCRATCHSTORE_Z), AMDIL::R1007)
       .addReg(AMDIL::R1011)
       .addImm(xID);
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BREAK));
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CASE)).addImm(3);
-    BuildMI(*mBB, *MI, DL,
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::BREAK));
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::CASE)).addImm(3);
+    BuildMI(*mBB, I, DL,
         mTII->get(AMDIL::SCRATCHSTORE_W), AMDIL::R1007)
       .addReg(AMDIL::R1011)
       .addImm(xID);
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BREAK));
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::BREAK));
   }
-  BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ENDSWITCH));
+  BuildMI(*mBB, I, DL, mTII->get(AMDIL::ENDSWITCH));
 
 }
   void
 AMDIL789IOExpansion::expandPrivateLoad(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   bool HWPrivate = mSTM->device()->usesHardware(AMDILDeviceInfo::PrivateMem);
   if (!HWPrivate || mSTM->device()->isSupported(AMDILDeviceInfo::PrivateUAV)) {
     return expandGlobalLoad(MI);
@@ -300,11 +305,11 @@ AMDIL789IOExpansion::expandPrivateLoad(MachineInstr *MI)
       // This produces the following pseudo-IL:
       // ishr r1010.x___, r1010.xxxx, 4
 	    // mov r1011, x1[r1010.x]
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::SHR_i32), AMDIL::R1010)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi32Literal(4));
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::SCRATCHLOAD), AMDIL::R1011)
         .addReg(AMDIL::R1010)
         .addImm(xID);
@@ -315,7 +320,7 @@ AMDIL789IOExpansion::expandPrivateLoad(MachineInstr *MI)
       emitVectorAddressCalc(MI, true, true);
       // This produces the following pseudo-IL:
       // mov r1011, x1[r1007.x]
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::SCRATCHLOAD), AMDIL::R1011)
         .addReg(AMDIL::R1007)
         .addImm(xID);
@@ -328,16 +333,16 @@ AMDIL789IOExpansion::expandPrivateLoad(MachineInstr *MI)
       // mov r1011, x1[r1007.x]
       // mov r1007, r1011.zw00
       // cmov_logical r1011.xy__, r1008.xxxx, r1011.xy, r1007.zw
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::SCRATCHLOAD), AMDIL::R1011)
         .addReg(AMDIL::R1007)
         .addImm(xID);
       // These instructions go after the current MI.
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::VEXTRACT_v2i64), AMDIL::R1007)
         .addReg(AMDIL::R1011)
         .addImm(2);
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::CMOVLOG_i64), AMDIL::R1011)
         .addReg(AMDIL::R1008)
         .addReg(AMDIL::R1011)
@@ -346,7 +351,7 @@ AMDIL789IOExpansion::expandPrivateLoad(MachineInstr *MI)
   }
   expandPackedData(MI);
   expandExtendLoad(MI);
-  BuildMI(*mBB, *MI, MI->getDebugLoc(),
+  BuildMI(*mBB, I, MI->getDebugLoc(),
       mTII->get(getMoveInstFromID(
           MI->getDesc().OpInfo[0].RegClass)),
       MI->getOperand(0).getReg())
@@ -357,6 +362,7 @@ AMDIL789IOExpansion::expandPrivateLoad(MachineInstr *MI)
   void
 AMDIL789IOExpansion::expandConstantLoad(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   if (!isHardwareInst(MI) || MI->memoperands_empty()) {
     return expandGlobalLoad(MI);
   }
@@ -374,11 +380,11 @@ AMDIL789IOExpansion::expandConstantLoad(MachineInstr *MI)
   expandLoadStartCode(MI);
   switch (getMemorySize(MI)) {
     default:
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::SHR_i32), AMDIL::R1010)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi32Literal(4));
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::CBLOAD), AMDIL::R1011)
         .addReg(AMDIL::R1010)
         .addImm(cID);
@@ -387,7 +393,7 @@ AMDIL789IOExpansion::expandConstantLoad(MachineInstr *MI)
     case 2:
     case 4:
       emitVectorAddressCalc(MI, true, true);
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::CBLOAD), AMDIL::R1011)
         .addReg(AMDIL::R1007)
         .addImm(cID);
@@ -396,19 +402,19 @@ AMDIL789IOExpansion::expandConstantLoad(MachineInstr *MI)
       break;
     case 8:
       emitVectorAddressCalc(MI, false, true);
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::CBLOAD), AMDIL::R1011)
         .addReg(AMDIL::R1007)
         .addImm(cID);
       // These instructions go after the current MI.
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::VEXTRACT_v2i64), AMDIL::R1007)
         .addReg(AMDIL::R1011)
         .addImm(2);
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::VCREATE_v2i32), AMDIL::R1008)
         .addReg(AMDIL::R1008);
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::CMOVLOG_i64), AMDIL::R1011)
         .addReg(AMDIL::R1008)
         .addReg(AMDIL::R1011)
@@ -417,7 +423,7 @@ AMDIL789IOExpansion::expandConstantLoad(MachineInstr *MI)
   }
   expandPackedData(MI);
   expandExtendLoad(MI);
-  BuildMI(*mBB, *MI, MI->getDebugLoc(),
+  BuildMI(*mBB, I, MI->getDebugLoc(),
       mTII->get(getMoveInstFromID(
           MI->getDesc().OpInfo[0].RegClass)),
       MI->getOperand(0).getReg())
@@ -444,6 +450,7 @@ AMDIL789IOExpansion::expandConstantPoolLoad(MachineInstr *MI)
   void
 AMDIL789IOExpansion::expandPrivateStore(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   bool HWPrivate = mSTM->device()->usesHardware(AMDILDeviceInfo::PrivateMem);
   if (!HWPrivate || mSTM->device()->isSupported(AMDILDeviceInfo::PrivateUAV)) {
     return expandGlobalStore(MI);
@@ -466,11 +473,11 @@ AMDIL789IOExpansion::expandPrivateStore(MachineInstr *MI)
       // This section generates the following pseudo-IL:
       // ishr r1010.x___, r1010.xxxx, 4
 	    // mov x1[r1010.x], r1011
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::SHR_i32), AMDIL::R1010)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi32Literal(4));
-      BuildMI(*mBB, *MI, MI->getDebugLoc(),
+      BuildMI(*mBB, I, MI->getDebugLoc(),
           mTII->get(AMDIL::SCRATCHSTORE), AMDIL::R1010)
         .addReg(AMDIL::R1011)
         .addImm(xID);
@@ -479,7 +486,7 @@ AMDIL789IOExpansion::expandPrivateStore(MachineInstr *MI)
       emitVectorAddressCalc(MI, true, true);
       // This section generates the following pseudo-IL:
       // mov r1002, x1[r1007.x]
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::SCRATCHLOAD), AMDIL::R1002)
         .addReg(AMDIL::R1007)
         .addImm(xID);
@@ -493,26 +500,26 @@ AMDIL789IOExpansion::expandPrivateStore(MachineInstr *MI)
       // ishr r1002, r1002, {0, 8, 16, 24}
       // mov r1011, r1011.xxxx
       // cmov_logical r1002, r1000, r1011, r1002
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1003)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1003)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi32Literal(3));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1003)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1003)
         .addReg(AMDIL::R1003);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1001)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1001)
         .addReg(AMDIL::R1003)
         .addImm(mMFI->addi128Literal(0xFFFFFFFFULL << 32, 
               (0xFFFFFFFEULL | (0xFFFFFFFDULL << 32))));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::IEQ_v4i32), AMDIL::R1001)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::IEQ_v4i32), AMDIL::R1001)
         .addReg(AMDIL::R1001)
         .addImm(mMFI->addi32Literal(0));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1002)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1002)
         .addReg(AMDIL::R1002);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHRVEC_v4i32), AMDIL::R1002)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHRVEC_v4i32), AMDIL::R1002)
       .addReg(AMDIL::R1002)
       .addImm(mMFI->addi128Literal(8ULL << 32, 16ULL | (24ULL << 32)));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1011)
         .addReg(AMDIL::R1011);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_v4i32), AMDIL::R1002)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_v4i32), AMDIL::R1002)
         .addReg(AMDIL::R1001)
         .addReg(AMDIL::R1011)
         .addReg(AMDIL::R1002);
@@ -522,15 +529,15 @@ AMDIL789IOExpansion::expandPrivateStore(MachineInstr *MI)
         // ishl r1002, r1002, {0, 8, 16, 24}
         // ior r1002.xy, r1002.xy, r1002.zw
         // ior r1011.x, r1002.x, r1002.y
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_v4i32), AMDIL::R1002)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_v4i32), AMDIL::R1002)
           .addReg(AMDIL::R1002)
           .addImm(mMFI->addi32Literal(0xFF));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHL_v4i32), AMDIL::R1002)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHL_v4i32), AMDIL::R1002)
           .addReg(AMDIL::R1002)
           .addImm(mMFI->addi128Literal(8ULL << 32, 16ULL | (24ULL << 32)));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::HILO_BITOR_v2i64), AMDIL::R1002)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::HILO_BITOR_v2i64), AMDIL::R1002)
           .addReg(AMDIL::R1002).addReg(AMDIL::R1002);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::HILO_BITOR_v2i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::HILO_BITOR_v2i32), AMDIL::R1011)
           .addReg(AMDIL::R1002).addReg(AMDIL::R1002);
       } else {
         // This section generates the following pseudo-IL:
@@ -539,18 +546,18 @@ AMDIL789IOExpansion::expandPrivateStore(MachineInstr *MI)
         // ubit_insert r1002.xy, 8, 8, r1001.xy, r1002.xy
         // mov r1001.x, r1002.y
         // ubit_insert r1011.x, 16, 16, r1002.y, r1002.x
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LHI_v2i64), AMDIL::R1001)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LHI_v2i64), AMDIL::R1001)
           .addReg(AMDIL::R1002);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LLO_v2i64), AMDIL::R1002)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LLO_v2i64), AMDIL::R1002)
           .addReg(AMDIL::R1002);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UBIT_INSERT_v2i32), AMDIL::R1002)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UBIT_INSERT_v2i32), AMDIL::R1002)
           .addImm(mMFI->addi32Literal(8))
           .addImm(mMFI->addi32Literal(8))
           .addReg(AMDIL::R1001)
           .addReg(AMDIL::R1002);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LHI), AMDIL::R1001)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LHI), AMDIL::R1001)
           .addReg(AMDIL::R1002);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UBIT_INSERT_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UBIT_INSERT_i32), AMDIL::R1011)
           .addImm(mMFI->addi32Literal(16))
           .addImm(mMFI->addi32Literal(16))
           .addReg(AMDIL::R1001)
@@ -563,7 +570,7 @@ AMDIL789IOExpansion::expandPrivateStore(MachineInstr *MI)
       emitVectorAddressCalc(MI, true, true);
       // This section generates the following pseudo-IL:
       // mov r1002, x1[r1007.x]
-      BuildMI(*mBB, *MI, DL,
+      BuildMI(*mBB, I, DL,
           mTII->get(AMDIL::SCRATCHLOAD), AMDIL::R1002)
         .addReg(AMDIL::R1007)
         .addImm(xID);
@@ -574,20 +581,20 @@ AMDIL789IOExpansion::expandPrivateStore(MachineInstr *MI)
       // ishr r1001.x, r1002.x, 16
       // cmov_logical r1002.x, r1003.x, r1002.x, r1011.x
       // cmov_logical r1001.x, r1003.x, r1011.x, r1001.x
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1003)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1003)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi32Literal(1));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1003)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1003)
         .addReg(AMDIL::R1003)
         .addImm(mMFI->addi32Literal(1));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1001)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1001)
         .addReg(AMDIL::R1002)
         .addImm(mMFI->addi32Literal(16));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1002)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1002)
         .addReg(AMDIL::R1003)
         .addReg(AMDIL::R1002)
         .addReg(AMDIL::R1011);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1001)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1001)
         .addReg(AMDIL::R1003)
         .addReg(AMDIL::R1011)
         .addReg(AMDIL::R1001);
@@ -597,21 +604,21 @@ AMDIL789IOExpansion::expandPrivateStore(MachineInstr *MI)
         // iand r1001.x, r1001.x, 0xFFFF
         // ishl r1001.x, r1002.x, 16
         // ior r1011.x, r1002.x, r1001.x
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1002)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1002)
           .addReg(AMDIL::R1002)
           .addImm(mMFI->addi32Literal(0xFFFF));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1001)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1001)
           .addReg(AMDIL::R1001)
           .addImm(mMFI->addi32Literal(0xFFFF));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHL_i32), AMDIL::R1001)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHL_i32), AMDIL::R1001)
           .addReg(AMDIL::R1001)
           .addImm(mMFI->addi32Literal(16));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_OR_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_OR_i32), AMDIL::R1011)
           .addReg(AMDIL::R1002).addReg(AMDIL::R1001);
       } else {
         // This section generates the following pseudo-IL:
         // ubit_insert r1011.x, 16, 16, r1001.y, r1002.x
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UBIT_INSERT_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UBIT_INSERT_i32), AMDIL::R1011)
           .addImm(mMFI->addi32Literal(16))
           .addImm(mMFI->addi32Literal(16))
           .addReg(AMDIL::R1001)
@@ -633,23 +640,24 @@ AMDIL789IOExpansion::expandPrivateStore(MachineInstr *MI)
  void
 AMDIL789IOExpansion::expandStoreSetupCode(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   DebugLoc DL;
   if (MI->getOperand(0).isUndef()) {
-  BuildMI(*mBB, *MI, DL, mTII->get(getMoveInstFromID(
+  BuildMI(*mBB, I, DL, mTII->get(getMoveInstFromID(
           MI->getDesc().OpInfo[0].RegClass)), AMDIL::R1011)
       .addImm(mMFI->addi32Literal(0));
   } else {
-  BuildMI(*mBB, *MI, DL, mTII->get(getMoveInstFromID(
+  BuildMI(*mBB, I, DL, mTII->get(getMoveInstFromID(
           MI->getDesc().OpInfo[0].RegClass)), AMDIL::R1011)
       .addReg(MI->getOperand(0).getReg());
   }
   expandTruncData(MI);
   if (MI->getOperand(2).isReg()) {
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_i32), AMDIL::R1010)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_i32), AMDIL::R1010)
       .addReg(MI->getOperand(1).getReg())
       .addReg(MI->getOperand(2).getReg());
   } else {
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::MOVE_i32), AMDIL::R1010)
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::MOVE_i32), AMDIL::R1010)
       .addReg(MI->getOperand(1).getReg());
   }
   expandAddressCalc(MI);
@@ -660,6 +668,7 @@ AMDIL789IOExpansion::expandStoreSetupCode(MachineInstr *MI)
 void
 AMDIL789IOExpansion::expandPackedData(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   if (!isPackedData(MI)) {
     return;
   }
@@ -671,84 +680,84 @@ AMDIL789IOExpansion::expandPackedData(MachineInstr *MI)
       break;
     case PACK_V2I8:
       {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_v2i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_v2i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi64Literal(0xFFULL | (0xFFULL << 32)));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHL_v2i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHL_v2i32), AMDIL::R1011)
           .addReg(AMDIL::R1011).addImm(mMFI->addi64Literal(8ULL << 32));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::HILO_BITOR_v2i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::HILO_BITOR_v2i32), AMDIL::R1011)
           .addReg(AMDIL::R1011).addReg(AMDIL::R1011);
       }
       break;
     case PACK_V4I8:
       {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_v4i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_v4i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi32Literal(0xFF));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHL_v4i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHL_v4i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi128Literal(8ULL << 32, (16ULL | (24ULL << 32))));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::HILO_BITOR_v2i64), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::HILO_BITOR_v2i64), AMDIL::R1011)
           .addReg(AMDIL::R1011).addReg(AMDIL::R1011);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::HILO_BITOR_v2i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::HILO_BITOR_v2i32), AMDIL::R1011)
           .addReg(AMDIL::R1011).addReg(AMDIL::R1011);
       }
       break;
     case PACK_V2I16:
       {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_v2i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_v2i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi32Literal(0xFFFF));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHL_v2i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHL_v2i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi64Literal(16ULL << 32));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::HILO_BITOR_v2i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::HILO_BITOR_v2i32), AMDIL::R1011)
           .addReg(AMDIL::R1011).addReg(AMDIL::R1011);
       }
       break;
     case PACK_V4I16:
       {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_v4i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_v4i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi32Literal(0xFFFF));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHL_v4i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHL_v4i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi64Literal(16ULL << 32));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::HILO_BITOR_v4i16), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::HILO_BITOR_v4i16), AMDIL::R1011)
           .addReg(AMDIL::R1011).addReg(AMDIL::R1011);
       }
       break;
     case UNPACK_V2I8:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::USHRVEC_i32), AMDIL::R1012)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::USHRVEC_i32), AMDIL::R1012)
         .addReg(AMDIL::R1011)
         .addImm(mMFI->addi32Literal(8));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LCREATE), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::LCREATE), AMDIL::R1011)
         .addReg(AMDIL::R1011).addReg(AMDIL::R1012);
       break;
     case UNPACK_V4I8:
       {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i8), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i8), AMDIL::R1011)
           .addReg(AMDIL::R1011);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::USHRVEC_v4i8), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::USHRVEC_v4i8), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi128Literal(8ULL << 32, (16ULL | (24ULL << 32))));
       }
       break;
     case UNPACK_V2I16:
       {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::USHRVEC_i32), AMDIL::R1012)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::USHRVEC_i32), AMDIL::R1012)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi32Literal(16));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LCREATE), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LCREATE), AMDIL::R1011)
           .addReg(AMDIL::R1011).addReg(AMDIL::R1012);
       }
       break;
     case UNPACK_V4I16:
       {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::USHRVEC_v2i32), AMDIL::R1012)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::USHRVEC_v2i32), AMDIL::R1012)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi32Literal(16));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LCREATE_v2i64), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LCREATE_v2i64), AMDIL::R1011)
           .addReg(AMDIL::R1011).addReg(AMDIL::R1012);
       }
       break;

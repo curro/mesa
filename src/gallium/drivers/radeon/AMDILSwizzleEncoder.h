@@ -67,7 +67,7 @@ namespace llvm {
   class AMDILSwizzleEncoder : public MachineFunctionPass
   {
     public:
-      AMDILSwizzleEncoder(TargetMachine &tm, CodeGenOpt::Level OptLevel);
+      AMDILSwizzleEncoder(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
       const char* getPassName() const;
       bool runOnMachineFunction(MachineFunction &MF);
       static char ID;

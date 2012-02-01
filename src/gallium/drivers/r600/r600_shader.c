@@ -1078,7 +1078,7 @@ static int r600_shader_from_tgsi(struct r600_context * rctx, struct r600_pipe_sh
 		ctx.file_offset[TGSI_FILE_INPUT] = evergreen_gpr_count(&ctx);
 	}
 
-#if HAVE_LLVM != 0x0300
+#if HAVE_LLVM < 0x0300
 	if (use_llvm) {
 		fprintf(stderr, "Warning: R600 LLVM backend requires LLVM v3.0\n");
 		use_llvm = 0;

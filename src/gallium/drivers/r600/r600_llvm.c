@@ -1,5 +1,5 @@
 
-#if HAVE_LLVM == 0x300
+#if HAVE_LLVM >= 0x300
 
 #include "r600_llvm.h"
 
@@ -315,4 +315,4 @@ unsigned r600_llvm_compile(
 							gpu_family, dump);
 }
 
-#endif /* HAVE_LLVM == 0x300 */
+#endif /* HAVE_LLVM >= 0x300 */

@@ -685,7 +685,11 @@ AMDILTargetLowering::LowerMemArgument(
   ISD::ArgFlagsTy Flags = Ins[i].Flags;
 
   bool AlwaysUseMutable = (CallConv==CallingConv::Fast) &&
+#if LLVM_VERSION > 3000
+    getTargetMachine().Options.GuaranteedTailCallOpt;
+#else
     GuaranteedTailCallOpt;
+#endif
   bool isImmutable = !AlwaysUseMutable && !Flags.isByVal();
 
   // FIXME: For now, all byval parameter objects are marked mutable. This can
@@ -2211,14 +2215,14 @@ AMDILTargetLowering::LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const
   const AMDILGlobalManager *GM = stm->getGlobalManager();
   DebugLoc DL = Op.getDebugLoc();
   int64_t base_offset = GADN->getOffset();
-  int32_t arrayoffset = GM->getArrayOffset(G->getNameStr());
-  int32_t constoffset = GM->getConstOffset(G->getNameStr());
+  int32_t arrayoffset = GM->getArrayOffset(G->getName());
+  int32_t constoffset = GM->getConstOffset(G->getName());
   if (arrayoffset != -1) {
     DST = DAG.getConstant(arrayoffset, MVT::i32);
     DST = DAG.getNode(ISD::ADD, DL, MVT::i32,
         DST, DAG.getConstant(base_offset, MVT::i32));
   } else if (constoffset != -1) {
-    if (GM->getConstHWBit(G->getNameStr())) {
+    if (GM->getConstHWBit(G->getName())) {
       DST = DAG.getConstant(constoffset, MVT::i32);
       DST = DAG.getNode(ISD::ADD, DL, MVT::i32,
           DST, DAG.getConstant(base_offset, MVT::i32));

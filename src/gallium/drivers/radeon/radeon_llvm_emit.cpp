@@ -91,8 +91,11 @@ radeon_llvm_compile(LLVMModuleRef M, unsigned char ** bytes,
 #endif
 
    Module * mod = unwrap(M);
+#if HAVE_LLVM > 0x0300
+   Triple AMDISATriple(sys::getDefaultTargetTriple());
+#else
    Triple AMDISATriple(sys::getHostTriple());
-
+#endif
 
    std::string FS = gpu_family;
 
@@ -101,9 +104,21 @@ radeon_llvm_compile(LLVMModuleRef M, unsigned char ** bytes,
                      AMDISATriple.getTriple(), FS));
    TargetMachine &AMDISATargetMachine = *tm.get();
 #else
+
+#if HAVE_LLVM > 0x0300
+   TargetOptions TO;
+#endif
    AMDISATargetMachine * tm = new AMDISATargetMachine(TheAMDISATarget,
-            AMDISATriple.getTriple(), gpu_family, "", Reloc::Default,
-            CodeModel::Default);
+            AMDISATriple.getTriple(), gpu_family,
+            "",
+#if HAVE_LLVM > 0x0300
+            TO,
+#endif
+            Reloc::Default, CodeModel::Default
+#if HAVE_LLVM > 0x0300
+            ,CodeGenOpt::Default
+#endif
+);
    TargetMachine &AMDISATargetMachine = *tm;
    /* XXX: Use TargetMachine.Options in 3.0 */
    if (dump) {
@@ -123,7 +138,10 @@ radeon_llvm_compile(LLVMModuleRef M, unsigned char ** bytes,
 
    /* Optional extra paramater true / false to disable verify */
    if (AMDISATargetMachine.addPassesToEmitFile(PM, out, TargetMachine::CGFT_AssemblyFile,
-                                               CodeGenOpt::Default, true)){
+#if HAVE_LLVM <= 0x300
+                                               CodeGenOpt::Default,
+#endif
+                                               true)){
       fprintf(stderr, "AddingPasses failed.\n");
       return 1;
    }

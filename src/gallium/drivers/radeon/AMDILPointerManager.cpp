@@ -84,16 +84,16 @@ using namespace llvm;
 char AMDILPointerManager::ID = 0;
 namespace llvm {
   FunctionPass*
-    createAMDILPointerManager(TargetMachine &tm, CodeGenOpt::Level OL)
+    createAMDILPointerManager(TargetMachine &tm AMDIL_OPT_LEVEL_DECL)
     {
       return tm.getSubtarget<AMDILSubtarget>()
-        .device()->getPointerManager(tm, OL);
+        .device()->getPointerManager(tm AMDIL_OPT_LEVEL_VAR);
     }
 }
 
 AMDILPointerManager::AMDILPointerManager(
-    TargetMachine &tm,
-    CodeGenOpt::Level OL) :
+    TargetMachine &tm
+    AMDIL_OPT_LEVEL_DECL) :
 #if LLVM_VERSION >= 2500
   MachineFunctionPass(ID),
 #else
@@ -124,9 +124,9 @@ AMDILPointerManager::getAnalysisUsage(AnalysisUsage &AU) const
 }
 
 AMDILEGPointerManager::AMDILEGPointerManager(
-    TargetMachine &tm,
-    CodeGenOpt::Level OL) :
-  AMDILPointerManager(tm, OL),
+    TargetMachine &tm
+    AMDIL_OPT_LEVEL_DECL) :
+  AMDILPointerManager(tm AMDIL_OPT_LEVEL_VAR),
   TM(tm)
 {
 }
@@ -522,7 +522,7 @@ parseArguments(MachineFunction &MF,
               continue;
             }
             std::string argStr = argName->getAsString();
-            std::string curStr = curArg->getNameStr();
+            std::string curStr = curArg->getName();
             if (!strcmp(argStr.data(), curStr.data())) {
               if (mDebug) {
                 dbgs() << "Pointer: '" << curArg->getName() 

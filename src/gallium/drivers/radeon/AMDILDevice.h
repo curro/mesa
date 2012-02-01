@@ -126,7 +126,7 @@ public:
 
   // Interface to get the IO Expansion pass for each device.
   virtual FunctionPass* 
-    getIOExpansion(TargetMachine&, CodeGenOpt::Level) const = 0;
+    getIOExpansion(TargetMachine& AMDIL_OPT_LEVEL_DECL) const = 0;
 
   // Interface to get the Asm printer for each device.
   virtual AsmPrinter*
@@ -134,7 +134,7 @@ public:
 
   // Interface to get the Pointer manager pass for each device.
   virtual FunctionPass* 
-    getPointerManager(TargetMachine&, CodeGenOpt::Level) const = 0;
+    getPointerManager(TargetMachine& AMDIL_OPT_LEVEL_DECL) const = 0;
 
 
   // API utilizing more detailed capabilities of each family of

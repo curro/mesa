@@ -78,7 +78,7 @@ namespace
     public:
       TargetMachine &TM;
       static char ID;
-      AMDILInlinePass(TargetMachine &tm, CodeGenOpt::Level OL);
+      AMDILInlinePass(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
       ~AMDILInlinePass();
       virtual const char* getPassName() const;
       virtual bool runOnFunction(Function &F);
@@ -92,7 +92,9 @@ namespace
         AMDILInlineCallIfPossible(CallSite CS,
             const TargetData *TD,
             InlinedArrayAllocasTy &InlinedArrayAllocas);
+#if LLVM_VERSION <= 3000
       CodeGenOpt::Level OptLevel;
+#endif
   };
   char AMDILInlinePass::ID = 0;
 } // anonymouse namespace
@@ -101,20 +103,24 @@ namespace
 namespace llvm
 {
   FunctionPass*
-    createAMDILInlinePass(TargetMachine &tm, CodeGenOpt::Level OL)
+    createAMDILInlinePass(TargetMachine &tm AMDIL_OPT_LEVEL_DECL)
     {
-      return new AMDILInlinePass(tm, OL);
+      return new AMDILInlinePass(tm AMDIL_OPT_LEVEL_VAR);
     }
 } // llvm namespace
 
-  AMDILInlinePass::AMDILInlinePass(TargetMachine &tm, CodeGenOpt::Level OL)
+  AMDILInlinePass::AMDILInlinePass(TargetMachine &tm AMDIL_OPT_LEVEL_DECL)
 #if LLVM_VERSION >= 2500
 : FunctionPass(ID), TM(tm)
 #else
 : FunctionPass((intptr_t)&ID), TM(tm)
 #endif
 {
-  OptLevel = OL;
+#if LLVM_VERSION <= 3000
+  OptLevel = AMDIL_OPT_LEVEL_VAR_NO_COMMA;
+#else
+  OptLevel = tm.getOptLevel();
+#endif
 }
 AMDILInlinePass::~AMDILInlinePass()
 {

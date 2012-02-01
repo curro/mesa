@@ -61,9 +61,25 @@ MCAsmInfo* llvm::createMCAsmInfo(const Target &T, StringRef TT)
 }
 
 AMDISATargetMachine::AMDISATargetMachine(const Target &T, StringRef TT,
-    StringRef CPU, StringRef FS, Reloc::Model RM, CodeModel::Model CM)
+    StringRef CPU, StringRef FS,
+#if LLVM_VERSION > 3000
+  TargetOptions Options,
+#endif
+  Reloc::Model RM, CodeModel::Model CM
+#if LLVM_VERSION > 3000
+  ,CodeGenOpt::Level OptLevel
+#endif
+)
 :
-  AMDILTargetMachine(T, TT, CPU, FS, RM, CM),
+  AMDILTargetMachine(T, TT, CPU, FS,
+#if LLVM_VERSOIN > 3000
+                     Options,
+#endif
+                     RM, CM
+#if LLVM_VERSOIN > 3000
+                     ,OptLevel
+#endif
+),
   Subtarget(TT, CPU, FS),
   TLInfo(*this),
   InstrInfo(new R600InstrInfo(*this)),
@@ -88,9 +104,9 @@ AMDISATargetMachine::~AMDISATargetMachine()
     delete mKM;
 }
 
-bool AMDISATargetMachine::addInstSelector(PassManagerBase &PM,
-                                         CodeGenOpt::Level OptLevel) {
-  if (AMDILTargetMachine::addInstSelector(PM, OptLevel)) {
+bool AMDISATargetMachine::addInstSelector(PassManagerBase &PM
+                                          AMDIL_OPT_LEVEL_DECL) {
+  if (AMDILTargetMachine::addInstSelector(PM AMDIL_OPT_LEVEL_VAR)) {
     return true;
   }
 
@@ -98,26 +114,26 @@ bool AMDISATargetMachine::addInstSelector(PassManagerBase &PM,
   return false;
 }
 
-bool AMDISATargetMachine::addPreEmitPass(PassManagerBase &PM,
-    CodeGenOpt::Level OptLevel)
+bool AMDISATargetMachine::addPreEmitPass(PassManagerBase &PM
+     AMDIL_OPT_LEVEL_DECL)
 {
   /* This is exactly the same as in AMDILTargetManager, minus theSwizzleEncoder
    * pass. */
 
-  PM.add(createAMDILCFGPreparationPass(*this, OptLevel));
-  PM.add(createAMDILCFGStructurizerPass(*this, OptLevel));
-//  PM.add(createAMDILIOExpansion(*this, OptLevel));
+  PM.add(createAMDILCFGPreparationPass(*this AMDIL_OPT_LEVEL_VAR));
+  PM.add(createAMDILCFGStructurizerPass(*this AMDIL_OPT_LEVEL_VAR));
+//  PM.add(createAMDILIOExpansion(*this AMDIL_OPT_LEVEL_VAR));
   return false;
 }
 
-bool AMDISATargetMachine::addPreRegAlloc(PassManagerBase &PM,
-    CodeGenOpt::Level OptLevel)
+bool AMDISATargetMachine::addPreRegAlloc(PassManagerBase &PM
+     AMDIL_OPT_LEVEL_DECL)
 {
-//  if (AMDILTargetMachine::addPreRegAlloc(PM, OptLevel)) {
+//  if (AMDILTargetMachine::addPreRegAlloc(PM AMDIL_OPT_LEVEL_VAR)) {
 //    return true;
 //  }
 
-  PM.add(createAMDILLiteralManager(*this, OptLevel));
+  PM.add(createAMDILLiteralManager(*this AMDIL_OPT_LEVEL_VAR));
   PM.add(createAMDISAReorderPreloadInstructionsPass(*this));
   if (Subtarget.device()->getGeneration() <= AMDILDeviceInfo::HD6XXX) {
     PM.add(createR600LowerShaderInstructionsPass(*this));
@@ -181,7 +197,7 @@ bool AMDISATargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   PM.add(createStackProtectorPass(getTargetLowering()));
 
-  addPreISel(PM, OptLevel);
+  addPreISel(PM AMDIL_OPT_LEVEL_VAR);
 
   // All passes which modify the LLVM IR are now complete; run the verifier
   // to ensure that the IR is valid.
@@ -198,10 +214,10 @@ bool AMDISATargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   PM.add(MMI);
 
   // Set up a MachineFunction for the rest of CodeGen to work on.
-  PM.add(new MachineFunctionAnalysis(*this, OptLevel));
+  PM.add(new MachineFunctionAnalysis(*this));
 
   // Ask the target for an isel.
-  if (addInstSelector(PM, OptLevel))
+  if (addInstSelector(PM AMDIL_OPT_LEVEL_VAR))
     return true;
 
   // Expand pseudo-instructions emitted by ISel.
@@ -236,7 +252,7 @@ bool AMDISATargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   }
 
   // Run pre-ra passes.
-  addPreRegAlloc(PM, OptLevel);
+  addPreRegAlloc(PM AMDIL_OPT_LEVEL_VAR);
 
   // Perform register allocation.
   PM.add(createRegisterAllocator(OptLevel));
@@ -253,7 +269,7 @@ bool AMDISATargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   }
 
   // Run post-ra passes.
-  addPostRegAlloc(PM, OptLevel);
+  addPostRegAlloc(PM AMDIL_OPT_LEVEL_VAR);
 
   PM.add(createExpandPostRAPseudosPass());
 
@@ -261,7 +277,7 @@ bool AMDISATargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   PM.add(createPrologEpilogCodeInserter());
 
   // Run pre-sched2 passes.
-  addPreSched2(PM, OptLevel);
+  addPreSched2(PM AMDIL_OPT_LEVEL_VAR);
 
   // Second pass scheduler.
   if (OptLevel != CodeGenOpt::None) {
@@ -284,7 +300,7 @@ bool AMDISATargetMachine::addPassesToEmitFile(PassManagerBase &PM,
     PM.add(createCodePlacementOptPass());
   }
 
-  addPreEmitPass(PM, OptLevel);
+  addPreEmitPass(PM AMDIL_OPT_LEVEL_VAR);
 
   if (Subtarget.device()->getGeneration() <= AMDILDeviceInfo::HD6XXX) {
     PM.add(createR600CodeEmitterPass(Out));

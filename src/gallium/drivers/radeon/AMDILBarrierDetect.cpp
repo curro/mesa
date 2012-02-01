@@ -85,7 +85,7 @@ namespace
     TargetMachine &TM;
     static char ID;
   public:
-    AMDILBarrierDetect(TargetMachine &TM, CodeGenOpt::Level OptLevel);
+    AMDILBarrierDetect(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
     ~AMDILBarrierDetect();
     const char *getPassName() const;
     bool runOnFunction(Function &F);
@@ -110,14 +110,14 @@ namespace
 namespace llvm
 {
   FunctionPass *
-  createAMDILBarrierDetect(TargetMachine &TM, CodeGenOpt::Level OptLevel)
+  createAMDILBarrierDetect(TargetMachine &TM AMDIL_OPT_LEVEL_DECL)
   {
-    return new AMDILBarrierDetect(TM, OptLevel);
+    return new AMDILBarrierDetect(TM  AMDIL_OPT_LEVEL_VAR);
   }
 } // llvm namespace
 
-AMDILBarrierDetect::AMDILBarrierDetect(TargetMachine &TM,
-                                       CodeGenOpt::Level OptLevel)
+AMDILBarrierDetect::AMDILBarrierDetect(TargetMachine &TM
+                                       AMDIL_OPT_LEVEL_DECL)
   : 
 #if LLVM_VERSION >= 2500
   FunctionPass(ID),

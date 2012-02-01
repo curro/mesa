@@ -2678,9 +2678,9 @@ public:
 
 public:
 #if LLVM_VERSION >= 2500
-  AMDILCFGStructurizer(char &pid, TargetMachine &tm, CodeGenOpt::Level OL);
+  AMDILCFGStructurizer(char &pid, TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
 #else
-  AMDILCFGStructurizer(intptr_t pid, TargetMachine &tm, CodeGenOpt::Level OL);
+  AMDILCFGStructurizer(intptr_t pid, TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
 #endif
   const TargetInstrInfo *getTargetInstrInfo() const;
   //bool runOnMachineFunction(MachineFunction &F);
@@ -2692,11 +2692,11 @@ private:
 //char AMDILCFGStructurizer::ID = 0;
 } //end of namespace llvm
 #if LLVM_VERSION >= 2500
-AMDILCFGStructurizer::AMDILCFGStructurizer(char &pid, TargetMachine &tm,
+AMDILCFGStructurizer::AMDILCFGStructurizer(char &pid, TargetMachine &tm
 #else
-AMDILCFGStructurizer::AMDILCFGStructurizer(intptr_t pid, TargetMachine &tm,
+AMDILCFGStructurizer::AMDILCFGStructurizer(intptr_t pid, TargetMachine &tm
 #endif
-                                           CodeGenOpt::Level OL)
+                                           AMDIL_OPT_LEVEL_DECL)
 : MachineFunctionPass(pid), TM(tm), TII(tm.getInstrInfo()) {
 }
 
@@ -2720,7 +2720,7 @@ public:
   static char ID;
 
 public:
-  AMDILCFGPrepare(TargetMachine &tm, CodeGenOpt::Level OL);
+  AMDILCFGPrepare(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
 
   virtual const char *getPassName() const;
   virtual void getAnalysisUsage(AnalysisUsage &AU) const;
@@ -2734,11 +2734,11 @@ private:
 char AMDILCFGPrepare::ID = 0;
 } //end of namespace llvm
 
-AMDILCFGPrepare::AMDILCFGPrepare(TargetMachine &tm, CodeGenOpt::Level OL)
+AMDILCFGPrepare::AMDILCFGPrepare(TargetMachine &tm AMDIL_OPT_LEVEL_DECL)
 #if LLVM_VERSION >= 2500
-  : AMDILCFGStructurizer(ID, tm, OL) 
+  : AMDILCFGStructurizer(ID, tm  AMDIL_OPT_LEVEL_VAR) 
 #else
-  : AMDILCFGStructurizer((intptr_t)&ID, tm, OL) 
+  : AMDILCFGStructurizer((intptr_t)&ID, tm  AMDIL_OPT_LEVEL_VAR) 
 #endif
 {
 }
@@ -2771,7 +2771,7 @@ public:
   static char ID;
 
 public:
-  AMDILCFGPerform(TargetMachine &tm, CodeGenOpt::Level OL);
+  AMDILCFGPerform(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
   virtual const char *getPassName() const;
   virtual void getAnalysisUsage(AnalysisUsage &AU) const;
   bool runOnMachineFunction(MachineFunction &F);
@@ -2783,11 +2783,11 @@ private:
 char AMDILCFGPerform::ID = 0;
 } //end of namespace llvm
 
-  AMDILCFGPerform::AMDILCFGPerform(TargetMachine &tm, CodeGenOpt::Level OL)
+  AMDILCFGPerform::AMDILCFGPerform(TargetMachine &tm AMDIL_OPT_LEVEL_DECL)
 #if LLVM_VERSION >= 2500
-: AMDILCFGStructurizer(ID, tm, OL) 
+: AMDILCFGStructurizer(ID, tm AMDIL_OPT_LEVEL_VAR) 
 #else
-: AMDILCFGStructurizer((intptr_t)&ID, tm, OL) 
+: AMDILCFGStructurizer((intptr_t)&ID, tm AMDIL_OPT_LEVEL_VAR) 
 #endif
 {
 }
@@ -3206,7 +3206,7 @@ struct CFGStructTraits<AMDILCFGStructurizer>
     MachineBasicBlock *newBlk = func->CreateMachineBasicBlock();
     func->push_back(newBlk);  //insert to function
     //newBlk->setNumber(srcBlk->getNumber());
-    for (MachineBasicBlock::const_iterator iter = srcBlk->begin(),
+    for (MachineBasicBlock::iterator iter = srcBlk->begin(),
          iterEnd = srcBlk->end();
          iter != iterEnd; ++iter) {
       MachineInstr *instr = func->CloneMachineInstr(iter);
@@ -3279,9 +3279,9 @@ struct CFGStructTraits<AMDILCFGStructurizer>
 } //end of namespace llvm
 
 // createAMDILCFGPreparationPass- Returns a pass
-FunctionPass *llvm::createAMDILCFGPreparationPass(TargetMachine &tm,
-                                                  CodeGenOpt::Level OptLevel) {
-  return new AMDILCFGPrepare(tm, OptLevel);
+FunctionPass *llvm::createAMDILCFGPreparationPass(TargetMachine &tm
+                                                  AMDIL_OPT_LEVEL_DECL) {
+  return new AMDILCFGPrepare(tm  AMDIL_OPT_LEVEL_VAR);
 }
 
 bool AMDILCFGPrepare::runOnMachineFunction(MachineFunction &func) {
@@ -3290,9 +3290,9 @@ bool AMDILCFGPrepare::runOnMachineFunction(MachineFunction &func) {
 }
 
 // createAMDILCFGStructurizerPass- Returns a pass
-FunctionPass *llvm::createAMDILCFGStructurizerPass(TargetMachine &tm,
-                                                   CodeGenOpt::Level OptLevel) {
-  return new AMDILCFGPerform(tm, OptLevel);
+FunctionPass *llvm::createAMDILCFGStructurizerPass(TargetMachine &tm
+                                                   AMDIL_OPT_LEVEL_DECL) {
+  return new AMDILCFGPerform(tm  AMDIL_OPT_LEVEL_VAR);
 }
 
 bool AMDILCFGPerform::runOnMachineFunction(MachineFunction &func) {

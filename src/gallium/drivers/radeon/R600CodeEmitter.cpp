@@ -50,7 +50,12 @@ namespace {
   /* XXX: Temp HACK to work around tablegen name generation */
   class AMDILCodeEmitter {
   public:
-    unsigned getBinaryCodeForInstr(const MachineInstr &MI) const;
+#if LLVM_VERSION > 3000
+    uint64_t
+#else
+    unsigned
+#endif
+    getBinaryCodeForInstr(const MachineInstr &MI) const;
   };
 
   class R600CodeEmitter : public MachineFunctionPass, public AMDILCodeEmitter {

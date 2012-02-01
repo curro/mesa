@@ -176,9 +176,9 @@ void AMDILEvergreenDevice::setCaps() {
 }
 FunctionPass* 
 AMDILEvergreenDevice::getIOExpansion(
-    TargetMachine& TM, CodeGenOpt::Level OptLevel) const
+    TargetMachine& TM AMDIL_OPT_LEVEL_DECL) const
 {
-  return new AMDILEGIOExpansion(TM, OptLevel);
+  return new AMDILEGIOExpansion(TM AMDIL_OPT_LEVEL_VAR);
 }
 
 AsmPrinter*
@@ -189,9 +189,9 @@ AMDILEvergreenDevice::getAsmPrinter(AMDIL_ASM_PRINTER_ARGUMENTS) const
 
 FunctionPass*
 AMDILEvergreenDevice::getPointerManager(
-    TargetMachine& TM, CodeGenOpt::Level OptLevel) const
+    TargetMachine& TM AMDIL_OPT_LEVEL_DECL) const
 {
-  return new AMDILEGPointerManager(TM, OptLevel);
+  return new AMDILEGPointerManager(TM AMDIL_OPT_LEVEL_VAR);
 }
 
 AMDILCypressDevice::AMDILCypressDevice(AMDILSubtarget *ST)

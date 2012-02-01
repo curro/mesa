@@ -98,20 +98,37 @@ extern "C" void LLVMInitializeAMDILTarget() {
   //createAMDILMCCodeEmitter);
 }
 
+/*
 TheAMDILTargetMachine::TheAMDILTargetMachine(const Target &T,
     StringRef TT, StringRef CPU, StringRef FS,
     Reloc::Model RM, CodeModel::Model CM)
 : AMDILTargetMachine(T, TT, CPU, FS, RM, CM)
 {
 }
+*/
 
 /// AMDILTargetMachine ctor -
 ///
 AMDILTargetMachine::AMDILTargetMachine(const Target &T,
     StringRef TT, StringRef CPU, StringRef FS,
-    Reloc::Model RM, CodeModel::Model CM)
+#if LLVM_VERSION > 3000
+    TargetOptions Options,
+#endif
+    Reloc::Model RM, CodeModel::Model CM
+#if LLVM_VERSION > 3000
+    ,CodeGenOpt::Level OL
+#endif
+)
 :
-  LLVMTargetMachine(T, TT, CPU, FS, RM, CM),
+  LLVMTargetMachine(T, TT, CPU, FS,
+#if LLVM_VERSION > 3000
+  Options,
+#endif
+  RM, CM
+#if LLVM_VERSION > 3000
+  ,OL
+#endif
+),
   Subtarget(TT, CPU, FS),
   DataLayout(Subtarget.getDataLayout()),
 #if LLVM_VERSION >= 2500
@@ -184,41 +201,67 @@ AMDILTargetMachine::getIntrinsicInfo() const
   return &IntrinsicInfo;
 }
 bool
-AMDILTargetMachine::addPreISel(PassManagerBase &PM, 
-    CodeGenOpt::Level OptLevel) 
+AMDILTargetMachine::addPreISel(PassManagerBase &PM
+#if LLVM_VERSION <= 3000
+ AMDIL_OPT_LEVEL_DECL
+#endif
+)
 {
   return true;
 }
+
+#if LLVM_VERSION <= 3000
+  #define PASS_ARG_2 ,OptLevel
+#else
+  #define PASS_ARG_2
+#endif
+
   bool
-AMDILTargetMachine::addInstSelector(PassManagerBase &PM,
-    CodeGenOpt::Level OptLevel)
+AMDILTargetMachine::addInstSelector(PassManagerBase &PM
+#if LLVM_VERSION <= 3000
+     AMDIL_OPT_LEVEL_DECL
+#endif
+)
 {
-  mOptLevel = OptLevel;
-  PM.add(createAMDILBarrierDetect(*this, OptLevel));
-  PM.add(createAMDILPrintfConvert(*this, OptLevel));
-  PM.add(createAMDILInlinePass(*this, OptLevel));
-  PM.add(createAMDILPeepholeOpt(*this, OptLevel));
-  PM.add(createAMDILISelDag(*this, OptLevel));
+#if LLVM_VERSION <=3000
+  mOptLevel = AMDIL_OPT_LEVEL_VAR_NO_COMMA;
+#else
+  mOptLevel = getOptLevel();
+#endif
+  PM.add(createAMDILBarrierDetect(*this PASS_ARG_2));
+  PM.add(createAMDILPrintfConvert(*this PASS_ARG_2));
+  PM.add(createAMDILInlinePass(*this PASS_ARG_2));
+  PM.add(createAMDILPeepholeOpt(*this PASS_ARG_2));
+  PM.add(createAMDILISelDag(*this PASS_ARG_2));
   return false;
 }
   bool
-AMDILTargetMachine::addPreRegAlloc(PassManagerBase &PM,
-    CodeGenOpt::Level OptLevel)
+AMDILTargetMachine::addPreRegAlloc(PassManagerBase &PM
+#if LLVM_VERSION <= 3000
+     AMDIL_OPT_LEVEL_DECL
+#endif
+)
 
 {
+#if LLVM_VERSION > 3000
+  CodeGenOpt::Level OptLevel = getOptLevel();
+#endif
   // If debugging, reduce code motion. Use less aggressive pre-RA scheduler
   if (OptLevel == CodeGenOpt::None) {
     llvm::RegisterScheduler::setDefault(&llvm::createSourceListDAGScheduler);
   }
 
-  PM.add(createAMDILMachinePeephole(*this, OptLevel));
-  PM.add(createAMDILPointerManager(*this, OptLevel));
+  PM.add(createAMDILMachinePeephole(*this PASS_ARG_2));
+  PM.add(createAMDILPointerManager(*this PASS_ARG_2));
   return false;
 }
 
 bool
-AMDILTargetMachine::addPostRegAlloc(PassManagerBase &PM,
-    CodeGenOpt::Level OptLevel) {
+AMDILTargetMachine::addPostRegAlloc(PassManagerBase &PM
+#if LLVM_VERSION <= 3000
+     AMDIL_OPT_LEVEL_DECL
+#endif
+) {
   return false;  // -print-machineinstr should print after this.
 }
 
@@ -226,14 +269,17 @@ AMDILTargetMachine::addPostRegAlloc(PassManagerBase &PM,
 /// passes immediately before machine code is emitted.  This should return
 /// true if -print-machineinstrs should print out the code after the passes.
   bool
-AMDILTargetMachine::addPreEmitPass(PassManagerBase &PM,
-    CodeGenOpt::Level OptLevel)
+AMDILTargetMachine::addPreEmitPass(PassManagerBase &PM
+#if LLVM_VERSION <= 3000
+   AMDIL_OPT_LEVEL_DECL
+#endif
+)
 {
-  PM.add(createAMDILCFGPreparationPass(*this, OptLevel));
-  PM.add(createAMDILCFGStructurizerPass(*this, OptLevel));
-  PM.add(createAMDILLiteralManager(*this, OptLevel));
-  PM.add(createAMDILIOExpansion(*this, OptLevel));
-  PM.add(createAMDILSwizzleEncoder(*this, OptLevel));
+  PM.add(createAMDILCFGPreparationPass(*this PASS_ARG_2));
+  PM.add(createAMDILCFGStructurizerPass(*this PASS_ARG_2));
+  PM.add(createAMDILLiteralManager(*this PASS_ARG_2));
+  PM.add(createAMDILIOExpansion(*this PASS_ARG_2));
+  PM.add(createAMDILSwizzleEncoder(*this PASS_ARG_2));
   return true;
 }
 

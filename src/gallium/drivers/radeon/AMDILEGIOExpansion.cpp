@@ -68,8 +68,8 @@
 #include "llvm/Support/DebugLoc.h"
 #include <cstdio>
 using namespace llvm;
-AMDILEGIOExpansion::AMDILEGIOExpansion(TargetMachine &tm, 
-    CodeGenOpt::Level OptLevel) : AMDILImageExpansion(tm, OptLevel)
+AMDILEGIOExpansion::AMDILEGIOExpansion(TargetMachine &tm
+     AMDIL_OPT_LEVEL_DECL) : AMDILImageExpansion(tm AMDIL_OPT_LEVEL_VAR)
 {
 }
 
@@ -172,6 +172,7 @@ AMDILEGIOExpansion::isArenaOp(MachineInstr *MI)
   void
 AMDILEGIOExpansion::expandPackedData(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   if (!isPackedData(MI)) {
     return;
   }
@@ -189,47 +190,47 @@ AMDILEGIOExpansion::expandPackedData(MachineInstr *MI)
       break;
     case PACK_V2I8:
       {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LHI), AMDIL::R1012)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LHI), AMDIL::R1012)
           .addReg(AMDIL::R1011);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UBIT_INSERT_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UBIT_INSERT_i32), AMDIL::R1011)
           .addImm(mMFI->addi32Literal(8)).addImm(mMFI->addi32Literal(8))
           .addReg(AMDIL::R1012).addReg(AMDIL::R1011);
       }
       break;
     case PACK_V4I8:
       {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LHI_v2i64), AMDIL::R1012)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LHI_v2i64), AMDIL::R1012)
           .addReg(AMDIL::R1011);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LLO_v2i64), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LLO_v2i64), AMDIL::R1011)
           .addReg(AMDIL::R1011);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UBIT_INSERT_v2i32), 
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UBIT_INSERT_v2i32), 
             AMDIL::R1011)
           .addImm(mMFI->addi64Literal(8ULL | (8ULL << 32)))
           .addImm(mMFI->addi64Literal(8ULL | (8ULL << 32)))
           .addReg(AMDIL::R1012).addReg(AMDIL::R1011);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LHI), AMDIL::R1012)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LHI), AMDIL::R1012)
           .addReg(AMDIL::R1011);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UBIT_INSERT_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UBIT_INSERT_i32), AMDIL::R1011)
           .addImm(mMFI->addi32Literal(16)).addImm(mMFI->addi32Literal(16))
           .addReg(AMDIL::R1012).addReg(AMDIL::R1011);
       }
       break;
     case PACK_V2I16:
       {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LHI), AMDIL::R1012)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LHI), AMDIL::R1012)
           .addReg(AMDIL::R1011);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UBIT_INSERT_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UBIT_INSERT_i32), AMDIL::R1011)
           .addImm(mMFI->addi32Literal(16)).addImm(mMFI->addi32Literal(16))
           .addReg(AMDIL::R1012).addReg(AMDIL::R1011);
       }
       break;
     case PACK_V4I16:
       {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LHI_v2i64), AMDIL::R1012)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LHI_v2i64), AMDIL::R1012)
           .addReg(AMDIL::R1011);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LLO_v2i64), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LLO_v2i64), AMDIL::R1011)
           .addReg(AMDIL::R1011);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UBIT_INSERT_v2i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UBIT_INSERT_v2i32), AMDIL::R1011)
           .addImm(mMFI->addi64Literal(16ULL | (16ULL << 32)))
           .addImm(mMFI->addi64Literal(16ULL | (16ULL << 32)))
           .addReg(AMDIL::R1012).addReg(AMDIL::R1011);
@@ -247,6 +248,7 @@ AMDILEGIOExpansion::expandPackedData(MachineInstr *MI)
   void
 AMDILEGIOExpansion::expandGlobalLoad(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   bool usesArena = isArenaOp(MI);
   bool cacheable = isCacheableOp(MI);
   uint32_t ID = getPointerID(MI);
@@ -262,171 +264,171 @@ AMDILEGIOExpansion::expandGlobalLoad(MachineInstr *MI)
   DebugLoc DL;
   if (getMemorySize(MI) == 1) {
       if (usesArena) {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_i8), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_i8), AMDIL::R1011)
           .addReg(AMDIL::R1010)
           .addImm(ID);
       } else {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
           .addReg(AMDIL::R1010)
           .addImm(mMFI->addi32Literal(3));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
           .addReg(AMDIL::R1010)
           .addImm(mMFI->addi32Literal(0xFFFFFFFC));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1008)
           .addReg(AMDIL::R1008);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1008)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi128Literal(0xFFFFFFFFULL << 32, 
                 (0xFFFFFFFEULL | (0xFFFFFFFDULL << 32))));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::IEQ_v4i32), AMDIL::R1012)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::IEQ_v4i32), AMDIL::R1012)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi32Literal(0));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1008)
           .addReg(AMDIL::R1012)
           .addImm(mMFI->addi32Literal(0))
           .addImm(mMFI->addi32Literal(24));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_Y_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_Y_i32), AMDIL::R1008)
           .addReg(AMDIL::R1012)
           .addImm(mMFI->addi32Literal(8))
           .addReg(AMDIL::R1008);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_Z_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_Z_i32), AMDIL::R1008)
           .addReg(AMDIL::R1012)
           .addImm(mMFI->addi32Literal(16))
           .addReg(AMDIL::R1008);
         if (cacheable) {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVRAWLOADCACHED_i32),
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVRAWLOADCACHED_i32),
               AMDIL::R1011).addReg(AMDIL::R1010).addImm(ID);
         } else {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVRAWLOAD_i32),
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVRAWLOAD_i32),
               AMDIL::R1011).addReg(AMDIL::R1010).addImm(ID);
         }
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHR_v4i8), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHR_v4i8), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addReg(AMDIL::R1008);
       }
   } else if (getMemorySize(MI) == 2) {
       if (usesArena) {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_i16), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_i16), AMDIL::R1011)
           .addReg(AMDIL::R1010)
           .addImm(ID);
       } else {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
           .addReg(AMDIL::R1010)
           .addImm(mMFI->addi32Literal(3));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1008)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi32Literal(1));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
           .addReg(AMDIL::R1010)
           .addImm(mMFI->addi32Literal(0xFFFFFFFC));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1008)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi32Literal(16))
           .addImm(mMFI->addi32Literal(0));
         if (cacheable) {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVRAWLOADCACHED_i32),
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVRAWLOADCACHED_i32),
               AMDIL::R1011).addReg(AMDIL::R1010).addImm(ID);
         } else {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVRAWLOAD_i32),
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVRAWLOAD_i32),
               AMDIL::R1011).addReg(AMDIL::R1010).addImm(ID);
         }
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHR_i16), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHR_i16), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addReg(AMDIL::R1008);
       }
   } else if (getMemorySize(MI) == 4) {
       if (usesArena) {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1011)
           .addReg(AMDIL::R1010)
           .addImm(ID);
       } else {
         if (cacheable) {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVRAWLOADCACHED_i32),
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVRAWLOADCACHED_i32),
               AMDIL::R1011).addReg(AMDIL::R1010).addImm(ID);
         } else {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVRAWLOAD_i32),
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVRAWLOAD_i32),
               AMDIL::R1011).addReg(AMDIL::R1010).addImm(ID);
         }
       }
   } else if (getMemorySize(MI) == 8) {
     if (usesArena) {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1011)
           .addReg(AMDIL::R1010)
           .addImm(ID);
         if (mSTM->device()->usesHardware(AMDILDeviceInfo::ArenaVectors)) {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_Y_i32), AMDIL::R1011)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_Y_i32), AMDIL::R1011)
             .addReg(AMDIL::R1010)
             .addImm(ID);
         } else {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
             .addReg(AMDIL::R1010)
             .addImm(2);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1008)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1008)
             .addReg(AMDIL::R1007)
             .addImm(ID);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LCREATE), AMDIL::R1011)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::LCREATE), AMDIL::R1011)
             .addReg(AMDIL::R1011)
             .addReg(AMDIL::R1008);
         }
       } else {
         if (cacheable) {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVRAWLOADCACHED_v2i32),
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVRAWLOADCACHED_v2i32),
               AMDIL::R1011).addReg(AMDIL::R1010).addImm(ID);
         } else {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVRAWLOAD_v2i32),
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVRAWLOAD_v2i32),
               AMDIL::R1011).addReg(AMDIL::R1010).addImm(ID);
         }
       }
   } else {
       if (usesArena) {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1011)
           .addReg(AMDIL::R1010)
           .addImm(ID);
         if (mSTM->device()->usesHardware(AMDILDeviceInfo::ArenaVectors)) {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_Y_i32), AMDIL::R1011)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_Y_i32), AMDIL::R1011)
             .addReg(AMDIL::R1010)
             .addImm(ID);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_Z_i32), AMDIL::R1011)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_Z_i32), AMDIL::R1011)
             .addReg(AMDIL::R1010)
             .addImm(ID);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_W_i32), AMDIL::R1011)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_W_i32), AMDIL::R1011)
             .addReg(AMDIL::R1010)
             .addImm(ID);
         } else {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
             .addReg(AMDIL::R1010)
             .addImm(2);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1008)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1008)
             .addReg(AMDIL::R1007)
             .addImm(ID);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LCREATE), AMDIL::R1011)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::LCREATE), AMDIL::R1011)
             .addReg(AMDIL::R1011)
             .addReg(AMDIL::R1008);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
             .addReg(AMDIL::R1010)
             .addImm(3);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1008)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1008)
             .addReg(AMDIL::R1007)
             .addImm(ID);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
             .addReg(AMDIL::R1010)
             .addImm(4);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1006)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENALOAD_i32), AMDIL::R1006)
             .addReg(AMDIL::R1007)
             .addImm(ID);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LCREATE), AMDIL::R1008)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::LCREATE), AMDIL::R1008)
             .addReg(AMDIL::R1006)
             .addReg(AMDIL::R1008);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LCREATE_v2i64), AMDIL::R1011)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::LCREATE_v2i64), AMDIL::R1011)
             .addReg(AMDIL::R1011)
             .addReg(AMDIL::R1008);
         }
       } else {
         if (cacheable) {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVRAWLOADCACHED_v4i32),
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVRAWLOADCACHED_v4i32),
               AMDIL::R1011).addReg(AMDIL::R1010).addImm(ID);
         } else {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVRAWLOAD_v4i32),
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVRAWLOAD_v4i32),
               AMDIL::R1011).addReg(AMDIL::R1010).addImm(ID);
         }
       }
@@ -434,7 +436,7 @@ AMDILEGIOExpansion::expandGlobalLoad(MachineInstr *MI)
   // These instructions are generated after the current MI.
   expandPackedData(MI);
   expandExtendLoad(MI);
-  BuildMI(*mBB, *MI, MI->getDebugLoc(),
+  BuildMI(*mBB, I, MI->getDebugLoc(),
       mTII->get(getMoveInstFromID(
           MI->getDesc().OpInfo[0].RegClass)))
     .addOperand(MI->getOperand(0))
@@ -445,6 +447,7 @@ AMDILEGIOExpansion::expandGlobalLoad(MachineInstr *MI)
   void
 AMDILEGIOExpansion::expandRegionLoad(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   bool HWRegion = mSTM->device()->usesHardware(AMDILDeviceInfo::RegionMem);
   if (!mSTM->device()->isSupported(AMDILDeviceInfo::RegionMem)) {
     mMFI->addErrorMsg(
@@ -470,81 +473,81 @@ AMDILEGIOExpansion::expandRegionLoad(MachineInstr *MI)
   expandLoadStartCode(MI);
   switch (getMemorySize(MI)) {
     default:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1010)
         .addReg(AMDIL::R1010);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1010)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi128Literal(1ULL << 32, 2ULL | (3ULL << 32)));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSLOAD), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSLOAD), AMDIL::R1011)
         .addReg(AMDIL::R1010)
         .addImm(gID);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSLOAD_Y), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSLOAD_Y), AMDIL::R1011)
         .addReg(AMDIL::R1010)
         .addImm(gID);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSLOAD_Z), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSLOAD_Z), AMDIL::R1011)
         .addReg(AMDIL::R1010)
         .addImm(gID);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSLOAD_W), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSLOAD_W), AMDIL::R1011)
         .addReg(AMDIL::R1010)
         .addImm(gID);
       break;
     case 1:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi32Literal(3));
       mulOp = (mSTM->device()->usesSoftware(AMDILDeviceInfo::RegionMem))
         ? AMDIL::UMUL_i32 : AMDIL::UMUL24_i32;
-      BuildMI(*mBB, *MI, DL, mTII->get(mulOp), AMDIL::R1008)
+      BuildMI(*mBB, I, DL, mTII->get(mulOp), AMDIL::R1008)
         .addReg(AMDIL::R1008)
         .addImm(mMFI->addi32Literal(8));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi32Literal(0xFFFFFFFC));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSLOAD), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSLOAD), AMDIL::R1011)
         .addReg(AMDIL::R1010)
         .addImm(gID);
       // The instruction would normally fit in right here so everything created
       // after this point needs to go into the afterInst vector.
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::IBIT_EXTRACT_i32), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::IBIT_EXTRACT_i32), AMDIL::R1011)
         .addImm(mMFI->addi32Literal(8))
         .addReg(AMDIL::R1008)
         .addReg(AMDIL::R1011);
       break;
     case 2:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi32Literal(3));
       mulOp = (mSTM->device()->usesSoftware(AMDILDeviceInfo::RegionMem))
         ? AMDIL::UMUL_i32 : AMDIL::UMUL24_i32;
-      BuildMI(*mBB, *MI, DL, mTII->get(mulOp), AMDIL::R1008)
+      BuildMI(*mBB, I, DL, mTII->get(mulOp), AMDIL::R1008)
         .addReg(AMDIL::R1008)
         .addImm(mMFI->addi32Literal(8));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi32Literal(0xFFFFFFFC));
-       BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSLOAD), AMDIL::R1011)
+       BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSLOAD), AMDIL::R1011)
         .addReg(AMDIL::R1010)
         .addImm(gID);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::IBIT_EXTRACT_i32), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::IBIT_EXTRACT_i32), AMDIL::R1011)
         .addImm(mMFI->addi32Literal(16))
         .addReg(AMDIL::R1008)
         .addReg(AMDIL::R1011);
       break;
     case 4:
-       BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSLOAD), AMDIL::R1011)
+       BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSLOAD), AMDIL::R1011)
         .addReg(AMDIL::R1010)
         .addImm(gID);
       break;
     case 8:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v2i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v2i32), AMDIL::R1010)
         .addReg(AMDIL::R1010);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1010)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi64Literal(1ULL << 32));
-       BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSLOAD), AMDIL::R1011)
+       BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSLOAD), AMDIL::R1011)
         .addReg(AMDIL::R1010)
         .addImm(gID);
-       BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSLOAD_Y), AMDIL::R1011)
+       BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSLOAD_Y), AMDIL::R1011)
         .addReg(AMDIL::R1010)
         .addImm(gID);
       break;
@@ -553,7 +556,7 @@ AMDILEGIOExpansion::expandRegionLoad(MachineInstr *MI)
   // These instructions are generated after the current MI.
   expandPackedData(MI);
   expandExtendLoad(MI);
-  BuildMI(*mBB, *MI, MI->getDebugLoc(),
+  BuildMI(*mBB, I, MI->getDebugLoc(),
       mTII->get(getMoveInstFromID(
           MI->getDesc().OpInfo[0].RegClass)))
     .addOperand(MI->getOperand(0))
@@ -563,6 +566,7 @@ AMDILEGIOExpansion::expandRegionLoad(MachineInstr *MI)
   void
 AMDILEGIOExpansion::expandLocalLoad(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   bool HWLocal = mSTM->device()->usesHardware(AMDILDeviceInfo::LocalMem);
   if (!HWLocal || !isHardwareLocal(MI)) {
     return expandGlobalLoad(MI);
@@ -583,47 +587,47 @@ AMDILEGIOExpansion::expandLocalLoad(MachineInstr *MI)
   expandLoadStartCode(MI);
   switch (getMemorySize(MI)) {
     default:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LDSLOADVEC_v4i32), AMDIL::R1011) 
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::LDSLOADVEC_v4i32), AMDIL::R1011) 
         .addReg(AMDIL::R1010)
         .addImm(lID);
       break;
     case 8:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LDSLOADVEC_v2i32), AMDIL::R1011) 
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::LDSLOADVEC_v2i32), AMDIL::R1011) 
         .addReg(AMDIL::R1010)
         .addImm(lID);
       break;
     case 4:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LDSLOAD), AMDIL::R1011) 
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::LDSLOAD), AMDIL::R1011) 
         .addReg(AMDIL::R1010)
         .addImm(lID);
       break;
     case 1:
       if (!mSTM->device()->usesHardware(AMDILDeviceInfo::ByteLDSOps)) {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
           .addReg(AMDIL::R1010)
           .addImm(mMFI->addi32Literal(3));
         mulOp = (mSTM->device()->usesSoftware(AMDILDeviceInfo::LocalMem))
           ? AMDIL::UMUL_i32 : AMDIL::UMUL24_i32;
-        BuildMI(*mBB, *MI, DL, mTII->get(mulOp), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(mulOp), AMDIL::R1008)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi32Literal(8));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
           .addReg(AMDIL::R1010)
           .addImm(mMFI->addi32Literal(0xFFFFFFFC));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LDSLOAD), AMDIL::R1011) 
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LDSLOAD), AMDIL::R1011) 
           .addReg(AMDIL::R1010)
           .addImm(lID);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::IBIT_EXTRACT_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::IBIT_EXTRACT_i32), AMDIL::R1011)
           .addImm(mMFI->addi32Literal(8))
           .addReg(AMDIL::R1008)
           .addReg(AMDIL::R1011);
       } else {
         if (isSWSExtLoadInst(MI)) { 
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LDSLOAD_i8), AMDIL::R1011) 
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::LDSLOAD_i8), AMDIL::R1011) 
             .addReg(AMDIL::R1010)
             .addImm(lID);
         } else {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LDSLOAD_u8), AMDIL::R1011) 
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::LDSLOAD_u8), AMDIL::R1011) 
             .addReg(AMDIL::R1010)
             .addImm(lID);
         }
@@ -631,31 +635,31 @@ AMDILEGIOExpansion::expandLocalLoad(MachineInstr *MI)
       break;
     case 2:
       if (!mSTM->device()->usesHardware(AMDILDeviceInfo::ByteLDSOps)) {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
           .addReg(AMDIL::R1010)
           .addImm(mMFI->addi32Literal(3));
         mulOp = (mSTM->device()->usesSoftware(AMDILDeviceInfo::LocalMem))
           ? AMDIL::UMUL_i32 : AMDIL::UMUL24_i32;
-        BuildMI(*mBB, *MI, DL, mTII->get(mulOp), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(mulOp), AMDIL::R1008)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi32Literal(8));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1010)
           .addReg(AMDIL::R1010)
           .addImm(mMFI->addi32Literal(0xFFFFFFFC));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LDSLOAD), AMDIL::R1011) 
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::LDSLOAD), AMDIL::R1011) 
           .addReg(AMDIL::R1010)
           .addImm(lID);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::IBIT_EXTRACT_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::IBIT_EXTRACT_i32), AMDIL::R1011)
           .addImm(mMFI->addi32Literal(16))
           .addReg(AMDIL::R1008)
           .addReg(AMDIL::R1011);
       } else {
         if (isSWSExtLoadInst(MI)) { 
-           BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LDSLOAD_i16), AMDIL::R1011) 
+           BuildMI(*mBB, I, DL, mTII->get(AMDIL::LDSLOAD_i16), AMDIL::R1011) 
         .addReg(AMDIL::R1010)
         .addImm(lID);
         } else {
-           BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::LDSLOAD_u16), AMDIL::R1011) 
+           BuildMI(*mBB, I, DL, mTII->get(AMDIL::LDSLOAD_u16), AMDIL::R1011) 
         .addReg(AMDIL::R1010)
         .addImm(lID);
         }
@@ -666,7 +670,7 @@ AMDILEGIOExpansion::expandLocalLoad(MachineInstr *MI)
   // These instructions are generated after the current MI.
   expandPackedData(MI);
   expandExtendLoad(MI);
-  BuildMI(*mBB, *MI, MI->getDebugLoc(),
+  BuildMI(*mBB, I, MI->getDebugLoc(),
       mTII->get(getMoveInstFromID(
           MI->getDesc().OpInfo[0].RegClass)))
     .addOperand(MI->getOperand(0))
@@ -676,6 +680,7 @@ AMDILEGIOExpansion::expandLocalLoad(MachineInstr *MI)
   void
 AMDILEGIOExpansion::expandGlobalStore(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   bool usesArena = isArenaOp(MI);
   uint32_t ID = getPointerID(MI);
   mKM->setOutputInst();
@@ -691,50 +696,50 @@ AMDILEGIOExpansion::expandGlobalStore(MachineInstr *MI)
   switch (getMemorySize(MI)) {
     default:
       if (usesArena) {
-         BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1010)
+         BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(ID);
         if (mSTM->device()->usesHardware(AMDILDeviceInfo::ArenaVectors)) {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENASTORE_Y_i32), AMDIL::R1010)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENASTORE_Y_i32), AMDIL::R1010)
             .addReg(AMDIL::R1011)
             .addImm(ID);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENASTORE_Z_i32), AMDIL::R1010)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENASTORE_Z_i32), AMDIL::R1010)
             .addReg(AMDIL::R1011)
             .addImm(ID);
-          BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_W_i32), AMDIL::R1010)
+          BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_W_i32), AMDIL::R1010)
             .addReg(AMDIL::R1011)
             .addImm(ID);
         } else {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
             .addReg(AMDIL::R1010)
             .addImm(2);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1008)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1008)
             .addReg(AMDIL::R1011)
             .addImm(2);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1008)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1008)
             .addReg(AMDIL::R1008)
             .addImm(ID);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
             .addReg(AMDIL::R1010)
             .addImm(3);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1008)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1008)
             .addReg(AMDIL::R1011)
             .addImm(3);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1008)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1008)
             .addReg(AMDIL::R1008)
             .addImm(ID);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
             .addReg(AMDIL::R1010)
             .addImm(4);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1008)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1008)
             .addReg(AMDIL::R1011)
             .addImm(4);
-          BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1008)
+          BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1008)
             .addReg(AMDIL::R1008)
             .addImm(ID);
         }
       } else {
-        BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVRAWSTORE_v4i32), AMDIL::MEM)
+        BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVRAWSTORE_v4i32), AMDIL::MEM)
           .addReg(AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(ID);
@@ -742,14 +747,14 @@ AMDILEGIOExpansion::expandGlobalStore(MachineInstr *MI)
       break;
     case 1:
       if (usesArena) {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi32Literal(0xFF));
-        BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i8), AMDIL::R1010)
+        BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i8), AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(ID);
       } else {
-        BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVRAWSTORE_i32), AMDIL::MEM)
+        BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVRAWSTORE_i32), AMDIL::MEM)
           .addReg(AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(ID);
@@ -757,14 +762,14 @@ AMDILEGIOExpansion::expandGlobalStore(MachineInstr *MI)
       break;
     case 2:
       if (usesArena) {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi32Literal(0xFFFF));
-        BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i16), AMDIL::R1010)
+        BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i16), AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(ID);
       } else {
-        BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVRAWSTORE_i32), AMDIL::MEM)
+        BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVRAWSTORE_i32), AMDIL::MEM)
           .addReg(AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(ID);
@@ -772,11 +777,11 @@ AMDILEGIOExpansion::expandGlobalStore(MachineInstr *MI)
       break;
     case 4:
       if (usesArena) {
-        BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1010)
+        BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(ID);
       } else {
-        BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVRAWSTORE_i32), AMDIL::MEM)
+        BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVRAWSTORE_i32), AMDIL::MEM)
           .addReg(AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(ID);
@@ -784,26 +789,26 @@ AMDILEGIOExpansion::expandGlobalStore(MachineInstr *MI)
       break;
     case 8:
       if (usesArena) {
-        BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1010)
+        BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(ID);
         if (mSTM->device()->usesHardware(AMDILDeviceInfo::ArenaVectors)) {
-          BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_Y_i32), AMDIL::R1010)
+          BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_Y_i32), AMDIL::R1010)
             .addReg(AMDIL::R1011)
             .addImm(ID);
         } else {
-           BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
+           BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1007)
             .addReg(AMDIL::R1010)
             .addImm(2);
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1008)
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v4i32), AMDIL::R1008)
             .addReg(AMDIL::R1011)
             .addImm(2);
-          BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1007)
+          BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVARENASTORE_i32), AMDIL::R1007)
             .addReg(AMDIL::R1008)
             .addImm(ID);
         }
       } else {
-        BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::UAVRAWSTORE_v2i32), AMDIL::MEM)
+        BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::UAVRAWSTORE_v2i32), AMDIL::MEM)
           .addReg(AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(ID);
@@ -814,6 +819,7 @@ AMDILEGIOExpansion::expandGlobalStore(MachineInstr *MI)
   void
 AMDILEGIOExpansion::expandRegionStore(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   bool HWRegion = mSTM->device()->usesHardware(AMDILDeviceInfo::RegionMem);
   if (!HWRegion || !isHardwareRegion(MI)) {
     return expandGlobalStore(MI);
@@ -836,101 +842,101 @@ AMDILEGIOExpansion::expandRegionStore(MachineInstr *MI)
   expandArenaSetup(MI);
   switch (getMemorySize(MI)) {
     default:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1010)
         .addReg(AMDIL::R1010);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1010)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi128Literal(1ULL << 32, 2ULL | (3ULL << 32)));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSSTORE), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSSTORE), AMDIL::R1010)
         .addReg(AMDIL::R1011)
         .addImm(gID);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSSTORE_Y), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSSTORE_Y), AMDIL::R1010)
         .addReg(AMDIL::R1011)
         .addImm(gID);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSSTORE_Z), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSSTORE_Z), AMDIL::R1010)
         .addReg(AMDIL::R1011)
         .addImm(gID);
-      BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::GDSSTORE_W), AMDIL::R1010)
+      BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::GDSSTORE_W), AMDIL::R1010)
         .addReg(AMDIL::R1011)
         .addImm(gID);
       break;
     case 1:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
         .addReg(AMDIL::R1011)
         .addImm(mMFI->addi32Literal(0xFF));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1012)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1012)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi32Literal(3));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1008)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1008)
         .addReg(AMDIL::R1008);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1008)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1008)
         .addReg(AMDIL::R1008)
         .addImm(mMFI->addi128Literal(0xFFFFFFFFULL << 32, 
               (0xFFFFFFFEULL | (0xFFFFFFFDULL << 32))));
-      BuildMI(*mBB, *MI, DL, mTII->get(mulOp), AMDIL::R1006)
+      BuildMI(*mBB, I, DL, mTII->get(mulOp), AMDIL::R1006)
         .addReg(AMDIL::R1008)
         .addImm(mMFI->addi32Literal(8));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1007)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1007)
         .addReg(AMDIL::R1008)
         .addImm(mMFI->addi32Literal(0xFFFFFF00))
         .addImm(mMFI->addi32Literal(0x00FFFFFF));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_Y_i32), AMDIL::R1007)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_Y_i32), AMDIL::R1007)
         .addReg(AMDIL::R1008)
         .addReg(AMDIL::R1007)
         .addImm(mMFI->addi32Literal(0xFF00FFFF));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_Z_i32), AMDIL::R1012)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_Z_i32), AMDIL::R1012)
         .addReg(AMDIL::R1008)
         .addReg(AMDIL::R1007)
         .addImm(mMFI->addi32Literal(0xFFFF00FF));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHL_i32), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHL_i32), AMDIL::R1011)
         .addReg(AMDIL::R1011)
         .addReg(AMDIL::R1007);
-      BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_R_MSKOR), AMDIL::R1010)
+      BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_R_MSKOR), AMDIL::R1010)
         .addReg(AMDIL::R1012)
         .addReg(AMDIL::R1011)
         .addImm(gID);
       break;
     case 2:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
         .addReg(AMDIL::R1011)
         .addImm(mMFI->addi32Literal(0x0000FFFF));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi32Literal(3));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1008)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1008)
         .addReg(AMDIL::R1008)
         .addImm(mMFI->addi32Literal(1));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1012)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1012)
         .addReg(AMDIL::R1008)
         .addImm(mMFI->addi32Literal(0x0000FFFF))
         .addImm(mMFI->addi32Literal(0xFFFF0000));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1008)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1008)
         .addReg(AMDIL::R1008)
         .addImm(mMFI->addi32Literal(16))
         .addImm(mMFI->addi32Literal(0));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHL_i32), AMDIL::R1011)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHL_i32), AMDIL::R1011)
         .addReg(AMDIL::R1011)
         .addReg(AMDIL::R1008);
-      BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_R_MSKOR), AMDIL::R1010)
+      BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_R_MSKOR), AMDIL::R1010)
         .addReg(AMDIL::R1012)
         .addReg(AMDIL::R1011)
         .addImm(gID);
       break;
     case 4:
-      BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::GDSSTORE), AMDIL::R1010)
+      BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::GDSSTORE), AMDIL::R1010)
         .addReg(AMDIL::R1011)
         .addImm(gID);
       break;
     case 8:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v2i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v2i32), AMDIL::R1010)
         .addReg(AMDIL::R1010);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1010)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi64Literal(1ULL << 32));
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::GDSSTORE), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::GDSSTORE), AMDIL::R1010)
         .addReg(AMDIL::R1011)
         .addImm(gID);
-      BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::GDSSTORE_Y), AMDIL::R1010)
+      BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::GDSSTORE_Y), AMDIL::R1010)
         .addReg(AMDIL::R1011)
         .addImm(gID);
       break;
@@ -941,6 +947,7 @@ AMDILEGIOExpansion::expandRegionStore(MachineInstr *MI)
   void
 AMDILEGIOExpansion::expandLocalStore(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   bool HWLocal = mSTM->device()->usesHardware(AMDILDeviceInfo::LocalMem);
   if (!HWLocal || !isHardwareLocal(MI)) {
     return expandGlobalStore(MI);
@@ -961,116 +968,116 @@ AMDILEGIOExpansion::expandLocalStore(MachineInstr *MI)
   expandStoreSetupCode(MI);
   switch (getMemorySize(MI)) {
     default:
-      BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::LDSSTOREVEC_v4i32), AMDIL::MEM)
+      BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::LDSSTOREVEC_v4i32), AMDIL::MEM)
         .addReg(AMDIL::R1010)
         .addReg(AMDIL::R1011)
         .addImm(lID);
       break;
     case 8:
-      BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::LDSSTOREVEC_v2i32), AMDIL::MEM)
+      BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::LDSSTOREVEC_v2i32), AMDIL::MEM)
         .addReg(AMDIL::R1010)
         .addReg(AMDIL::R1011)
         .addImm(lID);
       break;
     case 4:
-      BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::LDSSTORE), AMDIL::R1010)
+      BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::LDSSTORE), AMDIL::R1010)
         .addReg(AMDIL::R1011)
         .addImm(lID);
       break;
     case 1:
       if (!mSTM->device()->usesHardware(AMDILDeviceInfo::ByteLDSOps)) {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi32Literal(0xFF));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1012)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1012)
           .addReg(AMDIL::R1010)
           .addImm(mMFI->addi32Literal(3));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1008)
           .addReg(AMDIL::R1008);
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1008)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi128Literal(0xFFFFFFFFULL << 32, 
                 (0xFFFFFFFEULL | (0xFFFFFFFDULL << 32))));
-        BuildMI(*mBB, *MI, DL, mTII->get(mulOp), AMDIL::R1006)
+        BuildMI(*mBB, I, DL, mTII->get(mulOp), AMDIL::R1006)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi32Literal(8));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1007)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1007)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi32Literal(0xFFFFFF00))
           .addImm(mMFI->addi32Literal(0x00FFFFFF));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_Y_i32), AMDIL::R1007)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_Y_i32), AMDIL::R1007)
           .addReg(AMDIL::R1008)
           .addReg(AMDIL::R1007)
           .addImm(mMFI->addi32Literal(0xFF00FFFF));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_Z_i32), AMDIL::R1012)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_Z_i32), AMDIL::R1012)
           .addReg(AMDIL::R1008)
           .addReg(AMDIL::R1007)
           .addImm(mMFI->addi32Literal(0xFFFF00FF));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHL_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHL_i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addReg(AMDIL::R1007);
         if (mSTM->calVersion() >= CAL_VERSION_SC_137) {
-          BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_L_MSKOR_NORET), 
+          BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_L_MSKOR_NORET), 
               AMDIL::R1010)
             .addReg(AMDIL::R1012)
             .addReg(AMDIL::R1011)
             .addImm(lID);
         } else {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ATOM_L_ADD_NORET), 
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::ATOM_L_ADD_NORET), 
               AMDIL::R1010)
             .addReg(AMDIL::R1012)
             .addImm(lID);
-          BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_L_OR_NORET), 
+          BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_L_OR_NORET), 
               AMDIL::R1010)
             .addReg(AMDIL::R1011)
             .addImm(lID);
         }
       } else {
-        BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::LDSSTORE_i8), AMDIL::R1010)
+        BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::LDSSTORE_i8), AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(lID);
       }
       break;
     case 2:
       if (!mSTM->device()->usesHardware(AMDILDeviceInfo::ByteLDSOps)) {
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addImm(mMFI->addi32Literal(0x0000FFFF));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::BINARY_AND_i32), AMDIL::R1008)
           .addReg(AMDIL::R1010)
           .addImm(mMFI->addi32Literal(3));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHR_i32), AMDIL::R1008)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi32Literal(1));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1012)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1012)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi32Literal(0x0000FFFF))
           .addImm(mMFI->addi32Literal(0xFFFF0000));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1008)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::CMOVLOG_i32), AMDIL::R1008)
           .addReg(AMDIL::R1008)
           .addImm(mMFI->addi32Literal(16))
           .addImm(mMFI->addi32Literal(0));
-        BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::SHL_i32), AMDIL::R1011)
+        BuildMI(*mBB, I, DL, mTII->get(AMDIL::SHL_i32), AMDIL::R1011)
           .addReg(AMDIL::R1011)
           .addReg(AMDIL::R1008);
         if (mSTM->calVersion() >= CAL_VERSION_SC_137) {
-          BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_L_MSKOR_NORET), 
+          BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_L_MSKOR_NORET), 
               AMDIL::R1010)
             .addReg(AMDIL::R1012)
             .addReg(AMDIL::R1011)
             .addImm(lID);
         } else {
-          BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ATOM_L_ADD_NORET), 
+          BuildMI(*mBB, I, DL, mTII->get(AMDIL::ATOM_L_ADD_NORET), 
               AMDIL::R1010)
             .addReg(AMDIL::R1012)
             .addImm(lID);
-          BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_L_OR_NORET), 
+          BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::ATOM_L_OR_NORET), 
               AMDIL::R1010)
             .addReg(AMDIL::R1011)
             .addImm(lID);
         }
       } else { 
-        BuildMI(*mBB, *MI, MI->getDebugLoc(), mTII->get(AMDIL::LDSSTORE_i16), AMDIL::R1010)
+        BuildMI(*mBB, I, MI->getDebugLoc(), mTII->get(AMDIL::LDSSTORE_i16), AMDIL::R1010)
           .addReg(AMDIL::R1011)
           .addImm(lID);
       }
@@ -1087,6 +1094,7 @@ AMDILEGIOExpansion::expandStoreSetupCode(MachineInstr *MI)
   void
 AMDILEGIOExpansion::expandArenaSetup(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   if (!isArenaOp(MI)) {
     return;
   }
@@ -1100,16 +1108,16 @@ AMDILEGIOExpansion::expandArenaSetup(MachineInstr *MI)
     case AMDIL::GPRF64RegClassID:
     case AMDIL::GPRV2I32RegClassID:
     case AMDIL::GPRV2F32RegClassID:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v2i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v2i32), AMDIL::R1010)
         .addReg(AMDIL::R1010);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v2i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v2i32), AMDIL::R1010)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi64Literal(4ULL << 32));
       break;
     default:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::VCREATE_v4i32), AMDIL::R1010)
         .addReg(AMDIL::R1010);
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1010)
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::ADD_v4i32), AMDIL::R1010)
         .addReg(AMDIL::R1010)
         .addImm(mMFI->addi128Literal(4ULL << 32, 8ULL | (12ULL << 32)));
       break;

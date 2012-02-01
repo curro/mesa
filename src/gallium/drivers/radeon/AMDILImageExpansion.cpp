@@ -62,8 +62,8 @@
 #include "llvm/Target/TargetInstrInfo.h"
 using namespace llvm;
 
-AMDILImageExpansion::AMDILImageExpansion(TargetMachine &tm, CodeGenOpt::Level OptLevel)
-  : AMDIL789IOExpansion(tm, OptLevel)
+AMDILImageExpansion::AMDILImageExpansion(TargetMachine &tm AMDIL_OPT_LEVEL_DECL)
+  : AMDIL789IOExpansion(tm AMDIL_OPT_LEVEL_VAR)
 {
 }
 
@@ -201,9 +201,10 @@ AMDILImageExpansion::expandImageStore(MachineBasicBlock *mBB, MachineInstr *MI)
   void
 AMDILImageExpansion::expandImageParam(MachineBasicBlock *mBB, MachineInstr *MI)
 {
+    MachineBasicBlock::iterator I = *MI;
     uint32_t ID = getPointerID(MI);
     DebugLoc DL = MI->getDebugLoc();
-    BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::CBLOAD), 
+    BuildMI(*mBB, I, DL, mTII->get(AMDIL::CBLOAD), 
         MI->getOperand(0).getReg())
         .addImm(ID)
         .addImm(1);

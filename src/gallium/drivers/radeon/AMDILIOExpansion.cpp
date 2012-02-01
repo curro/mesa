@@ -74,15 +74,15 @@ using namespace llvm;
 char AMDILIOExpansion::ID = 0;
 namespace llvm {
   FunctionPass*
-    createAMDILIOExpansion(TargetMachine &TM, CodeGenOpt::Level OptLevel)
+    createAMDILIOExpansion(TargetMachine &TM AMDIL_OPT_LEVEL_DECL)
     {
       return TM.getSubtarget<AMDILSubtarget>()
-        .device()->getIOExpansion(TM, OptLevel);
+        .device()->getIOExpansion(TM AMDIL_OPT_LEVEL_VAR);
     }
 }
 
-AMDILIOExpansion::AMDILIOExpansion(TargetMachine &tm, 
-    CodeGenOpt::Level OptLevel) :
+AMDILIOExpansion::AMDILIOExpansion(TargetMachine &tm
+     AMDIL_OPT_LEVEL_DECL) :
 #if LLVM_VERSION >= 2500
   MachineFunctionPass(ID), TM(tm)
 #else
@@ -913,6 +913,7 @@ AMDILIOExpansion::expandExtendLoad(MachineInstr *MI)
   void
 AMDILIOExpansion::expandTruncData(MachineInstr *MI)
 {
+  MachineBasicBlock::iterator I = *MI;
   if (!isTruncStoreInst(MI)) {
     return;
   }
@@ -1017,7 +1018,7 @@ AMDILIOExpansion::expandTruncData(MachineInstr *MI)
     case AMDIL::LOCALTRUNCSTORE_v2f64f32:
     case AMDIL::REGIONTRUNCSTORE_v2f64f32:
     case AMDIL::PRIVATETRUNCSTORE_v2f64f32:
-      BuildMI(*mBB, *MI, DL, mTII->get(AMDIL::VEXTRACT_v2f64),
+      BuildMI(*mBB, I, DL, mTII->get(AMDIL::VEXTRACT_v2f64),
           AMDIL::R1012).addReg(AMDIL::R1011).addImm(2);
       BuildMI(*mBB, MI, DL, mTII->get(AMDIL::DTOF),
           AMDIL::R1011).addReg(AMDIL::R1011);

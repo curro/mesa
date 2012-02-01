@@ -51,7 +51,11 @@
 #define _AMDIL_LLVM_PC_H_
 #include <string>
 #if !defined(LLVM_VERSION)
-#define LLVM_VERSION 3000
+  #if HAVE_LLVM == 0x300
+    #define LLVM_VERSION 3000
+  #else
+    #define LLVM_VERSION 3100
+  #endif
 #endif
 #define ASMPRINTER_KERNEL_NAME kernelName
 #define ASMPRINTER_RETURN_TYPE static AsmPrinter*

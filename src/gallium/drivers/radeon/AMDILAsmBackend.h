@@ -88,6 +88,20 @@ namespace llvm {
 #if LLVM_VERSION >= 2500
     unsigned getNumFixupKinds() const;
 #endif
+
+#if LLVM_VERSION > 3000
+  virtual void applyFixup(const MCFixup &Fixup, char * Data, unsigned DataSize,
+                          uint64_t value) const { }
+  virtual bool mayNeedRelaxation(const MCInst &Inst) const { return false; }
+  virtual bool fixupNeedsRelaxation(const MCFixup &fixup, uint64_t value,
+                                    const MCInstFragment *DF,
+                                    const MCAsmLayout &Layout) const
+                                    { return false; }
+  virtual bool relaxInstruction(const MCInst &Inst, MCInst &Res) const
+                                { return false; }
+  virtual bool fixupNeedsRelaxation (const MCF
+
+
   }; // class AMDILAsmBackend;
 } // llvm namespace
 

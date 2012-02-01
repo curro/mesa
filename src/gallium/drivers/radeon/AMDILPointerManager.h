@@ -151,8 +151,8 @@ namespace llvm {
   {
     public:
       AMDILPointerManager(
-          TargetMachine &tm,
-          CodeGenOpt::Level OL);
+          TargetMachine &tm
+          AMDIL_OPT_LEVEL_DECL);
       virtual ~AMDILPointerManager();
       virtual const char*
         getPassName() const;
@@ -175,8 +175,8 @@ namespace llvm {
   {
     public:
       AMDILEGPointerManager(
-          TargetMachine &tm,
-          CodeGenOpt::Level OL);
+          TargetMachine &tm
+          AMDIL_OPT_LEVEL_DECL);
       virtual ~AMDILEGPointerManager();
       virtual const char*
         getPassName() const;

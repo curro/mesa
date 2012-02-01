@@ -120,7 +120,7 @@ def AMDILInstrInfo : InstrInfo {}
 //===----------------------------------------------------------------------===//
 // AMDIL processors supported.
 //===----------------------------------------------------------------------===//
-include "Processors.td"
+//include "Processors.td"
 
 //===----------------------------------------------------------------------===//
 // Declare the target which we are implementing

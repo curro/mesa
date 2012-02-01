@@ -11,7 +11,9 @@ LIBRARY_INCLUDES = \
 # get C_SOURCES
 include Makefile.sources
 
-ifeq ($(HAVE_LLVM),0x0300)
+use_llvm := $(if $(filter 0x03%, $(HAVE_LLVM)), 1,)
+
+ifdef use_llvm
 
 LIBRADEON = $(TOP)/src/gallium/drivers/radeon/libradeon.a
 

@@ -81,11 +81,11 @@ public:
   virtual uint32_t getMaxNumUAVs() const;
   virtual uint32_t getResourceID(uint32_t) const;
   virtual FunctionPass*
-    getIOExpansion(TargetMachine&, CodeGenOpt::Level) const;
+    getIOExpansion(TargetMachine& AMDIL_OPT_LEVEL_DECL) const;
   virtual AsmPrinter*
     getAsmPrinter(AMDIL_ASM_PRINTER_ARGUMENTS) const;
   virtual FunctionPass*
-    getPointerManager(TargetMachine&, CodeGenOpt::Level) const;
+    getPointerManager(TargetMachine& AMDIL_OPT_LEVEL_DECL) const;
 protected:
   virtual void setCaps();
 }; // AMDILEvergreenDevice

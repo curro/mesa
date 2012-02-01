@@ -88,7 +88,7 @@ class LLVM_LIBRARY_VISIBILITY AMDILPeepholeOpt : public FunctionPass {
 public:
   TargetMachine &TM;
   static char ID;
-  AMDILPeepholeOpt(TargetMachine &tm, CodeGenOpt::Level OL);
+  AMDILPeepholeOpt(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
   ~AMDILPeepholeOpt();
   const char *getPassName() const;
   bool runOnFunction(Function &F);
@@ -170,13 +170,13 @@ private:
 
 namespace llvm {
   FunctionPass *
-  createAMDILPeepholeOpt(TargetMachine &tm, CodeGenOpt::Level OL) 
+  createAMDILPeepholeOpt(TargetMachine &tm AMDIL_OPT_LEVEL_DECL) 
   {
-    return new AMDILPeepholeOpt(tm, OL);
+    return new AMDILPeepholeOpt(tm AMDIL_OPT_LEVEL_VAR);
   }
 } // llvm namespace
 
-AMDILPeepholeOpt::AMDILPeepholeOpt(TargetMachine &tm, CodeGenOpt::Level OL)
+AMDILPeepholeOpt::AMDILPeepholeOpt(TargetMachine &tm AMDIL_OPT_LEVEL_DECL)
 #if LLVM_VERSION >= 2500
   : FunctionPass(ID), TM(tm) 
 #else
@@ -184,7 +184,12 @@ AMDILPeepholeOpt::AMDILPeepholeOpt(TargetMachine &tm, CodeGenOpt::Level OL)
 #endif
 {
   mDebug = DEBUGME;
-  optLevel = OL;
+#if LLVM_VERSION <= 3000
+  optLevel = AMDIL_OPT_LEVEL_VAR_NO_COMMA;
+#else
+  optLevel = TM.getOptLevel();
+#endif
+
 }
 
 AMDILPeepholeOpt::~AMDILPeepholeOpt() 

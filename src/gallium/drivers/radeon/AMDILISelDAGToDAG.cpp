@@ -74,7 +74,7 @@ class AMDILDAGToDAGISel : public SelectionDAGISel {
   // make the right decision when generating code for different targets.
   const AMDILSubtarget &Subtarget;
 public:
-  AMDILDAGToDAGISel(AMDILTargetMachine &TM, CodeGenOpt::Level OptLevel);
+  AMDILDAGToDAGISel(AMDILTargetMachine &TM AMDIL_OPT_LEVEL_DECL);
   virtual ~AMDILDAGToDAGISel();
   inline SDValue getSmallIPtrImm(unsigned Imm);
 
@@ -114,14 +114,14 @@ private:
 // createAMDILISelDag - This pass converts a legalized DAG into a AMDIL-specific
 // DAG, ready for instruction scheduling.
 //
-FunctionPass *llvm::createAMDILISelDag(AMDILTargetMachine &TM,
-                                       llvm::CodeGenOpt::Level OptLevel) {
-  return new AMDILDAGToDAGISel(TM, OptLevel);
+FunctionPass *llvm::createAMDILISelDag(AMDILTargetMachine &TM
+                                        AMDIL_OPT_LEVEL_DECL) {
+  return new AMDILDAGToDAGISel(TM AMDIL_OPT_LEVEL_VAR);
 }
 
-AMDILDAGToDAGISel::AMDILDAGToDAGISel(AMDILTargetMachine &TM,
-                                     CodeGenOpt::Level OptLevel)
-  : SelectionDAGISel(TM, OptLevel), Subtarget(TM.getSubtarget<AMDILSubtarget>())
+AMDILDAGToDAGISel::AMDILDAGToDAGISel(AMDILTargetMachine &TM
+                                      AMDIL_OPT_LEVEL_DECL)
+  : SelectionDAGISel(TM AMDIL_OPT_LEVEL_VAR), Subtarget(TM.getSubtarget<AMDILSubtarget>())
 {
 }
 

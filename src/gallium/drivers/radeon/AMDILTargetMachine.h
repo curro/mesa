@@ -97,7 +97,14 @@ namespace llvm
         public:
         AMDILTargetMachine(const Target &T,
              StringRef TT, StringRef CPU, StringRef FS,
-             Reloc::Model RM, CodeModel::Model CM);
+#if LLVM_VERSION > 3000
+             TargetOptions Options,
+#endif
+             Reloc::Model RM, CodeModel::Model CM
+#if LLVM_VERSION > 3000
+             ,CodeGenOpt::Level OL
+#endif
+);
 
         // Get Target/Subtarget specific information
         virtual AMDILTargetLowering* getTargetLowering() const;
@@ -115,15 +122,35 @@ namespace llvm
 
         // Pass Pipeline Configuration
         virtual bool
-            addPreEmitPass(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
+            addPreEmitPass(PassManagerBase &PM
+#if LLVM_VERSION <= 3000
+                           AMDIL_OPT_LEVEL_DECL
+#endif
+                          );
         virtual bool
-          addPreISel(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
+          addPreISel(PassManagerBase &PM
+#if LLVM_VERSION <= 3000
+                     AMDIL_OPT_LEVEL_DECL
+#endif
+);
         virtual bool
-            addInstSelector(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
+            addInstSelector(PassManagerBase &PM
+#if LLVM_VERSION <= 3000
+                             AMDIL_OPT_LEVEL_DECL
+#endif
+);
         virtual bool
-            addPreRegAlloc(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
+            addPreRegAlloc(PassManagerBase &PM
+#if LLVM_VERSION <= 3000
+                            AMDIL_OPT_LEVEL_DECL
+#endif
+        );
         virtual bool
-            addPostRegAlloc(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
+            addPostRegAlloc(PassManagerBase &PM
+#if LLVM_VERSION <= 3000
+                             AMDIL_OPT_LEVEL_DECL
+#endif
+        );
 #if LLVM_VERSION < 2500
         virtual bool
             addPassesToEmitFile(PassManagerBase &, formatted_raw_ostream &,

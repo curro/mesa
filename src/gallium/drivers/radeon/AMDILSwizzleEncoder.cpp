@@ -125,14 +125,14 @@ static void propogateSrcSwizzles(MachineOperand *MO, unsigned idx, bool mDebug);
 #endif
 namespace llvm {
   FunctionPass*
-    createAMDILSwizzleEncoder(TargetMachine &TM, CodeGenOpt::Level OptLevel)
+    createAMDILSwizzleEncoder(TargetMachine &TM AMDIL_OPT_LEVEL_DECL)
     {
-      return new AMDILSwizzleEncoder(TM, OptLevel);
+      return new AMDILSwizzleEncoder(TM AMDIL_OPT_LEVEL_VAR);
     }
 }
 
-AMDILSwizzleEncoder::AMDILSwizzleEncoder(TargetMachine &tm, 
-                                         CodeGenOpt::Level OptLevel) :
+AMDILSwizzleEncoder::AMDILSwizzleEncoder(TargetMachine &tm
+                                          AMDIL_OPT_LEVEL_DECL) :
 #if LLVM_VERSION >= 2500
   MachineFunctionPass(ID)
 #else
@@ -141,7 +141,11 @@ AMDILSwizzleEncoder::AMDILSwizzleEncoder(TargetMachine &tm,
 {
   ATM = reinterpret_cast<const AMDILTargetMachine*>(&tm);
   mDebug = DEBUGME;
-  opt = OptLevel;
+#if LLVM_VERSION <= 3000
+  opt = AMDIL_OPT_LEVEL_VAR_NO_COMMA;
+#else
+  opt = tm.getOptLevel();
+#endif
 }
 
 const char* AMDILSwizzleEncoder::getPassName() const

@@ -72,7 +72,7 @@ namespace
   {
     public:
       static char ID;
-      AMDILMachinePeephole(TargetMachine &tm, CodeGenOpt::Level OL);
+      AMDILMachinePeephole(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
       //virtual ~AMDILMachinePeephole();
       virtual const char*
         getPassName() const;
@@ -89,13 +89,13 @@ namespace
 namespace llvm
 {
   FunctionPass*
-    createAMDILMachinePeephole(TargetMachine &tm, CodeGenOpt::Level OL)
+    createAMDILMachinePeephole(TargetMachine &tm AMDIL_OPT_LEVEL_DECL)
     {
-      return new AMDILMachinePeephole(tm, OL);
+      return new AMDILMachinePeephole(tm AMDIL_OPT_LEVEL_VAR);
     }
 } // llvm namespace
 
-AMDILMachinePeephole::AMDILMachinePeephole(TargetMachine &tm, CodeGenOpt::Level OL)
+AMDILMachinePeephole::AMDILMachinePeephole(TargetMachine &tm AMDIL_OPT_LEVEL_DECL)
 #if LLVM_VERSION >= 2500
   : MachineFunctionPass(ID), TM(tm)
 #else

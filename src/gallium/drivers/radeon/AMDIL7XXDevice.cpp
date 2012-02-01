@@ -133,9 +133,9 @@ uint32_t AMDIL7XXDevice::getMaxNumUAVs() const
 
 FunctionPass* 
 AMDIL7XXDevice::getIOExpansion(
-    TargetMachine& TM, CodeGenOpt::Level OptLevel) const
+    TargetMachine& TM AMDIL_OPT_LEVEL_DECL) const
 {
-  return new AMDIL7XXIOExpansion(TM, OptLevel);
+  return new AMDIL7XXIOExpansion(TM  AMDIL_OPT_LEVEL_VAR);
 }
 
 AsmPrinter*
@@ -146,9 +146,9 @@ AMDIL7XXDevice::getAsmPrinter(AMDIL_ASM_PRINTER_ARGUMENTS) const
 
 FunctionPass*
 AMDIL7XXDevice::getPointerManager(
-    TargetMachine& TM, CodeGenOpt::Level OptLevel) const
+    TargetMachine& TM AMDIL_OPT_LEVEL_DECL) const
 {
-  return new AMDILPointerManager(TM, OptLevel);
+  return new AMDILPointerManager(TM  AMDIL_OPT_LEVEL_VAR);
 }
 
 AMDIL770Device::AMDIL770Device(AMDILSubtarget *ST): AMDIL7XXDevice(ST)

@@ -68,8 +68,8 @@
 #include <cstdio>
 
 using namespace llvm;
-AMDIL7XXIOExpansion::AMDIL7XXIOExpansion(TargetMachine &tm, 
-    CodeGenOpt::Level OptLevel) : AMDIL789IOExpansion(tm, OptLevel)
+AMDIL7XXIOExpansion::AMDIL7XXIOExpansion(TargetMachine &tm
+    AMDIL_OPT_LEVEL_DECL) : AMDIL789IOExpansion(tm  AMDIL_OPT_LEVEL_VAR)
 {
 }
 

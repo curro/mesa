@@ -74,7 +74,7 @@ namespace {
   class AMDILLiteralManager : public MachineFunctionPass {
   public:
     static char ID;
-    AMDILLiteralManager(TargetMachine &tm, CodeGenOpt::Level OL);
+    AMDILLiteralManager(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
     virtual const char *getPassName() const;
 
     bool runOnMachineFunction(MachineFunction &MF);
@@ -92,14 +92,14 @@ namespace {
 
 namespace llvm {
   FunctionPass *
-  createAMDILLiteralManager(TargetMachine &tm, CodeGenOpt::Level OL) {
-    return new AMDILLiteralManager(tm, OL);
+  createAMDILLiteralManager(TargetMachine &tm AMDIL_OPT_LEVEL_DECL) {
+    return new AMDILLiteralManager(tm AMDIL_OPT_LEVEL_VAR);
   }
   
 }
 
-AMDILLiteralManager::AMDILLiteralManager(TargetMachine &tm,
-                                         CodeGenOpt::Level OL)
+AMDILLiteralManager::AMDILLiteralManager(TargetMachine &tm
+                                         AMDIL_OPT_LEVEL_DECL)
 #if LLVM_VERSION >= 2500
   : MachineFunctionPass(ID),
 #else

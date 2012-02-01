@@ -62,7 +62,15 @@ class AMDISATargetMachine : public AMDILTargetMachine {
 
 public:
    AMDISATargetMachine(const Target &T, StringRef TT, StringRef FS,
-                       StringRef CPU, Reloc::Model RM, CodeModel::Model CM);
+                       StringRef CPU,
+#if LLVM_VERSION > 3000
+                       TargetOptions Options,
+#endif
+                       Reloc::Model RM, CodeModel::Model CM
+#if LLVM_VERSON > 3000
+                       ,CodeGenOpt::Level OL
+#endif
+);
    ~AMDISATargetMachine();
    virtual const AMDISAInstrInfo *getInstrInfo() const {return InstrInfo.get();}
 /*
@@ -82,9 +90,9 @@ public:
    }
    virtual const TargetData *getTargetData() const { return &DataLayout; }
 */
-   virtual bool addInstSelector(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
-   virtual bool addPreEmitPass(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
-   virtual bool addPreRegAlloc(PassManagerBase &PM, CodeGenOpt::Level OptLevel);
+   virtual bool addInstSelector(PassManagerBase &PM AMDIL_OPT_LEVEL_DECL);
+   virtual bool addPreEmitPass(PassManagerBase &PM AMDIL_OPT_LEVEL_DECL);
+   virtual bool addPreRegAlloc(PassManagerBase &PM AMDIL_OPT_LEVEL_DECL);
    virtual bool addPassesToEmitFile(PassManagerBase &PM,
                                     formatted_raw_ostream &Out,
                                     CodeGenFileType FileType,

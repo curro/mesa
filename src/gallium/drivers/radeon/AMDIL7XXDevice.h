@@ -80,11 +80,11 @@ public:
   virtual uint32_t getResourceID(uint32_t DeviceID) const;
   virtual uint32_t getMaxNumUAVs() const;
   FunctionPass*
-    getIOExpansion(TargetMachine&, CodeGenOpt::Level) const;
+    getIOExpansion(TargetMachine& AMDIL_OPT_LEVEL_DECL) const;
   AsmPrinter* 
     getAsmPrinter(AMDIL_ASM_PRINTER_ARGUMENTS) const;
   FunctionPass*
-    getPointerManager(TargetMachine&, CodeGenOpt::Level) const;
+    getPointerManager(TargetMachine& AMDIL_OPT_LEVEL_DECL) const;
 
 protected:
   virtual void setCaps();

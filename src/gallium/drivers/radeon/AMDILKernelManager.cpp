@@ -1022,7 +1022,7 @@ void AMDILKernelManager::printArgCopies(OSTREAM_TYPE &O,
   for (; I != Ie; ++I) {
     Type *curType = I->getType();
     unsigned int Buffer = 1;
-    O << "; Kernel arg setup: " << I->getNameStr() << "\n";
+    O << "; Kernel arg setup: " << I->getName() << "\n";
     if (curType->isIntegerTy() || curType->isFloatingPointTy()) {
       switch (curType->getPrimitiveSizeInBits()) {
         default:
