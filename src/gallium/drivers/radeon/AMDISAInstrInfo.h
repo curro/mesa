@@ -52,7 +52,7 @@ namespace llvm {
 
   virtual const AMDISARegisterInfo &getRegisterInfo() const = 0;
 
-  unsigned getISAOpcode(unsigned AMDILopcode) const;
+  virtual unsigned getISAOpcode(unsigned AMDILopcode) const;
 
   MachineInstr * convertToISA(MachineInstr & MI, MachineFunction &MF,
     DebugLoc DL) const;

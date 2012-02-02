@@ -613,7 +613,7 @@ unsigned R600CodeEmitter::getHWReg(unsigned regNo)
     return hwReg;
   }
   hwReg = hwReg / 4;
-  if (AMDIL::CRRegClass.contains(regNo)) {
+  if (AMDIL::R600_CReg_32RegClass.contains(regNo)) {
     hwReg += 512;
   }
   return hwReg;

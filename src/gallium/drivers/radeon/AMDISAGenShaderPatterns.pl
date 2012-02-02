@@ -34,7 +34,7 @@ for (my $i = 0; $i < CONST_REG_COUNT; $i++) {
 print <<STRING;
 def : Pat <
   (int_AMDISA_load_const $i),
-  (MOVE_f32 $reg_prefix$i)
+  (f32 (MOV (f32 $reg_prefix$i)))
 >;
 STRING
 }

@@ -54,6 +54,16 @@ R600InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                            unsigned DestReg, unsigned SrcReg,
                            bool KillSrc) const
 {
-  BuildMI(MBB, MI, DL, get(AMDIL::MOV_f32), DestReg)
+  BuildMI(MBB, MI, DL, get(AMDIL::MOV), DestReg)
     .addReg(SrcReg, getKillRegState(KillSrc));
+}
+
+unsigned R600InstrInfo::getISAOpcode(unsigned opcode) const
+{
+  switch (opcode) {
+    default: return AMDISAInstrInfo::getISAOpcode(opcode);
+    case AMDIL::MOVE_f32:
+    case AMDIL::MOVE_i32:
+      return AMDIL::MOV;
+  }
 }

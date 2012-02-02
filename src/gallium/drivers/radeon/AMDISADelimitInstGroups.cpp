@@ -187,7 +187,7 @@ void AMDISADelimitInstGroupsPass::addConstantReads(MachineInstr &MI)
     if (!MO.isReg()) {
       continue;
     }
-    if (AMDIL::CRRegClass.contains(MO.getReg())) {
+    if (AMDIL::R600_CReg_32RegClass.contains(MO.getReg())) {
       constantReads[MO.getReg()] = true;
     }
   }

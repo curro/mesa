@@ -70,7 +70,7 @@ BitVector R600RegisterInfo::getReservedRegs(const MachineFunction &MF) const
 bool R600RegisterInfo::isBaseRegClass(unsigned regClassID) const
 {
   switch(regClassID) {
-  case AMDIL::CRRegClassID:
+  case AMDIL::R600_CReg_32RegClassID:
   case AMDIL::GPRF32RegClassID:
   case AMDIL::REPLRegClassID:
     return true;
@@ -86,6 +86,9 @@ R600RegisterInfo::getISARegClass(const TargetRegisterClass * rc) const
   case AMDIL::GPRV4F32RegClassID:
   case AMDIL::GPRV4I32RegClassID:
     return &AMDIL::REPLRegClass;
+  case AMDIL::GPRF32RegClassID:
+  case AMDIL::GPRI32RegClassID:
+    return &AMDIL::R600_Reg32RegClass;
   default: return rc;
 }
 

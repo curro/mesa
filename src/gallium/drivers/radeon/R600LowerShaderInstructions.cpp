@@ -103,6 +103,13 @@ bool R600LowerShaderInstructionsPass::runOnMachineFunction(MachineFunction &MF)
         deleteInstr = true;
         break;
 
+      case AMDIL::MOV:
+        BuildMI(MBB, I, MBB.findDebugLoc(I), TM.getInstrInfo()->get(AMDIL::COPY))
+                .addOperand(MI.getOperand(0))
+                .addOperand(MI.getOperand(1));
+        deleteInstr = true;
+        break;
+
       case AMDIL::STORE_OUTPUT:
         deleteInstr = lowerSTORE_OUTPUT(MI, MBB, I);
         break;

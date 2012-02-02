@@ -63,6 +63,7 @@ namespace llvm {
                            unsigned DestReg, unsigned SrcReg,
                            bool KillSrc) const;
 
+  virtual unsigned getISAOpcode(unsigned opcode) const;
   bool isTrig(const MachineInstr &MI) const;
 
   };

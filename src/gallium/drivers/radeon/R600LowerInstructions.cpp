@@ -218,7 +218,7 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
         {
             MI.getOperand(1).addTargetFlag(MO_FLAG_NEG);
             BuildMI(MBB, I, MBB.findDebugLoc(I),
-                    TII->get(TII->getISAOpcode(AMDIL::MOV_f32)))
+                    TII->get(TII->getISAOpcode(AMDIL::MOV)))
             .addOperand(MI.getOperand(0))
             .addOperand(MI.getOperand(1));
           break;

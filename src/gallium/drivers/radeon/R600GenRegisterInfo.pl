@@ -29,6 +29,7 @@ use warnings;
 use AMDISAConstants;
 
 my $REPL_REG_COUNT = 100;
+my $CREG_MAX = CONST_REG_COUNT - 1;
 
 print <<STRING;
 
@@ -48,17 +49,6 @@ STRING
 
 my $i;
 
-### INPUT REGS ###
-
-my @ireg_list;
-for ($i = 0; $i < INPUT_REG_COUNT; $i++) {
-  print input_reg($i);
-  $ireg_list[$i] = "I$i";
-}
-
-print "\n";
-print 'def IR : RegisterClass <"AMDIL", [f32], 32, (sequence "I%u", 0, ', INPUT_REG_COUNT - 1, ")>;\n\n";
-
 ### CONSTANT REGS ###
 
 my @creg_list;
@@ -66,12 +56,8 @@ for ($i = 0; $i < CONST_REG_COUNT; $i++) {
   print const_reg($i);
   $creg_list[$i] = "C$i";
 }
-print 'def CR : RegisterClass <"AMDIL", [f32], 32, (sequence "C%u", 0, ', CONST_REG_COUNT - 1, ")>;\n";
 
-sub input_reg {
-  my ($index) = @_;
-  return sprintf(qq{def I%d : AMDISAInputReg <%d, "I%d", R%d>;\n}, $index, $index, $index, $index + 1);
-}
+print 'def R600_CReg_32 : RegisterClass <"AMDIL", [f32, i32], 32, (sequence "C%u", 0, ', CONST_REG_COUNT - 1, ")>;\n";
 
 sub const_reg {
   my ($index) = @_;
@@ -79,6 +65,10 @@ sub const_reg {
 }
 
 print <<STRING;
+
+def R600_Reg32 : RegisterClass <"AMDIL", [f32, i32], 32, (add
+  (sequence "C%u", 0, $CREG_MAX),
+  (sequence "R%u", 1, 128))>;
 
 let Namespace = "AMDIL" in {
 def sel_x : SubRegIndex;
