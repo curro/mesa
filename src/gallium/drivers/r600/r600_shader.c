@@ -236,6 +236,7 @@ static unsigned r600_src_from_byte_stream(unsigned char * bytes,
 	alu->src[src_idx].neg = bytes[bytes_read++];
 	alu->src[src_idx].abs = bytes[bytes_read++];
 	alu->src[src_idx].rel = bytes[bytes_read++];
+	alu->src[src_idx].kc_bank = bytes[bytes_read++];
 	for (i = 0; i < 4; i++) {
 		alu->src[src_idx].value |= bytes[bytes_read++] << (i * 8);
 	}
@@ -268,6 +269,7 @@ static unsigned r600_alu_from_byte_stream(struct r600_shader_ctx *ctx,
 	alu.bank_swizzle = bytes[bytes_read++];
 	alu.bank_swizzle_force = bytes[bytes_read++];
 	alu.omod = bytes[bytes_read++];
+	alu.index_mode = bytes[bytes_read++];
 	r600_bytecode_add_alu(ctx->bc, &alu);
 
 	/* XXX: Handle other KILL instructions */

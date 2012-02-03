@@ -40,7 +40,7 @@
 
 #include <stdio.h>
 
-#define SRC_BYTE_COUNT 10
+#define SRC_BYTE_COUNT 11
 #define DST_BYTE_COUNT 5
 
 using namespace llvm;
@@ -311,6 +311,9 @@ void R600CodeEmitter::emitSrc(const MachineOperand & MO)
   /* XXX: Emit relative addressing mode (1 byte) */
   emitByte(0);
 
+  /* Emit kc_bank, This will be adjusted later by r600_asm */
+  emitByte(0);
+
   /* Emit the literal value, if applicable (4 bytes).  */
   emit(value);
 
@@ -389,6 +392,10 @@ void R600CodeEmitter::emitALU(MachineInstr &MI, unsigned numSrc)
 
   /* XXX: Emit OMOD (1 byte) Not implemented. */
   emitByte(0);
+
+  /* XXX: Emit index_mode.  I think this is for indirect addressing, so we
+   * don't need to worry about it. */
+  emitByte(0);
 }
 
 void R600CodeEmitter::emitTexInstr(MachineInstr &MI)
@@ -406,7 +413,7 @@ void R600CodeEmitter::emitTexInstr(MachineInstr &MI)
   emitByte(getHWInst(MI));
 
   /* XXX: Emit resource id r600_shader.c uses sampler + 1.  Why? */
-  emitByte(sampler + 1);
+  emitByte(sampler + 1 + 1);
 
   /* Emit source register */
   emitByte(getHWReg(MI.getOperand(1).getReg()));
