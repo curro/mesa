@@ -67,5 +67,5 @@ AMDISAGenCodeEmitter.inc: *.td
 
 LOADER_LIBS=$(shell llvm-config --libs)
 
-loader: loader.o
+loader: loader.o libradeon.a
 	gcc -o loader -L/usr/local/lib $(LDFLAGS) loader.o libradeon.a $(LOADER_LIBS) -lpthread -ldl -lstdc++ -lm

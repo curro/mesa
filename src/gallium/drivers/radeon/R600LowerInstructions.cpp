@@ -188,6 +188,7 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
            */
           if (use->getParent()->getOpcode() != AMDIL::CLAMP_f32) {
             canDelete = false;
+            break;
           } else {
             use->ChangeToImmediate(MI.getOperand(1).getImm());
           }
