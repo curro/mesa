@@ -57,6 +57,7 @@ namespace {
     R600LowerInstructionsPass(TargetMachine &tm) :
       MachineFunctionPass(ID), TM(tm) { }
 
+    const char *getPassName() const { return "R600 Lower Instructions"; }
     virtual bool runOnMachineFunction(MachineFunction &MF);
 
   };
