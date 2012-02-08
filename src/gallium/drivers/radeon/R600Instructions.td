@@ -47,11 +47,22 @@ class InstR600 <bits<32> inst, dag outs, dag ins, string asm, list<dag> pattern,
   let TSFlags{5} = Op3;
 }
 
+class R600_ALU {
+
+  bits<7> DST_GPR = 0;
+  bits<9> SRC0_SEL = 0;
+  bits<1> SRC0_NEG = 0;
+  bits<9> SRC1_SEL = 0;
+  bits<1> SRC1_NEG = 0;
+  bits<1> CLAMP = 0;
+  
+}
+
 class R600_1OP <bits<32> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg32:$dst),
-          (ins R600_Reg32:$src),
+          (ins R600_Reg32:$src, variable_ops),
           !strconcat(opName, " $dst, $src"),
           pattern,
           itin
@@ -61,7 +72,7 @@ class R600_2OP <bits<32> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg32:$dst),
-          (ins R600_Reg32:$src0, R600_Reg32:$src1),
+          (ins R600_Reg32:$src0, R600_Reg32:$src1, variable_ops),
           !strconcat(opName, " $dst, $src0, $src1"),
           pattern,
           itin
@@ -71,7 +82,7 @@ class R600_3OP <bits<32> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg32:$dst),
-          (ins R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2),
+          (ins R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2, variable_ops),
           !strconcat(opName, "$dst $src0, $src1, $src2"),
           pattern,
           itin>{
@@ -260,7 +271,7 @@ def TEX_SAMPLE_C_G : R600_TEX <
 
 def KILP : Pat <
   (int_AMDISA_kilp),
-  (MASK_WRITE (KILLGT ONE, ZERO))
+  (MASK_WRITE (KILLGT (f32 ONE), (f32 ZERO)))
 >;
 
 /* Helper classes for common instructions */
@@ -381,12 +392,12 @@ class POW_Common <InstR600 log_ieee, InstR600 exp_ieee> : Pat <
 
 class SSG_Common <InstR600 cndgt, InstR600 cndge> : Pat <
   (int_AMDISA_ssg R600_Reg32:$src),
-  (cndgt R600_Reg32:$src, ONE, (cndge R600_Reg32:$src, ZERO, NEG_ONE))
+  (cndgt R600_Reg32:$src, (f32 ONE), (cndge R600_Reg32:$src, (f32 ZERO), (f32 NEG_ONE)))
 >;
 
 class TGSI_LIT_Z_Common <InstR600 mul_lit, InstR600 log_clamped, InstR600 exp_ieee> : Pat <
   (int_TGSI_lit_z R600_Reg32:$src_x, R600_Reg32:$src_y, R600_Reg32:$src_w),
-  (exp_ieee (mul_lit (log_clamped (MAX R600_Reg32:$src_y, ZERO)), R600_Reg32:$src_w, R600_Reg32:$src_x))
+  (exp_ieee (mul_lit (log_clamped (MAX R600_Reg32:$src_y, (f32 ZERO))), R600_Reg32:$src_w, R600_Reg32:$src_x))
 >;
 
 /* ---------------------- */

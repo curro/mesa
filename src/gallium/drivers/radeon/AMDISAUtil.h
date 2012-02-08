@@ -43,8 +43,6 @@ bool isPlaceHolderOpcode(unsigned opcode);
 unsigned getRegElement(const AMDISARegisterInfo * TRI, unsigned regNo);
 unsigned getHWRegNum(const AMDISARegisterInfo * TRI, unsigned amdilRegNo);
 
-uint32_t getLiteral(AMDILMachineFunctionInfo * MFI, uint32_t literal_index);
-
 bool isTransOp(unsigned opcode);
 bool isTexOp(unsigned opcode);
 bool isReductionOp(unsigned opcode);

@@ -47,6 +47,7 @@ BitVector R600RegisterInfo::getReservedRegs(const MachineFunction &MF) const
   Reserved.set(AMDIL::NEG_HALF);
   Reserved.set(AMDIL::NEG_ONE);
   Reserved.set(AMDIL::PV_X);
+  Reserved.set(AMDIL::ALU_LITERAL_X);
   for (unsigned i = AMDIL::C0; i <= AMDIL::C1023; i++) {
     Reserved.set(i);
   }

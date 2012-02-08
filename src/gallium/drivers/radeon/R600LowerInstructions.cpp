@@ -128,31 +128,14 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
 
       case AMDIL::CLAMP_f32:
         {
-        uint32_t zero = (uint32_t)APFloat(0.0f).bitcastToAPInt().getZExtValue();
-        uint32_t one = (uint32_t)APFloat(1.0f).bitcastToAPInt().getZExtValue();
-        uint32_t low = getLiteral(MFI, MI.getOperand(2).getImm());
-        uint32_t high = getLiteral(MFI, MI.getOperand(3).getImm());
-        if (low == zero && high == one) {
-          MachineInstr *def = NULL;
-          /* Even though we are in SSA, it is possible for a register to have
-           * more than one def.  This occurs when an instruction writes to an
-           * output register that has also been used as an input register.
-           * This is only an issue when dealing with graphics shaders. */
-          for (MachineRegisterInfo::def_iterator DI =
-               MRI.def_begin(MI.getOperand(1).getReg()), DE = MRI.def_end();
-                DI != DE; ++DI) {
-            def = &*DI;
-            if (!isPlaceHolderOpcode((&*DI)->getOpcode())) {
-              def = &*DI;
-              break;
-            }
-          }
-          assert(def);
+          MachineOperand lowOp = MI.getOperand(2);
+          MachineOperand highOp = MI.getOperand(3);
+        if (lowOp.isReg() && highOp.isReg()
+            && lowOp.getReg() == AMDIL::ZERO && highOp.getReg() == AMDIL::ONE) {
           MI.getOperand(0).addTargetFlag(MO_FLAG_CLAMP);
-          BuildMI(MBB, I, MBB.findDebugLoc(I),
-                          TII->get(TII->getISAOpcode(AMDIL::MOVE_f32)))
+          BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDIL::MOV))
                   .addOperand(MI.getOperand(0))
-                  .addReg(def->getOperand(0).getReg());
+                  .addOperand(MI.getOperand(1));
         } else {
           /* XXX: Handle other cases */
           abort();
@@ -177,28 +160,45 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
       case AMDIL::LOADCONST_f32:
       case AMDIL::LOADCONST_i32:
         {
-        bool canDelete = true;
-        MachineOperand * use = MI.getOperand(0).getNextOperandForReg();
-        while (use) {
-          MachineOperand * next = use->getNextOperandForReg();
-          /* XXX: assert(next->isUse()) */
-          /* XXX: Having immediates in MOV instructions (maybe others) causes
-           * the register allocator to elminate them when there are IF
-           * statements.  I'm not sure why this is happening, so for now we only
-           * propogate immediates to when they are needed by CLAMP instructions.
-           */
-          if (use->getParent()->getOpcode() != AMDIL::CLAMP_f32) {
-            canDelete = false;
-            break;
-          } else {
-            use->ChangeToImmediate(MI.getOperand(1).getImm());
+          bool canInline = false;
+          unsigned inlineReg;
+          MachineOperand & dstOp = MI.getOperand(0);
+          MachineOperand & immOp = MI.getOperand(1);
+          if (immOp.isFPImm()) {
+            const ConstantFP * cfp = immOp.getFPImm();
+            if (cfp->isZero()) {
+              canInline = true;
+              inlineReg = AMDIL::ZERO;
+            } else if (cfp->isExactlyValue(1.0f)) {
+              canInline = true;
+              inlineReg = AMDIL::ONE;
+            } else if (cfp->isExactlyValue(0.5f)) {
+              canInline = true;
+              inlineReg = AMDIL::HALF;
+            }
           }
-          use = next;
-        }
-        if (!canDelete) {
-          continue;
-        }
-        break;
+
+          if (canInline) {
+            MachineOperand * use = dstOp.getNextOperandForReg();
+            /* The lowering operation for CLAMP needs to have the immediates
+             * as operands, so we must propagate them. */
+            while (use) {
+              MachineOperand * next = use->getNextOperandForReg();
+              if (use->getParent()->getOpcode() == AMDIL::CLAMP_f32) {
+                use->setReg(inlineReg);
+              }
+              use = next;
+            }
+            BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDIL::COPY))
+                    .addOperand(dstOp)
+                    .addReg(inlineReg);
+          } else {
+            BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDIL::MOV))
+                    .addOperand(dstOp)
+                    .addReg(AMDIL::ALU_LITERAL_X)
+                    .addOperand(immOp);
+          }
+          break;
         }
 
       case AMDIL::MASK_WRITE:

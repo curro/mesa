@@ -62,10 +62,11 @@ AMDILGenIntrinsics.inc: *.td
 
 AMDISAGenCodeEmitter.inc: *.td
 	$(call tablegen, -gen-emitter, AMDISA.td, $@)
+	sed -i 's/unsigned/uint64_t/g' $@
 
 %.td: ;
 
-LOADER_LIBS=$(shell llvm-config --libs)
+LOADER_LIBS=$(shell llvm-config --libs bitreader asmparser)
 
 loader: loader.o libradeon.a
-	gcc -o loader -L/usr/local/lib $(LDFLAGS) loader.o libradeon.a $(LOADER_LIBS) -lpthread -ldl -lstdc++ -lm
+	gcc -o loader -L/usr/local/lib $(LDFLAGS) loader.o libradeon.a $(LLVM_LIBS) $(LOADER_LIBS) -lpthread -ldl -lstdc++ -lm

@@ -66,9 +66,17 @@ sub const_reg {
 
 print <<STRING;
 
+def ZERO : AMDILReg<871, "0.0">;
+def HALF : AMDILReg<872, "0.5">;
+def ONE : AMDILReg<873, "1.0">;
+def NEG_HALF : AMDILReg<874, "-0.5">;
+def NEG_ONE : AMDILReg<875, "-1.0">;
+def PV_X : AMDILReg<876, "pv.x">;
+def ALU_LITERAL_X : AMDILReg<877, "literal.x">;
+
 def R600_Reg32 : RegisterClass <"AMDIL", [f32, i32], 32, (add
   (sequence "C%u", 0, $CREG_MAX),
-  (sequence "R%u", 1, 128))>;
+  (sequence "R%u", 1, 128), ZERO, HALF, ONE, PV_X, ALU_LITERAL_X)>;
 
 let Namespace = "AMDIL" in {
 def sel_x : SubRegIndex;
@@ -110,12 +118,6 @@ def RELADDR : RegisterClass<"AMDIL", [i32], 32,
   (add ADDR0)
 >;
 
-def ZERO : AMDILReg<871, "0.0">;
-def HALF : AMDILReg<872, "0.5">;
-def ONE : AMDILReg<873, "1.0">;
-def NEG_HALF : AMDILReg<874, "-0.5">;
-def NEG_ONE : AMDILReg<875, "-1.0">;
-def PV_X : AMDILReg<876, "pv.x">;
 
 def SPECIAL : RegisterClass<"AMDIL", [f32], 32, (add ZERO, HALF, ONE, NEG_HALF, NEG_ONE, PV_X)>; 
 

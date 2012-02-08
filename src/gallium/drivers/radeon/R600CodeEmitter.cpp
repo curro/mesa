@@ -50,12 +50,7 @@ namespace {
   /* XXX: Temp HACK to work around tablegen name generation */
   class AMDILCodeEmitter {
   public:
-#if LLVM_VERSION > 3000
-    uint64_t
-#else
-    unsigned
-#endif
-    getBinaryCodeForInstr(const MachineInstr &MI) const;
+    uint64_t getBinaryCodeForInstr(const MachineInstr &MI) const;
   };
 
   class R600CodeEmitter : public MachineFunctionPass, public AMDILCodeEmitter {
@@ -250,7 +245,9 @@ void R600CodeEmitter::emitALUInstr(MachineInstr &MI)
 
   unsigned int opIndex;
   for (opIndex = 1; opIndex < numOperands; opIndex++) {
-    emitSrc(MI.getOperand(opIndex));
+    if (!MI.getOperand(opIndex).isImm()) {
+      emitSrc(MI.getOperand(opIndex));
+    }
   }
 
     /* Emit zeros for unused sources */
@@ -271,11 +268,19 @@ void R600CodeEmitter::emitSrc(const MachineOperand & MO)
    * For other potential instruction operands, (e.g. constant registers) the
    * value of the source select is defined in the r600isa docs. */
   if (MO.isReg()) {
-    emitTwoBytes(getHWReg(MO.getReg()));
-  } else if (MO.isImm()) {
-    /* XXX: Magic number, comment this */
-    emitTwoBytes(253);
-    value = getLiteral(MFI, MO.getImm());
+    unsigned reg = MO.getReg();
+    emitTwoBytes(getHWReg(reg));
+    if (reg == AMDIL::ALU_LITERAL_X) {
+      const MachineInstr * parent = MO.getParent();
+      unsigned immOpIndex = parent->getNumOperands() - 1;
+      MachineOperand immOp = parent->getOperand(immOpIndex);
+      if (immOp.isFPImm()) {
+        value = immOp.getFPImm()->getValueAPF().bitcastToAPInt().getZExtValue();
+      } else {
+        assert(immOp.isImm());
+        value = immOp.getImm();
+      }
+    }
   } else {
     /* XXX: Handle other operand types. */
     emitTwoBytes(0);
@@ -606,17 +611,13 @@ unsigned R600CodeEmitter::getHWReg(unsigned regNo)
 {
   unsigned hwReg;
 
-  if (AMDIL::SPECIALRegClass.contains(regNo)) {
-    switch(regNo) {
-    case AMDIL::ZERO: return 248;
-    case AMDIL::ONE:
-    case AMDIL::NEG_ONE: return 249;
-    case AMDIL::HALF: 
-    case AMDIL::NEG_HALF: return 252;
-    default:
-      abort();
-      return 0;
-    }
+  switch(regNo) {
+  case AMDIL::ZERO: return 248;
+  case AMDIL::ONE:
+  case AMDIL::NEG_ONE: return 249;
+  case AMDIL::HALF:
+  case AMDIL::NEG_HALF: return 252;
+  case AMDIL::ALU_LITERAL_X: return 253;
   }
 
   hwReg = getHWRegNum(TRI, regNo);

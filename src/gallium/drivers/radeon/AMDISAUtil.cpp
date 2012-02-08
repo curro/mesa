@@ -56,7 +56,8 @@ bool llvm::isPlaceHolderOpcode(unsigned opcode)
 unsigned llvm::getRegElement(const AMDISARegisterInfo * TRI, unsigned regNo)
 {
   if (AMDIL::REPLRegisterClass->contains(regNo)
-      || AMDIL::SPECIALRegisterClass->contains(regNo)) {
+      || AMDIL::SPECIALRegisterClass->contains(regNo)
+      || regNo == AMDIL::ALU_LITERAL_X) {
     return 0;
   } else {
     return getHWRegNum(TRI, regNo) % 4;
@@ -70,20 +71,6 @@ unsigned llvm::getHWRegNum(const AMDISARegisterInfo * TRI, unsigned amdilRegNo)
     const TargetRegisterClass * TRC = *RI;
     if (TRC->contains(amdilRegNo) && TRI->isBaseRegClass(TRC->getID())) {
       return amdilRegNo - TRC->getRegister(0);
-    }
-  }
-  abort();
-  return 0;
-}
-
-/* XXX: This is not efficient.  The best solution is to subclass AMDILMachineFunctionInfo
- * and create our own map that reverses the key andn values of the literal map */
-uint32_t llvm::getLiteral(AMDILMachineFunctionInfo * MFI, uint32_t literal_index)
-{
-  for (std::map<uint32_t, uint32_t>::iterator I = MFI->begin_32(),
-       E = MFI->end_32(); I != E; ++I) {
-    if (I->second == literal_index) {
-      return I->first;
     }
   }
   abort();
