@@ -69,6 +69,8 @@ namespace {
   unsigned reductionElement;
   bool isLast;
 
+  unsigned section_start;
+
   public:
 
   R600CodeEmitter(formatted_raw_ostream &OS) : MachineFunctionPass(ID),
@@ -102,6 +104,11 @@ namespace {
 
   unsigned getElement(unsigned regNo);
   int getElement(MachineInstr &MI);
+
+  void startSection() { section_start = _OS.GetNumBytesInBuffer(); }
+  void validateSection(unsigned bytes) {
+    assert((_OS.GetNumBytesInBuffer() - section_start) == bytes);
+  }
 
 };
 
@@ -245,9 +252,11 @@ void R600CodeEmitter::emitALUInstr(MachineInstr &MI)
 
   unsigned int opIndex;
   for (opIndex = 1; opIndex < numOperands; opIndex++) {
-    if (!MI.getOperand(opIndex).isImm()) {
-      emitSrc(MI.getOperand(opIndex));
+    /* Literal constants are always stored as the last operand. */
+    if (MI.getOperand(opIndex).isImm() || MI.getOperand(opIndex).isFPImm()) {
+      break;
     }
+    emitSrc(MI.getOperand(opIndex));
   }
 
     /* Emit zeros for unused sources */
@@ -262,6 +271,7 @@ void R600CodeEmitter::emitALUInstr(MachineInstr &MI)
 
 void R600CodeEmitter::emitSrc(const MachineOperand & MO)
 {
+  startSection();
 
   uint32_t value = 0;
   /* Emit the source select (2 bytes).  For GPRs, this is the register index.
@@ -327,6 +337,7 @@ void R600CodeEmitter::emitSrc(const MachineOperand & MO)
   /* Emit the literal value, if applicable (4 bytes).  */
   emit(value);
 
+  validateSection(SRC_BYTE_COUNT);
 }
 
 void R600CodeEmitter::emitDst(const MachineOperand & MO)
