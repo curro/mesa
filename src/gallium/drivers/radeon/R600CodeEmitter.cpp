@@ -105,11 +105,6 @@ namespace {
   unsigned getElement(unsigned regNo);
   int getElement(MachineInstr &MI);
 
-  void startSection() { section_start = _OS.GetNumBytesInBuffer(); }
-  void validateSection(unsigned bytes) {
-    assert((_OS.GetNumBytesInBuffer() - section_start) == bytes);
-  }
-
 };
 
 } /* End anonymous namespace */
@@ -271,8 +266,6 @@ void R600CodeEmitter::emitALUInstr(MachineInstr &MI)
 
 void R600CodeEmitter::emitSrc(const MachineOperand & MO)
 {
-  startSection();
-
   uint32_t value = 0;
   /* Emit the source select (2 bytes).  For GPRs, this is the register index.
    * For other potential instruction operands, (e.g. constant registers) the
@@ -337,7 +330,6 @@ void R600CodeEmitter::emitSrc(const MachineOperand & MO)
   /* Emit the literal value, if applicable (4 bytes).  */
   emit(value);
 
-  validateSection(SRC_BYTE_COUNT);
 }
 
 void R600CodeEmitter::emitDst(const MachineOperand & MO)
