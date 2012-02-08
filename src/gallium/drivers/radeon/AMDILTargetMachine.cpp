@@ -210,29 +210,19 @@ AMDILTargetMachine::addPreISel(PassManagerBase &PM
   return true;
 }
 
-#if LLVM_VERSION <= 3000
-  #define PASS_ARG_2 ,OptLevel
-#else
-  #define PASS_ARG_2
-#endif
-
   bool
-AMDILTargetMachine::addInstSelector(PassManagerBase &PM
-#if LLVM_VERSION <= 3000
-     AMDIL_OPT_LEVEL_DECL
-#endif
-)
+AMDILTargetMachine::addInstSelector(PassManagerBase &PM AMDIL_OPT_LEVEL_DECL)
 {
 #if LLVM_VERSION <=3000
   mOptLevel = AMDIL_OPT_LEVEL_VAR_NO_COMMA;
 #else
   mOptLevel = getOptLevel();
 #endif
-  PM.add(createAMDILBarrierDetect(*this PASS_ARG_2));
-  PM.add(createAMDILPrintfConvert(*this PASS_ARG_2));
-  PM.add(createAMDILInlinePass(*this PASS_ARG_2));
-  PM.add(createAMDILPeepholeOpt(*this PASS_ARG_2));
-  PM.add(createAMDILISelDag(*this PASS_ARG_2));
+  PM.add(createAMDILBarrierDetect(*this AMDIL_OPT_LEVEL_VAR));
+  PM.add(createAMDILPrintfConvert(*this AMDIL_OPT_LEVEL_VAR));
+  PM.add(createAMDILInlinePass(*this AMDIL_OPT_LEVEL_VAR));
+  PM.add(createAMDILPeepholeOpt(*this AMDIL_OPT_LEVEL_VAR));
+  PM.add(createAMDILISelDag(*this AMDIL_OPT_LEVEL_VAR));
   return false;
 }
   bool
@@ -251,8 +241,8 @@ AMDILTargetMachine::addPreRegAlloc(PassManagerBase &PM
     llvm::RegisterScheduler::setDefault(&llvm::createSourceListDAGScheduler);
   }
 
-  PM.add(createAMDILMachinePeephole(*this PASS_ARG_2));
-  PM.add(createAMDILPointerManager(*this PASS_ARG_2));
+  PM.add(createAMDILMachinePeephole(*this AMDIL_OPT_LEVEL_VAR));
+  PM.add(createAMDILPointerManager(*this AMDIL_OPT_LEVEL_VAR));
   return false;
 }
 
@@ -275,11 +265,11 @@ AMDILTargetMachine::addPreEmitPass(PassManagerBase &PM
 #endif
 )
 {
-  PM.add(createAMDILCFGPreparationPass(*this PASS_ARG_2));
-  PM.add(createAMDILCFGStructurizerPass(*this PASS_ARG_2));
-  PM.add(createAMDILLiteralManager(*this PASS_ARG_2));
-  PM.add(createAMDILIOExpansion(*this PASS_ARG_2));
-  PM.add(createAMDILSwizzleEncoder(*this PASS_ARG_2));
+  PM.add(createAMDILCFGPreparationPass(*this AMDIL_OPT_LEVEL_VAR));
+  PM.add(createAMDILCFGStructurizerPass(*this AMDIL_OPT_LEVEL_VAR));
+  PM.add(createAMDILLiteralManager(*this AMDIL_OPT_LEVEL_VAR));
+  PM.add(createAMDILIOExpansion(*this AMDIL_OPT_LEVEL_VAR));
+  PM.add(createAMDILSwizzleEncoder(*this AMDIL_OPT_LEVEL_VAR));
   return true;
 }
 

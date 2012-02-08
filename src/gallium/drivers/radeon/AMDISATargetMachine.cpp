@@ -133,7 +133,7 @@ bool AMDISATargetMachine::addPreRegAlloc(PassManagerBase &PM
 //    return true;
 //  }
 
-  PM.add(createAMDILLiteralManager(*this AMDIL_OPT_LEVEL_VAR));
+//  PM.add(createAMDILLiteralManager(*this AMDIL_OPT_LEVEL_VAR));
   PM.add(createAMDISAReorderPreloadInstructionsPass(*this));
   if (Subtarget.device()->getGeneration() <= AMDILDeviceInfo::HD6XXX) {
     PM.add(createR600LowerShaderInstructionsPass(*this));
