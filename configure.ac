@@ -1810,6 +1810,14 @@ else
     MESA_LLVM=0
 fi
 
+dnl
+dnl Gallium Tests
+dnl
+if test "x$enable_gallium_tests" = xyes; then
+    SRC_DIRS="$SRC_DIRS gallium/tests/trivial"
+    enable_gallium_loader=yes
+fi
+
 dnl Directory for VDPAU libs
 AC_ARG_WITH([vdpau-libdir],
     [AS_HELP_STRING([--with-vdpau-libdir=DIR],
@@ -1877,6 +1885,18 @@ gallium_require_llvm() {
     fi
 }
 
+gallium_require_drm_loader() {
+    if test "x$enable_gallium_loader" = xyes; then
+        if test "x$have_libdrm" != xyes; then 
+            AC_MSG_ERROR([Gallium drm loader requires libdrm >= $LIBDRM_REQUIRED])
+        fi
+        if test "x$have_libudev" != xyes; then
+            AC_MSG_ERROR([Gallium drm loader requrires libudev])
+        fi
+        enable_gallium_drm_loader=yes
+    fi
+}
+
 dnl Gallium drivers
 dnl Duplicates in GALLIUM_DRIVERS_DIRS are removed by sorting it after this block
 if test "x$with_gallium_drivers" != x; then
@@ -1902,11 +1922,13 @@ if test "x$with_gallium_drivers" != x; then
             gallium_check_st "radeon/drm" "dri-r300" "xorg-r300" "" "xvmc-r300" "vdpau-r300" "va-r300"
             ;;
         xr600)
+            gallium_require_drm_loader
             GALLIUM_DRIVERS_DIRS="$GALLIUM_DRIVERS_DIRS r600"
             gallium_check_st "radeon/drm" "dri-r600" "xorg-r600" "" "xvmc-r600" "vdpau-r600" "va-r600"
             ;;
         xnouveau)
             PKG_CHECK_MODULES([NOUVEAU], [libdrm_nouveau >= $LIBDRM_NOUVEAU_REQUIRED])
+            gallium_require_drm_loader
             GALLIUM_DRIVERS_DIRS="$GALLIUM_DRIVERS_DIRS nouveau nvfx nv50 nvc0"
             gallium_check_st "nouveau/drm" "dri-nouveau" "xorg-nouveau" "" "xvmc-nouveau" "vdpau-nouveau"
             ;;
@@ -1947,13 +1969,8 @@ if test "x$NEED_G3DVL_DRI" = xyes; then
     GALLIUM_WINSYS_DIRS="$GALLIUM_WINSYS_DIRS g3dvl/dri"
 fi
 
-if test "x$enable_gallium_tests" = xyes; then
-    SRC_DIRS="$SRC_DIRS gallium/tests/trivial"
-    enable_gallium_loader=yes
-fi
-
 if test "x$enable_gallium_loader" = xyes; then
-    if test "x$have_libdrm$have_libudev" = xyes; then
+    if test "x$enable_gallium_drm_loader" = xyes; then
         GALLIUM_WINSYS_DIRS="$GALLIUM_WINSYS_DIRS loader/drm"
     fi
     GALLIUM_WINSYS_DIRS="$GALLIUM_WINSYS_DIRS loader/sw loader/"
