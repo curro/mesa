@@ -12,7 +12,8 @@ INCLUDES = -I$(TOP)/src/gallium/include \
 	   -I.
 
 DEFINES = -DMESA_VERSION=\"$(MESA_VERSION)\" \
-	  $(PIPE_DEFINES)
+	  $(PIPE_DEFINES) \
+	  -DHAVE_LLVM=$(HAVE_LLVM)
 
 LIBS =	$(TOP)/src/gallium/winsys/loader/libws_loader.a \
 	$(TOP)/src/gallium/winsys/loader/drm/libws_loader_drm.a \
@@ -38,8 +39,27 @@ CPP_SOURCES = \
 	api/sampler.cpp \
 	api/event.cpp \
 	api/program.cpp \
-	api/kernel.cpp
+	api/kernel.cpp \
+	llvm/invocation.cpp
 
+CLANG_LIBS = \
+       -lclangFrontendTool \
+       -lclangFrontend \
+       -lclangDriver \
+       -lclangSerialization \
+       -lclangCodeGen \
+       -lclangParse \
+       -lclangSema \
+       -lclangAnalysis \
+       -lclangIndex \
+       -lclangRewrite \
+       -lclangAST \
+       -lclangLex \
+       -lclangBasic \
+       -lclangCodeGen
+
+#XXX I added this as a global variables in the r600g/llvm branch
+LLVM_CXXFLAGS = $(shell llvm-config --cxxflags) -fexceptions
 
 OBJECTS = $(C_SOURCES:.c=.o) \
 	$(CPP_SOURCES:.cpp=.o) \
@@ -60,6 +80,10 @@ PIPE_INSTALL_DIR = $(OPENCL_LIB_INSTALL_DIR)
 %.o: %.S
 	$(CC) -c $(INCLUDES) $(CFLAGS)  $< -o $@
 
+llvm/%.o: llvm/%.cpp
+	$(CXX) -c $(INCLUDES) $(DEFINES) $(CXXFLAGS) $(LLVM_CXXFLAGS) $< -o $@
+
+
 ##### TARGETS #####
 
 default: depend $(TARGET)
@@ -69,7 +93,7 @@ include $(TOP)/src/gallium/targets/pipe-loader/Makefile.template
 $(TARGET): $(OBJECTS) $(LIBS) $(PIPE_TARGETS) Makefile
 	$(MKLIB) -o $(LIBNAME) -linker '$(CXX)' -ldflags '$(LDFLAGS)' \
 		-major $(OPENCL_MAJOR) -minor $(OPENCL_MINOR) $(MKLIB_OPTIONS) \
-		-install $(TOP)/$(LIB_DIR) $(OBJECTS) $(LIBS)
+		-install $(TOP)/$(LIB_DIR) $(OBJECTS) $(LIBS) $(CLANG_LIBS) $(LLVM_LIBS)
 
 depend: $(C_SOURCES) $(CPP_SOURCES) $(ASM_SOURCES) $(SYMLINKS)
 	rm -f depend

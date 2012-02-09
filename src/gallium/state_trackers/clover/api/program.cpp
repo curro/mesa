@@ -101,7 +101,11 @@ clGetProgramInfo(cl_program prog, cl_program_info param,
    case CL_PROGRAM_DEVICES:
       return vector_property<cl_device_id>(
          buf, size, size_ret,
+#ifdef TGSI_SOURCE
          map(keys<device *, std::string>,
+#else
+         map(keys<device *, clover::module>,
+#endif
              prog->binaries().begin(), prog->binaries().end()));
 
    case CL_PROGRAM_SOURCE:
@@ -110,15 +114,26 @@ clGetProgramInfo(cl_program prog, cl_program_info param,
    case CL_PROGRAM_BINARY_SIZES:
       return vector_property<size_t>(
          buf, size, size_ret,
+#ifdef TGSI_SOURCE
          map([](const std::pair<device *, std::string> &ent) {
                return ent.second.size();
+#else
+         map([](const std::pair<device *, clover::module> &ent) {
+               return ent.second.binary.size();
+#endif
             },
             prog->binaries().begin(), prog->binaries().end()));
 
    case CL_PROGRAM_BINARIES:
       return matrix_property<unsigned char>(
          buf, size, size_ret,
+#ifdef TGSI_SOURCE
          map(values<device *, std::string>,
+#else
+         map([](const std::pair<device *, clover::module> &ent) {
+               return ent.second.binary;
+            },
+#endif
             prog->binaries().begin(), prog->binaries().end()));
 
    default:
