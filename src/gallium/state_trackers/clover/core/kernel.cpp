@@ -30,6 +30,7 @@ using namespace clover;
 _cl_kernel::_cl_kernel(clover::program &prog,
                        const std::string &name) :
    prog(prog), __name(name) {
+#ifdef TGSI_SOURCE
    std::istringstream s(name);
    std::string tok;
    unsigned pc;
@@ -56,6 +57,32 @@ _cl_kernel::_cl_kernel(clover::program &prog,
       else
          throw error(CL_INVALID_KERNEL_NAME);
    }
+#else
+   const module &m = prog.binaries().begin()->second;
+   const module::symbol &sym = m.syms.find(name)->second;
+ 
+   for (auto arg : sym.args) {
+      if (arg.kind == TGSI_ARGUMENT_INLINE)
+          args.emplace_back(new scalar_argument);
+      else if (arg.kind == TGSI_ARGUMENT_CONSTANT)
+         args.emplace_back(new constant_argument);
+      else if (arg.kind == TGSI_ARGUMENT_GLOBAL)
+         args.emplace_back(new global_argument);
+      else if (arg.kind == TGSI_ARGUMENT_LOCAL)
+         args.emplace_back(new local_argument);
+      else if (arg.kind == TGSI_ARGUMENT_RDIMAGE2D ||
+               arg.kind == TGSI_ARGUMENT_WRIMAGE2D ||
+               arg.kind == TGSI_ARGUMENT_RDIMAGE3D ||
+               arg.kind == TGSI_ARGUMENT_WRIMAGE3D)
+          args.emplace_back(new image_argument);
+      else if (arg.kind == TGSI_ARGUMENT_SAMPLER)
+          args.emplace_back(new sampler_argument);
+       else
+         assert(0);
+    }
+
+   pc = sym.offset;
+#endif
 }
 
 template<typename T, typename V>
@@ -86,8 +113,12 @@ _cl_kernel::launch(clover::command_queue &q,
    q.pipe->launch_grid(q.pipe,
                        pad_vector<uint>(q, block_size, 1).data(),
                        pad_vector<uint>(q, grid_size, 1).data(),
+#ifdef TGSI_SOURCE
                        std::stoul(__name),
                        exec.input.data());
+#else
+                       pc, exec.input.data());
+#endif
 
    q.pipe->set_global_binding(q.pipe, 0, NULL, NULL);
    q.pipe->set_compute_sampler_views(q.pipe, 0, NULL);
@@ -142,6 +173,11 @@ _cl_kernel::exec_context::bind(clover::kernel *kern1,
    std::swap(kern, kern1);
    std::swap(q, q1);
 
+#ifndef TGSI_SOURCE
+   const module &m = kern->prog.binaries().find(&q->dev)->second;
+   const module::section &sec = m.secs.find(TGSI_SECTION_TEXT)->second;
+#endif
+
    for (auto &arg : kern->args)
       arg->bind(*this);
 
@@ -150,9 +186,13 @@ _cl_kernel::exec_context::bind(clover::kernel *kern1,
        cs.req_input_mem != input.size()) {
       if (st)
          q1->pipe->delete_compute_state(q1->pipe, st);
-
+#ifdef TGSI_SOURCE
       cs.tokens = (const struct tgsi_token *)kern->prog.binaries()
          .find(&q->dev)->second.data();
+#else
+      /*XXX: Modify this so we can pass LLVM. */
+      cs.tokens = (tgsi_token *)sec.ptr;
+#endif
       cs.req_local_mem = mem_local;
       cs.req_input_mem = input.size();
       st = q->pipe->create_compute_state(q->pipe, &cs);

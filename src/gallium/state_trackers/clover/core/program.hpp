@@ -27,9 +27,27 @@
 
 #include "core/base.hpp"
 #include "core/context.hpp"
+#include "llvm/tgsi_object.h"
 
 namespace clover {
    typedef struct _cl_program program;
+
+   struct module {
+      module(const std::string &bin);
+   
+      struct section : public tgsi_section {
+         const char *ptr;
+      };
+   
+      struct symbol : public tgsi_symbol {
+         std::vector<tgsi_argument> args;
+         std::string name;
+      };
+   
+      std::string binary;
+      std::map<uint32_t, section> secs;
+      std::map<std::string, symbol> syms;
+   };
 }
 
 struct _cl_program : public clover::ref_counter {
@@ -43,7 +61,11 @@ public:
    void build(const std::vector<clover::device *> &devs);
 
    const std::string &source() const;
+#ifdef TGSI_SOURCE
    const std::map<clover::device *, std::string> &binaries() const;
+#else
+   const std::map<clover::device *, clover::module> &binaries() const;
+#endif
 
    cl_build_status build_status(clover::device *dev) const;
    std::string build_opts(clover::device *dev) const;
@@ -52,7 +74,11 @@ public:
    clover::context &ctx;
 
 private:
+#ifdef TGSI_SOURCE
    std::map<clover::device *, std::string> __binaries;
+#else
+   std::map<clover::device *, clover::module> __modules;
+#endif
    std::string __source;
 };
 

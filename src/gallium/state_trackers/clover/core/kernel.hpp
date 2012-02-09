@@ -151,6 +151,7 @@ private:
    };
 
    std::string __name;
+   unsigned pc;
    exec_context exec;
 };
 
