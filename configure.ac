@@ -1978,7 +1978,7 @@ if test "x$enable_gallium_loader" = xyes; then
     if test "x$enable_gallium_drm_loader" = xyes; then
         GALLIUM_WINSYS_DIRS="$GALLIUM_WINSYS_DIRS loader/drm"
     fi
-    GALLIUM_WINSYS_DIRS="$GALLIUM_WINSYS_DIRS loader/sw loader/"
+    GALLIUM_WINSYS_DIRS="$GALLIUM_WINSYS_DIRS sw/null loader/sw loader/"
 fi
 
 dnl prepend CORE_DIRS to SRC_DIRS
