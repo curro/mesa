@@ -119,11 +119,11 @@ if test "x$GCC" = xyes -a "x$acv_mesa_CLANG" = xno; then
 
     GCC_VERSION=`$CC -dumpversion`
     if test $? -eq 0; then
-        major=`echo $GCC_VERSION | cut -d. -f1`
-        minor=`echo $GCC_VERSION | cut -d. -f2`
+        GCC_VERSION_MAJOR=`echo $GCC_VERSION | cut -d. -f1`
+        GCC_VERSION_MINOR=`echo $GCC_VERSION | cut -d. -f2`
     fi
 
-    if test $major -lt 3 -o $major -eq 3 -a $minor -lt 3 ; then
+    if test $GCC_VERSION_MAJOR -lt 3 -o $GCC_VERSION_MAJOR -eq 3 -a $GCC_VERSION_MINOR -lt 3 ; then
         AC_MSG_RESULT([no])
         AC_MSG_ERROR([If using GCC, version 3.3.0 or later is required.])
     else
@@ -1611,6 +1611,11 @@ if test "x$enable_opencl" = xyes; then
     if test "x$with_gallium_drivers" = x; then
         AC_MSG_ERROR([cannot enable OpenCL without Gallium])
     fi
+
+    if test $GCC_VERSION_MAJOR -lt 4 -o $GCC_VERSION_MAJOR -eq 4 -a $GCC_VERSION_MINOR -lt 6; then
+        AC_MSG_ERROR([gcc >= 4.6 is required to build clover])
+    fi
+
     GALLIUM_STATE_TRACKERS_DIRS="$GALLIUM_STATE_TRACKERS_DIRS clover"
     enable_gallium_loader=yes
 fi
