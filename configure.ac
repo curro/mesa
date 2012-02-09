@@ -1612,6 +1612,7 @@ if test "x$enable_opencl" = xyes; then
         AC_MSG_ERROR([cannot enable OpenCL without Gallium])
     fi
     GALLIUM_STATE_TRACKERS_DIRS="$GALLIUM_STATE_TRACKERS_DIRS clover"
+    enable_gallium_loader=yes
 fi
 
 dnl
