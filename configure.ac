@@ -803,7 +803,7 @@ CORE_DIRS=""
 
 SRC_DIRS=""
 GLU_DIRS="sgi"
-GALLIUM_DIRS="auxiliary drivers state_trackers"
+GALLIUM_DIRS="auxiliary winsys drivers state_trackers"
 GALLIUM_TARGET_DIRS=""
 GALLIUM_WINSYS_DIRS="sw"
 GALLIUM_DRIVERS_DIRS="galahad trace rbug noop identity"
