@@ -83,6 +83,6 @@ clean: clean-pipes
 	-rm -f depend depend.bak
 
 install: default install-pipes
-	$(MINSTALL) -m 755 $(TARGET) $(INSTALL_LIB_DIR)
+	$(MINSTALL) -m 755 $(TOP)/$(LIB_DIR)/lib$(LIBNAME).so* $(INSTALL_LIB_DIR)
 
 sinclude depend
