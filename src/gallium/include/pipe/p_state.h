@@ -211,6 +211,7 @@ struct pipe_shader_state
 {
    const struct tgsi_token *tokens;
    struct pipe_stream_output_info stream_output;
+   void * ir;
 };
 
 
@@ -580,6 +581,8 @@ struct pipe_resolve_info
 
 struct pipe_compute_state
 {
+   struct pipe_shader_state shader;
+   /* XXX: Delete this */
    const struct tgsi_token *tokens;
    unsigned req_local_mem;
    unsigned req_private_mem;
