@@ -60,6 +60,7 @@ CLANG_LIBS = \
 
 #XXX I added this as a global variables in the r600g/llvm branch
 LLVM_CXXFLAGS = $(shell llvm-config --cxxflags) -fexceptions
+LLVM_CPPFLAGS = $(shell llvm-config --cppflags)
 
 OBJECTS = $(C_SOURCES:.c=.o) \
 	$(CPP_SOURCES:.cpp=.o) \
@@ -75,7 +76,7 @@ PIPE_INSTALL_DIR = $(OPENCL_LIB_INSTALL_DIR)
 	$(CC) -c $(INCLUDES) $(CFLAGS) $< -o $@
 
 %.o: %.cpp
-	$(CXX) -c $(INCLUDES) $(CXXFLAGS) $< -o $@
+	$(CXX) -c $(INCLUDES) $(CXXFLAGS) $(LLVM_CPPFLAGS) $< -o $@
 
 %.o: %.S
 	$(CC) -c $(INCLUDES) $(CFLAGS)  $< -o $@

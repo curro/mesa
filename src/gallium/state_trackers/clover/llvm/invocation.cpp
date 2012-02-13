@@ -53,7 +53,7 @@ load_binary(const char *path, char **pbinary, size_t *sz) {
    s.read(*pbinary, *sz);
 }
 
-void
+llvm::Module *
 clover::compile_program(const char *source, char **pbinary, size_t *binary_sz) {
    clang::CompilerInstance c;
 /*XXX: Replace this with createfrontendBaseAction*/
@@ -74,10 +74,6 @@ clover::compile_program(const char *source, char **pbinary, size_t *binary_sz) {
    LLVMInitializeTGSITargetMC();
    LLVMInitializeTGSIAsmPrinter();
 
-#else
-   LLVMInitializeAllTargets();
-   LLVMInitializeAllTargetInfos();
-   LLVMInitializeX86TargetMC();
 #endif
 
    c.getFrontendOpts().Inputs.push_back(
@@ -111,8 +107,9 @@ clover::compile_program(const char *source, char **pbinary, size_t *binary_sz) {
 
    std::cerr << "build log: " << log << std::endl;
 
-   std::auto_ptr<llvm::Module> mod(act.takeModule());
+   return act.takeModule();
+//   std::auto_ptr<llvm::Module> mod(act.takeModule());
 //  mod->dump();
-   load_binary("cl_input.o", pbinary, binary_sz);
+//   load_binary("cl_input.o", pbinary, binary_sz);
    // std::remove("cl_input.o");
 }

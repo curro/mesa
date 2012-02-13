@@ -23,11 +23,14 @@
 #ifndef __LLVM_INVOCATION_HPP__
 #define __LLVM_INVOCATION_HPP__
 
+#include <llvm/Module.h>
+
 #include <string>
 
+
 namespace clover {
-   void compile_program(const char *source, char **pbinary,
-                        size_t *binary_sz);
+   llvm::Module * compile_program(const char *source, char **pbinary,
+                                  size_t *binary_sz);
 }
 
 #endif

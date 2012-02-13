@@ -46,7 +46,7 @@ _cl_program::_cl_program(clover::context &ctx,
 #ifdef TGSI_SOURCE
          __binaries.insert({ dev, bin });
 #else
-         __modules.insert({ dev, { bin } });
+         __modules.insert({ dev, { NULL } });
 #endif
       },
       devs.begin(), devs.end(), binaries.begin());
@@ -70,12 +70,13 @@ _cl_program::build(const std::vector<clover::device *> &devs) {
 #else
    size_t prog_sz;
    char * prog;
-   compile_program(__source.c_str(), &prog, &prog_sz);
 
-   for (auto dev : devs)
-      __modules.insert( { dev, { { prog, prog + prog_sz } } });
+   for (auto dev : devs) {
+      llvm::Module * mod = compile_program(__source.c_str(), &prog, &prog_sz);
+      __modules.insert( { dev, { { mod } } });
+   }
 
-   delete prog;
+//   delete prog;
 #endif
 }
 
@@ -116,6 +117,9 @@ _cl_program::build_log(clover::device *dev) const {
    return {};
 }
 
+module::module(llvm::Module * mod) :
+  llvm_module(mod) { }
+/*
 module::module(const std::string &bin) :
    binary(bin) {
    for (auto it = binary.begin(); it < binary.end();) {
@@ -155,3 +159,4 @@ module::module(const std::string &bin) :
    }
 }
 
+*/

@@ -25,6 +25,11 @@
 #include "core/kernel.hpp"
 #include "pipe/p_context.h"
 
+#include <llvm/DerivedTypes.h>
+#include <llvm/Function.h>
+#include <llvm/Metadata.h>
+#include <llvm/Type.h>
+
 using namespace clover;
 
 _cl_kernel::_cl_kernel(clover::program &prog,
@@ -59,6 +64,7 @@ _cl_kernel::_cl_kernel(clover::program &prog,
    }
 #else
    const module &m = prog.binaries().begin()->second;
+/*
    const module::symbol &sym = m.syms.find(name)->second;
  
    for (auto arg : sym.args) {
@@ -82,6 +88,37 @@ _cl_kernel::_cl_kernel(clover::program &prog,
     }
 
    pc = sym.offset;
+*/
+   const llvm::NamedMDNode * kernels =
+                        m.llvm_module->getNamedMetadata("opencl.kernels");
+   /* XXX: Can we have more than one kernel ? */
+   assert(kernels->getNumOperands() == 1);
+   const llvm::MDNode * kernel_md = kernels->getOperand(0);
+   llvm::Function * kernel_func =
+                     llvm::dyn_cast<llvm::Function>(kernel_md->getOperand(0));
+   if (!kernel_func) {
+      assert(!"Error parsing kernel metadata. XXX: Throw a CL error here.");
+   } else {
+      for (llvm::Function::arg_iterator I = kernel_func->arg_begin(),
+                               E = kernel_func->arg_end(); I != E; ++I) {
+         llvm::Argument & arg = *I;
+         llvm::Type * arg_type = arg.getType();
+         if (arg_type->isPointerTy()) {
+            /* XXX: Figure out LLVM->OpenCL address space mappings. */
+            unsigned address_space =
+                     llvm::cast<llvm::PointerType>(arg_type)->getAddressSpace();
+            switch (address_space) {
+            default: assert(!"XXX: Unhandled address space\n");
+            /* fall through */
+            case 0:
+               args.emplace_back(new global_argument);
+               break;
+            }
+         } else {
+               args.emplace_back(new scalar_argument);
+         }
+      }
+  }
 #endif
 }
 
@@ -174,7 +211,7 @@ _cl_kernel::exec_context::bind(clover::kernel *kern1,
    std::swap(q, q1);
 
 #ifndef TGSI_SOURCE
-   const module &m = kern->prog.binaries().find(&q->dev)->second;
+   const clover::module & m = kern->prog.binaries().find(&q->dev)->second;
    const module::section &sec = m.secs.find(TGSI_SECTION_TEXT)->second;
 #endif
 
@@ -191,7 +228,8 @@ _cl_kernel::exec_context::bind(clover::kernel *kern1,
          .find(&q->dev)->second.data();
 #else
       /*XXX: Modify this so we can pass LLVM. */
-      cs.tokens = (tgsi_token *)sec.ptr;
+//      cs.tokens = (tgsi_token *)sec.ptr;
+	cs.shader.ir = m.llvm_module;
 #endif
       cs.req_local_mem = mem_local;
       cs.req_input_mem = input.size();
