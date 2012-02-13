@@ -136,9 +136,18 @@ clEnqueueNDRangeKernel(cl_command_queue q, cl_kernel kern,
                        const size_t *grid_size, const size_t *block_size,
                        cl_uint num_deps, const cl_event *deps,
                        cl_event *ev) {
+
+   std::vector<size_t> offsets;
+
+   if (grid_offset) {
+      offsets = { grid_offset, grid_offset + dims };
+   } else {
+      offsets = { dims, 0 };
+   }
+
    hard_event *hev = new hard_event(
       *q, CL_COMMAND_NDRANGE_KERNEL, { deps, deps + num_deps },
-      kernel_op(q, kern, { grid_offset, grid_offset + dims },
+      kernel_op(q, kern, offsets,
                 map(std::divides<size_t>(), grid_size, grid_size + dims,
                     block_size),
                 { block_size, block_size + dims }));
