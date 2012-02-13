@@ -25,6 +25,8 @@
 
 #include <map>
 
+#include <llvm/Module.h>
+
 #include "core/base.hpp"
 #include "core/context.hpp"
 #include "llvm/tgsi_object.h"
@@ -33,7 +35,7 @@ namespace clover {
    typedef struct _cl_program program;
 
    struct module {
-      module(const std::string &bin);
+      module(llvm::Module * mod);
    
       struct section : public tgsi_section {
          const char *ptr;
@@ -44,6 +46,8 @@ namespace clover {
          std::string name;
       };
    
+      llvm::Module * llvm_module;
+
       std::string binary;
       std::map<uint32_t, section> secs;
       std::map<std::string, symbol> syms;
