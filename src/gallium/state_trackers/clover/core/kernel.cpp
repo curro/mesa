@@ -233,6 +233,12 @@ _cl_kernel::exec_context::bind(clover::kernel *kern1,
 #endif
       cs.req_local_mem = mem_local;
       cs.req_input_mem = input.size();
+      if (!q->pipe->create_compute_state) {
+         /* I think the correct way to handle a missing implementation is
+          * to not return a deviceID in clGetDeviceIDs(), but for now we will
+          * treat this as CL_OUT_OF_RESOURCES. */
+         throw error(CL_OUT_OF_RESOURCES);
+      }
       st = q->pipe->create_compute_state(q->pipe, &cs);
    }
 
