@@ -93,7 +93,11 @@ clover::compile_program(const char *source, char **pbinary, size_t *binary_sz) {
 #ifdef TGSI_BACKEND
    c.getTargetOpts().Triple = "tgsi";
 #else
+#if 0
+   /* XXX: These needs a patched clang */
    c.getTargetOpts().Triple = "r600";
+#endif
+   c.getTargetOpts().Triple = "x86_64";
 #endif
    c.getInvocation().setLangDefaults(clang::IK_OpenCL);
    c.createDiagnostics(0, NULL, new clang::TextDiagnosticPrinter(
