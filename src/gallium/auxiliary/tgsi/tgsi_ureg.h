@@ -272,9 +272,6 @@ ureg_DECL_constant( struct ureg_program *,
 struct ureg_dst
 ureg_DECL_temporary( struct ureg_program * );
 
-struct ureg_dst
-ureg_DECL_local_temporary( struct ureg_program * );
-
 void 
 ureg_release_temporary( struct ureg_program *ureg,
                         struct ureg_dst tmp );
