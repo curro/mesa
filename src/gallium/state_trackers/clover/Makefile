@@ -62,6 +62,9 @@ CLANG_LIBS = \
 LLVM_CXXFLAGS = $(shell llvm-config --cxxflags) -fexceptions
 LLVM_CPPFLAGS = $(shell llvm-config --cppflags)
 
+#XXX: There is a global config for this, but it is missing some needed libraries
+LLVM_LIBS += $(shell llvm-config --libs)
+
 OBJECTS = $(C_SOURCES:.c=.o) \
 	$(CPP_SOURCES:.cpp=.o) \
 	$(ASM_SOURCES:.S=.o)
