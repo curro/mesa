@@ -25,51 +25,35 @@
  */
 
 
-#ifndef AMDISAINSTRUCTIONINFO_H_
-#define AMDISAINSTRUCTIONINFO_H_
+#ifndef AMDGPU_UTIL_H
+#define AMDGPU_UTIL_H
 
-#include "AMDIL.h"
-#include "AMDILInstrInfo.h"
-#include "AMDISARegisterInfo.h"
-
-#include <map>
-
+#include "llvm/Support/DataTypes.h"
+#include "AMDGPURegisterInfo.h"
 
 namespace llvm {
 
-  class AMDISATargetMachine;
-  class MachineFunction;
-  class MachineInstr;
-  class MachineInstrBuilder;
+class AMDILMachineFunctionInfo;
 
-  class AMDISAInstrInfo : public AMDILInstrInfo {
-  private:
-  AMDISATargetMachine & TM;
-  std::map<unsigned, unsigned> amdilToISA;
+class TargetMachine;
+class TargetRegisterInfo;
 
-  public:
-  explicit AMDISAInstrInfo(AMDISATargetMachine &tm);
+bool isPlaceHolderOpcode(unsigned opcode);
 
-  virtual const AMDISARegisterInfo &getRegisterInfo() const = 0;
+unsigned getRegElement(const AMDGPURegisterInfo * TRI, unsigned regNo);
+unsigned getHWRegNum(const AMDGPURegisterInfo * TRI, unsigned amdilRegNo);
 
-  virtual unsigned getISAOpcode(unsigned AMDILopcode) const;
+bool isTransOp(unsigned opcode);
+bool isTexOp(unsigned opcode);
+bool isReductionOp(unsigned opcode);
+bool isFCOp(unsigned opcode);
 
-  MachineInstr * convertToISA(MachineInstr & MI, MachineFunction &MF,
-    DebugLoc DL) const;
+/* XXX: Move these to AMDGPUInstrInfo.h */
+#define MO_FLAG_CLAMP (1 << 0)
+#define MO_FLAG_NEG   (1 << 1)
+#define MO_FLAG_ABS   (1 << 2)
+#define MO_FLAG_MASK  (1 << 3)
 
-  bool isRegPreload(const MachineInstr &MI) const;
+} /* End namespace llvm */
 
-  #include "AMDISAInstrEnums.h.inc"
-  };
-
-} // End llvm namespace
-
-/* AMDISA target flags are stored in bits 32-39 */
-namespace AMDISA_TFLAG_SHIFTS {
-  enum TFLAGS {
-    PRELOAD_REG = 32
-  };
-}
-
-
-#endif // AMDISAINSTRINFO_H_
+#endif /* AMDGPU_UTIL_H */

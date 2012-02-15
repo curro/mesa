@@ -24,21 +24,9 @@
  *
  */
 
-
-#ifndef AMDISAISELLOWERING_H
-#define AMDISAISELLOWERING_H
-
-#include "AMDILISelLowering.h"
-
-namespace llvm {
-
-  class AMDISATargetLowering : public AMDILTargetLowering
-  {
-    public:
-      AMDISATargetLowering(TargetMachine &TM);
-
-  };
-
-} /* End namespace llvm */
-
-#endif /* AMDISAISELLOWERING_H */
+include "AMDIL.td"
+include "R600Schedule.td"
+include "Processors.td"
+include "AMDGPUIntrinsics.td"
+include "AMDGPURegisterInfo.td"
+include "AMDGPUInstructions.td"

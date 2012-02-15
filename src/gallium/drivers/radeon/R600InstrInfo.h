@@ -44,18 +44,18 @@ namespace llvm {
     unsigned cayman;
   };
 
-  class AMDISATargetMachine;
+  class AMDGPUTargetMachine;
   class MachineFunction;
   class MachineInstr;
   class MachineInstrBuilder;
 
-  class R600InstrInfo : public AMDISAInstrInfo {
+  class R600InstrInfo : public AMDGPUInstrInfo {
   private:
   const R600RegisterInfo RI;
-  AMDISATargetMachine &TM;
+  AMDGPUTargetMachine &TM;
 
   public:
-  explicit R600InstrInfo(AMDISATargetMachine &tm);
+  explicit R600InstrInfo(AMDGPUTargetMachine &tm);
 
   const R600RegisterInfo &getRegisterInfo() const;
   virtual void copyPhysReg(MachineBasicBlock &MBB,

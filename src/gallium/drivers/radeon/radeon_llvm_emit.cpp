@@ -46,8 +46,8 @@
 using namespace llvm;
 
 #ifndef EXTERNAL_LLVM
-#include "AMDISATargetMachine.h"
-Target TheAMDISATarget;
+#include "AMDGPUTargetMachine.h"
+Target TheAMDGPUTarget;
 #endif
 
 
@@ -63,53 +63,53 @@ radeon_llvm_compile(LLVMModuleRef M, unsigned char ** bytes,
                  unsigned dump) {
 
 #ifdef EXTERNAL_LLVM
-   const Target * AMDISATarget = NULL;
+   const Target * AMDGPUTarget = NULL;
 
-   /* XXX: Can we just initialize the AMDISA target here? */
+   /* XXX: Can we just initialize the AMDGPU target here? */
    InitializeAllTargets();
    Triple::ArchType Arch = Triple::getArchTypeForLLVMName("amdisa");
    if (Arch == Triple::UnknownArch) {
       fprintf(stderr, "Unknown Arch\n");
    }
-   std::string AMDISAArchName = "amdisa";
-   AMDISATriple.setArch(Arch);
+   std::string AMDGPUArchName = "amdisa";
+   AMDGPUTriple.setArch(Arch);
    for (TargetRegistry::iterator it = TargetRegistry::begin(),
            ie = TargetRegistry::end(); it != ie; ++it) {
-      if (it->getName() == AMDISAArchName) {
-         AMDISATarget = &*it;
+      if (it->getName() == AMDGPUArchName) {
+         AMDGPUTarget = &*it;
          break;
       }
    }
 
-   if(!AMDISATarget) {
+   if(!AMDGPUTarget) {
       fprintf(stderr, "Can't find target\n");
       return 1;
    }
 #else
-   RegisterTargetMachine<AMDISATargetMachine> Y(TheAMDISATarget);
-   RegisterMCAsmInfoFn A(TheAMDISATarget, createMCAsmInfo);
+   RegisterTargetMachine<AMDGPUTargetMachine> Y(TheAMDGPUTarget);
+   RegisterMCAsmInfoFn A(TheAMDGPUTarget, createMCAsmInfo);
 #endif
 
    Module * mod = unwrap(M);
 #if HAVE_LLVM > 0x0300
-   Triple AMDISATriple(sys::getDefaultTargetTriple());
+   Triple AMDGPUTriple(sys::getDefaultTargetTriple());
 #else
-   Triple AMDISATriple(sys::getHostTriple());
+   Triple AMDGPUTriple(sys::getHostTriple());
 #endif
 
    std::string FS = gpu_family;
 
 #ifdef EXTERNAL_LLVM
-   std::auto_ptr<TargetMachine> tm(AMDISATarget->createTargetMachine(
-                     AMDISATriple.getTriple(), FS));
-   TargetMachine &AMDISATargetMachine = *tm.get();
+   std::auto_ptr<TargetMachine> tm(AMDGPUTarget->createTargetMachine(
+                     AMDGPUTriple.getTriple(), FS));
+   TargetMachine &AMDGPUTargetMachine = *tm.get();
 #else
 
 #if HAVE_LLVM > 0x0300
    TargetOptions TO;
 #endif
-   AMDISATargetMachine * tm = new AMDISATargetMachine(TheAMDISATarget,
-            AMDISATriple.getTriple(), gpu_family,
+   AMDGPUTargetMachine * tm = new AMDGPUTargetMachine(TheAMDGPUTarget,
+            AMDGPUTriple.getTriple(), gpu_family,
             "",
 #if HAVE_LLVM > 0x0300
             TO,
@@ -119,25 +119,25 @@ radeon_llvm_compile(LLVMModuleRef M, unsigned char ** bytes,
             ,CodeGenOpt::Default
 #endif
 );
-   TargetMachine &AMDISATargetMachine = *tm;
+   TargetMachine &AMDGPUTargetMachine = *tm;
    /* XXX: Use TargetMachine.Options in 3.0 */
    if (dump) {
       mod->dump();
       tm->dumpCode();
    }
 #endif
-   const TargetData * AMDISAData = AMDISATargetMachine.getTargetData();
+   const TargetData * AMDGPUData = AMDGPUTargetMachine.getTargetData();
    PassManager PM;
-   PM.add(new TargetData(*AMDISAData));
+   PM.add(new TargetData(*AMDGPUData));
    PM.add(createPromoteMemoryToRegisterPass());
-   AMDISATargetMachine.setAsmVerbosityDefault(true);
+   AMDGPUTargetMachine.setAsmVerbosityDefault(true);
 
    std::string CodeString;
    raw_string_ostream oStream(CodeString);
    formatted_raw_ostream out(oStream);
 
    /* Optional extra paramater true / false to disable verify */
-   if (AMDISATargetMachine.addPassesToEmitFile(PM, out, TargetMachine::CGFT_AssemblyFile,
+   if (AMDGPUTargetMachine.addPassesToEmitFile(PM, out, TargetMachine::CGFT_AssemblyFile,
 #if HAVE_LLVM <= 0x300
                                                CodeGenOpt::Default,
 #endif

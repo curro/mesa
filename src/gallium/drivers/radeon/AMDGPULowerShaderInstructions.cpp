@@ -1,11 +1,11 @@
 
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 
-#include "AMDISALowerShaderInstructions.h"
+#include "AMDGPULowerShaderInstructions.h"
 
 using namespace llvm;
 
-void AMDISALowerShaderInstructionsPass::preloadRegister(
+void AMDGPULowerShaderInstructionsPass::preloadRegister(
     unsigned physReg, unsigned virtReg) const
 {
   if (!MRI->isLiveIn(physReg)) {

@@ -1,12 +1,12 @@
 
-#ifndef AMDISA_LOWER_SHADER_INSTRUCTIONS
-#define AMDISA_LOWER_SHADER_INSTRUCTIONS
+#ifndef AMDGPU_LOWER_SHADER_INSTRUCTIONS
+#define AMDGPU_LOWER_SHADER_INSTRUCTIONS
 
 namespace llvm {
 
 class MachineRegisterInfo;
 
-class AMDISALowerShaderInstructionsPass {
+class AMDGPULowerShaderInstructionsPass {
 
   protected:
     MachineRegisterInfo * MRI;
@@ -21,4 +21,4 @@ class AMDISALowerShaderInstructionsPass {
 } // end namespace llvm
 
 
-#endif // AMDISA_LOWER_SHADER_INSTRUCTIONS
+#endif // AMDGPU_LOWER_SHADER_INSTRUCTIONS

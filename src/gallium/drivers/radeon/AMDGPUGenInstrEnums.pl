@@ -68,7 +68,7 @@ if ($FILE_TYPE eq 'td') {
 
   print_td_enum('AMDILInst', 'AMDILInstEnums', 'field bits<16>', @INST_ENUMS);
 
-  print_td_enum('AMDISAGen', 'AMDISAGenEnums', 'field bits<3>', @GENERATION_ENUM);
+  print_td_enum('AMDGPUGen', 'AMDGPUGenEnums', 'field bits<3>', @GENERATION_ENUM);
 
   my %constants = (
     'PI' =>      '0x40490fdb',
@@ -89,15 +89,15 @@ if ($FILE_TYPE eq 'td') {
 
   print_h_enum('AMDILTblgenOpcode', @INST_ENUMS);
 
-  print_h_enum('AMDISAGen', @GENERATION_ENUM);
+  print_h_enum('AMDGPUGen', @GENERATION_ENUM);
 
 } elsif ($FILE_TYPE eq 'inc') {
-  print "unsigned AMDISAInstrInfo::GetRealAMDILOpcode(unsigned internalOpcode) const\n{\n";
+  print "unsigned AMDGPUInstrInfo::GetRealAMDILOpcode(unsigned internalOpcode) const\n{\n";
   print "  switch(internalOpcode) {\n";
   #Start at 1 so we skip NONE
   for (my $i = 1; $i < scalar(@INST_ENUMS); $i++) {
     my $inst = $INST_ENUMS[$i];
-    print "  case AMDISAInstrInfo::$inst: return AMDIL::$inst;\n";
+    print "  case AMDGPUInstrInfo::$inst: return AMDIL::$inst;\n";
   }
   print "  default: abort();\n";
   print "  }\n}\n";

@@ -29,7 +29,7 @@ include "R600Intrinsics.td"
 
 class InstR600 <bits<32> inst, dag outs, dag ins, string asm, list<dag> pattern,
                 InstrItinClass itin>
-    : AMDISAInst <outs, ins, asm, pattern> {
+    : AMDGPUInst <outs, ins, asm, pattern> {
 
   field bits<32> Inst;
 	bit Trig = 0;
@@ -137,7 +137,7 @@ let Predicates = [isR600toCayman] in {
 /* ------------------------------------------- */
 /* Common Instructions R600, R700, Evergreen, Cayman */
 /* ------------------------------------------- */
-let Gen = AMDISAGen.R600_CAYMAN  in {
+let Gen = AMDGPUGen.R600_CAYMAN  in {
 
 def ADD : R600_2OP <
   0x0, "ADD",
@@ -147,7 +147,7 @@ def ADD : R600_2OP <
 // Non-IEEE MUL: 0 * anything = 0
 def MUL : R600_2OP <
   0x1, "MUL NON-IEEE",
-  [(set R600_Reg32:$dst, (int_AMDISA_mul R600_Reg32:$src0, R600_Reg32:$src1))]
+  [(set R600_Reg32:$dst, (int_AMDGPU_mul R600_Reg32:$src0, R600_Reg32:$src1))]
 >;
 
 def MUL_IEEE : R600_2OP <
@@ -175,24 +175,24 @@ def MIN : R600_2OP <
 
 def SETE : R600_2OP <
   0x08, "SETE",
-  [(set R600_Reg32:$dst, (int_AMDISA_seq R600_Reg32:$src0, R600_Reg32:$src1))]> {
+  [(set R600_Reg32:$dst, (int_AMDGPU_seq R600_Reg32:$src0, R600_Reg32:$src1))]> {
   let AMDILOp = AMDILInst.FEQ;
 }
 
 def SGT : R600_2OP <
   0x09, "SETGT",
-  [(set R600_Reg32:$dst, (int_AMDISA_sgt R600_Reg32:$src0, R600_Reg32:$src1))]
+  [(set R600_Reg32:$dst, (int_AMDGPU_sgt R600_Reg32:$src0, R600_Reg32:$src1))]
 >;
 
 def SGE : R600_2OP <
   0xA, "SETGE",
-  [(set R600_Reg32:$dst, (int_AMDISA_sge R600_Reg32:$src0, R600_Reg32:$src1))]> {
+  [(set R600_Reg32:$dst, (int_AMDGPU_sge R600_Reg32:$src0, R600_Reg32:$src1))]> {
   let AMDILOp = AMDILInst.FGE;
 }
 
 def SNE : R600_2OP <
   0xB, "SETNE",
-  [(set R600_Reg32:$dst, (int_AMDISA_sne R600_Reg32:$src0, R600_Reg32:$src1))]> {
+  [(set R600_Reg32:$dst, (int_AMDGPU_sne R600_Reg32:$src0, R600_Reg32:$src1))]> {
   let AMDILOp = AMDILInst.FNE;
 }
 
@@ -204,12 +204,12 @@ def FRACT : R600_1OP <
 
 def TRUNC : R600_1OP <
   0x11, "TRUNC",
-  [(set R600_Reg32:$dst, (int_AMDISA_trunc R600_Reg32:$src))]
+  [(set R600_Reg32:$dst, (int_AMDGPU_trunc R600_Reg32:$src))]
 >;
 
 def FLOOR : R600_1OP <
   0x14, "FLOOR",
-  [(set R600_Reg32:$dst, (int_AMDISA_floor R600_Reg32:$src))]
+  [(set R600_Reg32:$dst, (int_AMDGPU_floor R600_Reg32:$src))]
 >;
 
 def MOV : R600_1OP <0x19, "MOV", []>;
@@ -229,48 +229,48 @@ def AND_INT : R600_2OP <
 
 def TEX_SAMPLE : R600_TEX <
   0x10, "TEX_SAMPLE",
-  [(set REPL:$dst, (int_AMDISA_tex REPL:$src0, imm:$src1, imm:$src2))]
+  [(set REPL:$dst, (int_AMDGPU_tex REPL:$src0, imm:$src1, imm:$src2))]
 >;
 
 def TEX_SAMPLE_C : R600_TEX <
   0x18, "TEX_SAMPLE_C",
-  [(set REPL:$dst, (int_AMDISA_tex REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
+  [(set REPL:$dst, (int_AMDGPU_tex REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
 >;
 
 def TEX_SAMPLE_L : R600_TEX <
   0x11, "TEX_SAMPLE_L",
-  [(set REPL:$dst, (int_AMDISA_txl REPL:$src0, imm:$src1, imm:$src2))]
+  [(set REPL:$dst, (int_AMDGPU_txl REPL:$src0, imm:$src1, imm:$src2))]
 >;
 
 def TEX_SAMPLE_C_L : R600_TEX <
   0x19, "TEX_SAMPLE_C_L",
-  [(set REPL:$dst, (int_AMDISA_txl REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
+  [(set REPL:$dst, (int_AMDGPU_txl REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
 >;
 
 def TEX_SAMPLE_LB : R600_TEX <
   0x12, "TEX_SAMPLE_LB",
-  [(set REPL:$dst, (int_AMDISA_txb REPL:$src0, imm:$src1, imm:$src2))]
+  [(set REPL:$dst, (int_AMDGPU_txb REPL:$src0, imm:$src1, imm:$src2))]
 >;
 
 def TEX_SAMPLE_C_LB : R600_TEX <
   0x1A, "TEX_SAMPLE_C_LB",
-  [(set REPL:$dst, (int_AMDISA_txb REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
+  [(set REPL:$dst, (int_AMDGPU_txb REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
 >;
 
 def TEX_SAMPLE_G : R600_TEX <
   0x14, "TEX_SAMPLE_G",
-  [(set REPL:$dst, (int_AMDISA_txd REPL:$src0, imm:$src1, imm:$src2))]
+  [(set REPL:$dst, (int_AMDGPU_txd REPL:$src0, imm:$src1, imm:$src2))]
 >;
 
 def TEX_SAMPLE_C_G : R600_TEX <
   0x1C, "TEX_SAMPLE_C_G",
-  [(set REPL:$dst, (int_AMDISA_txd REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
+  [(set REPL:$dst, (int_AMDGPU_txd REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
 >;
 
 } // End Gen R600_CAYMAN
 
 def KILP : Pat <
-  (int_AMDISA_kilp),
+  (int_AMDGPU_kilp),
   (MASK_WRITE (KILLGT (f32 ONE), (f32 ZERO)))
 >;
 
@@ -300,14 +300,14 @@ class CNDGT_Common <bits<32> inst> : R600_3OP <
   
 class CNDGE_Common <bits<32> inst> : R600_3OP <
   inst, "CNDGE",
-  [(set R600_Reg32:$dst, (int_AMDISA_cndlt R600_Reg32:$src0, R600_Reg32:$src2, R600_Reg32:$src1))]
+  [(set R600_Reg32:$dst, (int_AMDGPU_cndlt R600_Reg32:$src0, R600_Reg32:$src2, R600_Reg32:$src1))]
 >;
 
 class DOT4_Common <bits<32> inst> : R600_REDUCTION <
   inst,
   (ins REPL:$src0, REPL:$src1),
   "DOT4 $dst $src0, $src1",
-  [(set R600_Reg32:$dst, (int_AMDISA_dp4 REPL:$src0, REPL:$src1))]
+  [(set R600_Reg32:$dst, (int_AMDGPU_dp4 REPL:$src0, REPL:$src1))]
 >;
 
 class EXP_IEEE_Common <bits<32> inst> : R600_1OP <
@@ -344,13 +344,13 @@ class RECIP_CLAMPED_Common <bits<32> inst> : R600_1OP <
 
 class RECIP_IEEE_Common <bits<32> inst> : R600_1OP <
   inst, "RECIP_IEEE",
-  [(set R600_Reg32:$dst, (int_AMDISA_rcp R600_Reg32:$src))]> {
+  [(set R600_Reg32:$dst, (int_AMDGPU_rcp R600_Reg32:$src))]> {
   let AMDILOp = AMDILInst.RSQ_f32;
 }
 
 class RECIPSQRT_CLAMPED_Common <bits<32> inst> : R600_1OP <
   inst, "RECIPSQRT_CLAMPED",
-  [(set R600_Reg32:$dst, (int_AMDISA_rsq R600_Reg32:$src))]
+  [(set R600_Reg32:$dst, (int_AMDGPU_rsq R600_Reg32:$src))]
 >;
 
 class RECIPSQRT_IEEE_Common <bits<32> inst> : R600_1OP <
@@ -376,22 +376,22 @@ class COS_Common <bits<32> inst> : R600_1OP <
 /* -------------------------------------- */
 
 class DIV_Common <InstR600 recip_ieee> : Pat<
-  (int_AMDISA_div R600_Reg32:$src0, R600_Reg32:$src1),
+  (int_AMDGPU_div R600_Reg32:$src0, R600_Reg32:$src1),
   (MUL R600_Reg32:$src0, (recip_ieee R600_Reg32:$src1))
 >;
 
 class LRP_Common <InstR600 muladd> : Pat <
-  (int_AMDISA_lrp R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2),
+  (int_AMDGPU_lrp R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2),
   (muladd R600_Reg32:$src0, R600_Reg32:$src1, (MUL (SUB_f32 ONE, R600_Reg32:$src0), R600_Reg32:$src2))
 >;
 
 class POW_Common <InstR600 log_ieee, InstR600 exp_ieee> : Pat <
-  (int_AMDISA_pow R600_Reg32:$src0, R600_Reg32:$src1),
+  (int_AMDGPU_pow R600_Reg32:$src0, R600_Reg32:$src1),
   (exp_ieee (MUL R600_Reg32:$src1, (log_ieee R600_Reg32:$src0)))
 >;
 
 class SSG_Common <InstR600 cndgt, InstR600 cndge> : Pat <
-  (int_AMDISA_ssg R600_Reg32:$src),
+  (int_AMDGPU_ssg R600_Reg32:$src),
   (cndgt R600_Reg32:$src, (f32 ONE), (cndge R600_Reg32:$src, (f32 ZERO), (f32 NEG_ONE)))
 >;
 
@@ -406,7 +406,7 @@ class TGSI_LIT_Z_Common <InstR600 mul_lit, InstR600 log_clamped, InstR600 exp_ie
 
 let Predicates = [isR600] in {
 
-let Gen = AMDISAGen.R600 in {
+let Gen = AMDGPUGen.R600 in {
 
   def MUL_LIT_r600 : MUL_LIT_Common<0x0C>;
   def MULADD_r600 : MULADD_Common<0x10>;
@@ -426,7 +426,7 @@ let Gen = AMDISAGen.R600 in {
   def SIN_r600 : SIN_Common<0x6E>;
   def COS_r600 : COS_Common<0x6F>;
 
-} // End AMDISAGen.R600
+} // End AMDGPUGen.R600
 
   def DIV_r600 : DIV_Common<RECIP_IEEE_r600>;
   def LRP_r600 : LRP_Common<MULADD_r600>;
@@ -458,7 +458,7 @@ class TRIG_eg <InstR600 trig, Intrinsic intr> : Pat<
   (trig (MUL (MOV (LOADCONST_i32 CONST.TWO_PI_INV)), R600_Reg32:$src))
 >;
 
-let Gen = AMDISAGen.EG_CAYMAN in {
+let Gen = AMDGPUGen.EG_CAYMAN in {
 
   def MULADD_eg : MULADD_Common<0x14>;
   def CNDE_eg : CNDE_Common<0x19>;
@@ -478,7 +478,7 @@ let Gen = AMDISAGen.EG_CAYMAN in {
   def INT_TO_FLT_eg : INT_TO_FLT_Common<0x9B>;
   def DOT4_eg : DOT4_Common<0xBE>;
 
-} // End AMDISAGen.EG_CAYMAN
+} // End AMDGPUGen.EG_CAYMAN
 
   def DIV_eg : DIV_Common<RECIP_IEEE_eg>;
   def LRP_eg : LRP_Common<MULADD_eg>;
@@ -486,55 +486,55 @@ let Gen = AMDISAGen.EG_CAYMAN in {
   def SSG_eg : SSG_Common<CNDGT_eg, CNDGE_eg>;
   def TGSI_LIT_Z_eg : TGSI_LIT_Z_Common<MUL_LIT_eg, LOG_CLAMPED_eg, EXP_IEEE_eg>;
 
-  def : TRIG_eg <SIN_eg, int_AMDISA_sin>;
-  def : TRIG_eg <COS_eg, int_AMDISA_cos>;
+  def : TRIG_eg <SIN_eg, int_AMDGPU_sin>;
+  def : TRIG_eg <COS_eg, int_AMDGPU_cos>;
 
 }
 /* Other Instructions */
 
 let isCodeGenOnly = 1 in {
 
-  def ARL : AMDISAShaderInst <
+  def ARL : AMDGPUShaderInst <
     (outs RELADDR:$dst),
     (ins R600_Reg32:$src),
     "ARL $dst, $src",
-    [(set RELADDR:$dst, (int_AMDISA_arl R600_Reg32:$src))]
+    [(set RELADDR:$dst, (int_AMDGPU_arl R600_Reg32:$src))]
   >;
 
-  def SWIZZLE : AMDISAShaderInst <
+  def SWIZZLE : AMDGPUShaderInst <
     (outs GPRV4F32:$dst),
     (ins GPRV4F32:$src0, i32imm:$src1),
     "SWIZZLE $dst, $src0, $src1",
-    [(set GPRV4F32:$dst, (int_AMDISA_swizzle GPRV4F32:$src0, imm:$src1))]
+    [(set GPRV4F32:$dst, (int_AMDGPU_swizzle GPRV4F32:$src0, imm:$src1))]
   >;
 
 
-  def LAST : AMDISAShaderInst <
+  def LAST : AMDGPUShaderInst <
     (outs),
     (ins),
     "LAST",
     []
   >;
 
-  def GET_CHAN : AMDISAShaderInst <
+  def GET_CHAN : AMDGPUShaderInst <
     (outs R600_Reg32:$dst),
     (ins REPL:$src0, i32imm:$src1),
     "GET_CHAN $dst, $src0, $src1",
     []
   >;
 
-  def SET_CHAN : AMDISAShaderInst <
+  def SET_CHAN : AMDGPUShaderInst <
     (outs REPL:$dst),
     (ins R600_Reg32:$src0, i32imm:$src1),
     "SET_CHAN $dst, $src0, $src1",
     []
   >;
 
-  def MULLIT : AMDISAShaderInst <
+  def MULLIT : AMDGPUShaderInst <
     (outs REPL:$dst),
     (ins R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2),
     "MULLIT $dst, $src0, $src1",
-    [(set REPL:$dst, (int_AMDISA_mullit R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2))]
+    [(set REPL:$dst, (int_AMDGPU_mullit R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2))]
   >;
 
 }

@@ -28,44 +28,50 @@
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/Constants.h"
+#include "llvm/Target/TargetInstrInfo.h"
 
 #include "AMDIL.h"
-#include "AMDISA.h"
-#include "AMDILInstrInfo.h"
+#include "AMDILMachineFunctionInfo.h"
+#include "AMDILRegisterInfo.h"
+#include "AMDGPU.h"
+#include "AMDGPUInstrInfo.h"
+#include "AMDGPUUtil.h"
 
-#include <vector>
+#include "R600InstrInfo.h"
+
+#include <stdio.h>
 
 using namespace llvm;
 
 namespace {
-  class AMDISAReorderPreloadInstructionsPass : public MachineFunctionPass {
+  class AMDGPUConvertToISAPass : public MachineFunctionPass {
 
   private:
     static char ID;
     TargetMachine &TM;
 
+    void lowerFLT(MachineInstr &MI);
+
   public:
-    AMDISAReorderPreloadInstructionsPass(TargetMachine &tm) :
+    AMDGPUConvertToISAPass(TargetMachine &tm) :
       MachineFunctionPass(ID), TM(tm) { }
 
-      bool runOnMachineFunction(MachineFunction &MF);
+    virtual bool runOnMachineFunction(MachineFunction &MF);
 
-      const char *getPassName() const { return "AMDISA Reorder Preload Instructions"; }
-    };
+  };
 } /* End anonymous namespace */
 
-char AMDISAReorderPreloadInstructionsPass::ID = 0;
+char AMDGPUConvertToISAPass::ID = 0;
 
-FunctionPass *llvm::createAMDISAReorderPreloadInstructionsPass(TargetMachine &tm) {
-    return new AMDISAReorderPreloadInstructionsPass(tm);
+FunctionPass *llvm::createAMDGPUConvertToISAPass(TargetMachine &tm) {
+  return new AMDGPUConvertToISAPass(tm);
 }
 
-/* This pass moves instructions that represent preloaded registers to the
- * start of the program. */
-bool AMDISAReorderPreloadInstructionsPass::runOnMachineFunction(MachineFunction &MF)
+bool AMDGPUConvertToISAPass::runOnMachineFunction(MachineFunction &MF)
 {
-  const AMDISAInstrInfo * TII =
-                        static_cast<const AMDISAInstrInfo*>(TM.getInstrInfo());
+  const AMDGPUInstrInfo * TII =
+                      static_cast<const AMDGPUInstrInfo*>(TM.getInstrInfo());
 
   for (MachineFunction::iterator BB = MF.begin(), BB_E = MF.end();
                                                   BB != BB_E; ++BB) {
@@ -73,9 +79,12 @@ bool AMDISAReorderPreloadInstructionsPass::runOnMachineFunction(MachineFunction 
     for (MachineBasicBlock::iterator I = MBB.begin(), Next = llvm::next(I);
          I != MBB.end(); I = Next, Next = llvm::next(I) ) {
       MachineInstr &MI = *I;
-      if (TII->isRegPreload(MI)) {
-         MF.front().insert(MF.front().begin(), MI.removeFromParent());
+      MachineInstr * newInstr = TII->convertToISA(MI, MF, MBB.findDebugLoc(I));
+      if (!newInstr) {
+        continue;
       }
+      MBB.insert(I, newInstr);
+      MI.eraseFromParent();
     }
   }
   return false;

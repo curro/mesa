@@ -20,48 +20,52 @@ tablegen = $(TBLGEN) -I $(LLVM_INCLUDEDIR) $1 $2 -o $3
 
 gen: $(GENERATED_SOURCES)
 
-R600ShaderPatterns.td: AMDISAGenShaderPatterns.pl
+R600ShaderPatterns.td: AMDGPUGenShaderPatterns.pl
 	$(PERL) $^ C > $@
 	
 R600RegisterInfo.td: R600GenRegisterInfo.pl
 	$(PERL) $^ > $@
 
-AMDISAInstrEnums.td: AMDISAGenInstrEnums.pl
+AMDGPUInstrEnums.td: AMDGPUGenInstrEnums.pl
 	$(PERL) $^ td > $@
 
-AMDISAInstrEnums.h.inc: AMDISAGenInstrEnums.pl
+AMDGPUInstrEnums.h.inc: AMDGPUGenInstrEnums.pl
 	$(PERL) $^ h > $@
 
-AMDISAInstrEnums.inc: AMDISAGenInstrEnums.pl
+AMDGPUInstrEnums.inc: AMDGPUGenInstrEnums.pl
 	$(PERL) $^ inc > $@
 
 
 AMDILGenRegisterInfo.inc: *.td
-	$(call tablegen, -gen-register-info, AMDISA.td, $@)
+	$(call tablegen, -gen-register-info, AMDGPU.td, $@)
 
 AMDILGenInstrInfo.inc: *.td
-	$(call tablegen, -gen-instr-info, AMDISA.td, $@)
+	$(call tablegen, -gen-instr-info, AMDGPU.td, $@)
 
 AMDILGenAsmWriter.inc: *.td
-	$(call tablegen, -gen-asm-writer, AMDISA.td, $@)
+	$(call tablegen, -gen-asm-writer, AMDGPU.td, $@)
 
 AMDILGenDAGISel.inc: *.td
-	$(call tablegen, -gen-dag-isel, AMDISA.td, $@)
+	$(call tablegen, -gen-dag-isel, AMDGPU.td, $@)
 
 AMDILGenCallingConv.inc: *.td
-	$(call tablegen, -gen-callingconv, AMDISA.td, $@)
+	$(call tablegen, -gen-callingconv, AMDGPU.td, $@)
 
 AMDILGenSubtarget.inc: *.td
-	$(call tablegen, -gen-subtarget, AMDISA.td, $@)
+	$(call tablegen, -gen-subtarget, AMDGPU.td, $@)
 
 AMDILGenEDInfo.inc: *.td
-	$(call tablegen, -gen-enhanced-disassembly-info, AMDISA.td, $@)
+	$(call tablegen, -gen-enhanced-disassembly-info, AMDGPU.td, $@)
 
 AMDILGenIntrinsics.inc: *.td
-	$(call tablegen, -gen-tgt-intrinsic, AMDISA.td, $@)
+	$(call tablegen, -gen-tgt-intrinsic, AMDGPU.td, $@)
+	#Tablgen uses the Target of the first intrinsic for all intrinsics,
+	#and AMDILIntrinsicInfo.cpp expecects the Target to be AMDILIntrinsic,
+	#so we need to change it here.
+	sed -i 's/AMDGPUIntrinsic/AMDILIntrinsic/g' $@
 
-AMDISAGenCodeEmitter.inc: *.td
-	$(call tablegen, -gen-emitter, AMDISA.td, $@)
+AMDGPUGenCodeEmitter.inc: *.td
+	$(call tablegen, -gen-emitter, AMDGPU.td, $@)
 	sed -i 's/unsigned/uint64_t/g' $@
 
 %.td: ;

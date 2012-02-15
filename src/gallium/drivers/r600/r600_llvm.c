@@ -25,7 +25,7 @@ static LLVMValueRef llvm_fetch_const(
 	unsigned swizzle)
 {
 	return lp_build_intrinsic_unary(bld_base->base.gallivm->builder,
-		"llvm.AMDISA.load.const", bld_base->base.elem_type,
+		"llvm.AMDGPU.load.const", bld_base->base.elem_type,
 		lp_build_const_int32(bld_base->base.gallivm,
 			radeon_llvm_reg_index_soa(reg->Register.Index, swizzle)));
 }
@@ -66,10 +66,10 @@ static void llvm_emit_prologue(struct lp_build_tgsi_context * bld_base)
 					base->gallivm,
 					radeon_llvm_reg_index_soa(i, chan));
 			reg = lp_build_intrinsic_unary(base->gallivm->builder,
-						"llvm.AMDISA.reserve.reg",
+						"llvm.AMDGPU.reserve.reg",
 						base->elem_type, reg_index);
 			lp_build_intrinsic_unary(base->gallivm->builder,
-				"llvm.AMDISA.export.reg",
+				"llvm.AMDGPU.export.reg",
 				LLVMVoidTypeInContext(base->gallivm->context),
 				reg);
 		}
@@ -99,12 +99,12 @@ static void llvm_emit_epilogue(struct lp_build_tgsi_context * bld_base)
 
 			store_output = lp_build_intrinsic_binary(
 				base->gallivm->builder,
-				"llvm.AMDISA.store.output",
+				"llvm.AMDGPU.store.output",
 				base->elem_type,
 				output, reg_index);
 
 			lp_build_intrinsic_unary(base->gallivm->builder,
-				"llvm.AMDISA.export.reg",
+				"llvm.AMDGPU.export.reg",
 				LLVMVoidTypeInContext(base->gallivm->context),
 				store_output);
 		}
@@ -168,7 +168,7 @@ static void dp_fetch_args(
 static struct lp_build_tgsi_action dot_action = {
 	.fetch_args = dp_fetch_args,
 	.emit = lp_build_tgsi_intrinsic,
-	.intr_name = "llvm.AMDISA.dp4"
+	.intr_name = "llvm.AMDGPU.dp4"
 };
 
 #if 0

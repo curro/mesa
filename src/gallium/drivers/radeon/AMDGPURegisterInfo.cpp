@@ -24,9 +24,16 @@
  *
  */
 
-include "AMDIL.td"
-include "R600Schedule.td"
-include "Processors.td"
-include "AMDISAIntrinsics.td"
-include "AMDISARegisterInfo.td"
-include "AMDISAInstructions.td"
+
+#include "AMDGPURegisterInfo.h"
+
+#include "AMDGPUTargetMachine.h"
+
+using namespace llvm;
+
+AMDGPURegisterInfo::AMDGPURegisterInfo(AMDGPUTargetMachine &tm,
+    const TargetInstrInfo &tii)
+: AMDILRegisterInfo(tm, tii),
+  TM(tm),
+  TII(tii)
+  { }

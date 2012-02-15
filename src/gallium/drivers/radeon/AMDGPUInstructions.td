@@ -24,9 +24,9 @@
  *
  */
 
-include "AMDISAInstrEnums.td"
+include "AMDGPUInstrEnums.td"
 
-class AMDISAInst <dag outs, dag ins, string asm, list<dag> pattern> : Instruction {
+class AMDGPUInst <dag outs, dag ins, string asm, list<dag> pattern> : Instruction {
   field bits<16> AMDILOp = 0;
   field bits<3> Gen = 0;
   field bit PreloadReg = 0;
@@ -41,8 +41,8 @@ class AMDISAInst <dag outs, dag ins, string asm, list<dag> pattern> : Instructio
   let TSFlags{63-48} = AMDILOp;
 }
 
-class AMDISAShaderInst <dag outs, dag ins, string asm, list<dag> pattern>
-    : AMDISAInst<outs, ins, asm, pattern> {
+class AMDGPUShaderInst <dag outs, dag ins, string asm, list<dag> pattern>
+    : AMDGPUInst<outs, ins, asm, pattern> {
 
   field bits<32> Inst = 0xffffffff;
 
@@ -50,14 +50,14 @@ class AMDISAShaderInst <dag outs, dag ins, string asm, list<dag> pattern>
 
 let isCodeGenOnly = 1 in {
 
-  def EXPORT_REG : AMDISAShaderInst <
+  def EXPORT_REG : AMDGPUShaderInst <
     (outs),
     (ins GPRF32:$src),
     "EXPORT_REG $src",
-    [(int_AMDISA_export_reg GPRF32:$src)]
+    [(int_AMDGPU_export_reg GPRF32:$src)]
   >;
 
-  def LOAD_INPUT : AMDISAShaderInst <
+  def LOAD_INPUT : AMDGPUShaderInst <
     (outs GPRF32:$dst),
     (ins i32imm:$src),
     "LOAD_INPUT $dst, $src",
@@ -65,26 +65,26 @@ let isCodeGenOnly = 1 in {
     let PreloadReg = 1;
   }
 
-  def MASK_WRITE : AMDISAShaderInst <
+  def MASK_WRITE : AMDGPUShaderInst <
     (outs),
     (ins GPRF32:$src),
     "MASK_WRITE $src",
     []
   >;
 
-  def RESERVE_REG : AMDISAShaderInst <
+  def RESERVE_REG : AMDGPUShaderInst <
     (outs GPRF32:$dst),
     (ins i32imm:$src),
     "RESERVE_REG $dst, $src",
-    [(set GPRF32:$dst, (int_AMDISA_reserve_reg imm:$src))]> {
+    [(set GPRF32:$dst, (int_AMDGPU_reserve_reg imm:$src))]> {
     let PreloadReg = 1;
   }
 
-  def STORE_OUTPUT: AMDISAShaderInst <
+  def STORE_OUTPUT: AMDGPUShaderInst <
     (outs GPRF32:$dst),
     (ins GPRF32:$src0, i32imm:$src1),
     "STORE_OUTPUT $dst, $src0, $src1",
-    [(set GPRF32:$dst, (int_AMDISA_store_output GPRF32:$src0, imm:$src1))]
+    [(set GPRF32:$dst, (int_AMDGPU_store_output GPRF32:$src0, imm:$src1))]
   >;
 }
 

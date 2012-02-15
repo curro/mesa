@@ -27,13 +27,13 @@
 
 #include "R600RegisterInfo.h"
 
-#include "AMDISATargetMachine.h"
+#include "AMDGPUTargetMachine.h"
 
 using namespace llvm;
 
-R600RegisterInfo::R600RegisterInfo(AMDISATargetMachine &tm,
+R600RegisterInfo::R600RegisterInfo(AMDGPUTargetMachine &tm,
     const TargetInstrInfo &tii)
-: AMDISARegisterInfo(tm, tii),
+: AMDGPURegisterInfo(tm, tii),
   TM(tm),
   TII(tii)
   { }

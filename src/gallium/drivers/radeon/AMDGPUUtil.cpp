@@ -24,10 +24,10 @@
  *
  */
 
-#include "AMDISAUtil.h"
+#include "AMDGPUUtil.h"
 #include "AMDIL.h"
 #include "AMDILMachineFunctionInfo.h"
-#include "AMDISARegisterInfo.h"
+#include "AMDGPURegisterInfo.h"
 
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Target/TargetMachine.h"
@@ -53,7 +53,7 @@ bool llvm::isPlaceHolderOpcode(unsigned opcode)
 /* For f32 registers, this returns the corresponding element (X,Y,Z, or W) of
  * the v4f32 super register that it belongs to.
  */
-unsigned llvm::getRegElement(const AMDISARegisterInfo * TRI, unsigned regNo)
+unsigned llvm::getRegElement(const AMDGPURegisterInfo * TRI, unsigned regNo)
 {
   if (AMDIL::REPLRegisterClass->contains(regNo)
       || AMDIL::SPECIALRegisterClass->contains(regNo)
@@ -64,7 +64,7 @@ unsigned llvm::getRegElement(const AMDISARegisterInfo * TRI, unsigned regNo)
   }
 }
 
-unsigned llvm::getHWRegNum(const AMDISARegisterInfo * TRI, unsigned amdilRegNo)
+unsigned llvm::getHWRegNum(const AMDGPURegisterInfo * TRI, unsigned amdilRegNo)
 {
   for (TargetRegisterInfo::regclass_iterator RI = TRI->regclass_begin(),
        RE = TRI->regclass_end(); RI != RE; ++RI) {

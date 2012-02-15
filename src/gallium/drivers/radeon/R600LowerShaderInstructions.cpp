@@ -30,8 +30,8 @@
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 
 #include "AMDIL.h"
-#include "AMDISA.h"
-#include "AMDISALowerShaderInstructions.h"
+#include "AMDGPU.h"
+#include "AMDGPULowerShaderInstructions.h"
 #include "AMDILInstrInfo.h"
 
 #include <vector>
@@ -40,7 +40,7 @@ using namespace llvm;
 
 namespace {
   class R600LowerShaderInstructionsPass : public MachineFunctionPass,
-        public AMDISALowerShaderInstructionsPass {
+        public AMDGPULowerShaderInstructionsPass {
 
   private:
     static char ID;

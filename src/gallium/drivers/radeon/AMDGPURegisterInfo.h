@@ -25,31 +25,36 @@
  */
 
 
-#ifndef AMDISA_H
-#define AMDISA_H
+#ifndef AMDGPUREGISTERINFO_H_
+#define AMDGPUREGISTERINFO_H_
 
-//#include "MCTargetDesc/GPUMCTargetDesc.h"
-#include "llvm/Support/TargetRegistry.h"
-#include "llvm/Target/TargetMachine.h"
-#include "AMDISATargetMachine.h"
+#include "AMDILRegisterInfo.h"
 
 namespace llvm {
-    class FunctionPass;
-    class AMDISATargetMachine;
 
-    FunctionPass *createR600CodeEmitterPass(formatted_raw_ostream &OS);
-    FunctionPass *createR600LowerShaderInstructionsPass(TargetMachine &tm);
-    FunctionPass *createR600LowerInstructionsPass(TargetMachine &tm);
+  class AMDGPUTargetMachine;
+  class TargetInstrInfo;
 
-    FunctionPass *createAMDISAReorderPreloadInstructionsPass(TargetMachine &tm);
+  struct AMDGPURegisterInfo : public AMDILRegisterInfo
+  {
+    AMDGPUTargetMachine &TM;
+    const TargetInstrInfo &TII;
 
-    FunctionPass *createAMDISALowerShaderInstructionsPass(TargetMachine &tm);
+    AMDGPURegisterInfo(AMDGPUTargetMachine &tm, const TargetInstrInfo &tii);
 
-    FunctionPass *createAMDISADelimitInstGroupsPass(TargetMachine &tm);
+    virtual BitVector getReservedRegs(const MachineFunction &MF) const = 0;
 
-    FunctionPass *createAMDISAConvertToISAPass(TargetMachine &tm);
+    /* This is used to help calculate the index of a register.  A return value
+     * of true means that the index of any register in this class may be
+     * calcluated in this way:
+     * TargetRegisterClass * TRC;
+     * index = register - TRC->getRegister(0);
+     */
+    virtual bool isBaseRegClass(unsigned regClassID) const = 0;
 
-    FunctionPass *createAMDISAFixRegClassesPass(TargetMachine &tm);
+    virtual const TargetRegisterClass *
+    getISARegClass(const TargetRegisterClass * rc) const = 0;
+  };
+} // End namespace llvm
 
-} /* End namespace llvm */
-#endif /* AMDISA_H */
+#endif // AMDIDSAREGISTERINFO_H_

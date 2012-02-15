@@ -25,16 +25,16 @@
  */
 
 #include "AMDIL.h"
-#include "AMDISAInstrInfo.h"
+#include "AMDGPUInstrInfo.h"
 
-#include "AMDISARegisterInfo.h"
-#include "AMDISATargetMachine.h"
+#include "AMDGPURegisterInfo.h"
+#include "AMDGPUTargetMachine.h"
 
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 
 using namespace llvm;
 
-AMDISAInstrInfo::AMDISAInstrInfo(AMDISATargetMachine &tm)
+AMDGPUInstrInfo::AMDGPUInstrInfo(AMDGPUTargetMachine &tm)
   : AMDILInstrInfo(tm), TM(tm)
 {
   unsigned deviceGen =
@@ -47,23 +47,23 @@ AMDISAInstrInfo::AMDISAInstrInfo(AMDISATargetMachine &tm)
       continue;
     }
     switch (instGen) {
-    case AMDISAInstrInfo::R600_CAYMAN:
+    case AMDGPUInstrInfo::R600_CAYMAN:
       if (deviceGen > AMDILDeviceInfo::HD6XXX) {
         continue;
       }
       break;
-    case AMDISAInstrInfo::R600:
+    case AMDGPUInstrInfo::R600:
       if (deviceGen != AMDILDeviceInfo::HD4XXX) {
         continue;
       }
       break;
-    case AMDISAInstrInfo::EG_CAYMAN:
+    case AMDGPUInstrInfo::EG_CAYMAN:
       if (deviceGen < AMDILDeviceInfo::HD5XXX
           || deviceGen > AMDILDeviceInfo::HD6XXX) {
         continue;
       }
       break;
-    case AMDISAInstrInfo::CAYMAN:
+    case AMDGPUInstrInfo::CAYMAN:
       if (deviceGen != AMDILDeviceInfo::HD6XXX) {
         continue;
       }
@@ -78,12 +78,12 @@ AMDISAInstrInfo::AMDISAInstrInfo(AMDISATargetMachine &tm)
   }
 }
 
-MachineInstr * AMDISAInstrInfo::convertToISA(MachineInstr & MI, MachineFunction &MF,
+MachineInstr * AMDGPUInstrInfo::convertToISA(MachineInstr & MI, MachineFunction &MF,
     DebugLoc DL) const
 {
   MachineInstrBuilder newInstr;
   MachineRegisterInfo &MRI = MF.getRegInfo();
-  const AMDISARegisterInfo & RI = getRegisterInfo();
+  const AMDGPURegisterInfo & RI = getRegisterInfo();
   unsigned ISAOpcode = getISAOpcode(MI.getOpcode());
 
   /* Create the new instruction */
@@ -109,7 +109,7 @@ MachineInstr * AMDISAInstrInfo::convertToISA(MachineInstr & MI, MachineFunction 
   return newInstr;
 }
 
-unsigned AMDISAInstrInfo::getISAOpcode(unsigned opcode) const
+unsigned AMDGPUInstrInfo::getISAOpcode(unsigned opcode) const
 {
   if (amdilToISA.count(opcode) == 0) {
     return opcode;
@@ -118,9 +118,9 @@ unsigned AMDISAInstrInfo::getISAOpcode(unsigned opcode) const
   }
 }
 
-bool AMDISAInstrInfo::isRegPreload(const MachineInstr &MI) const
+bool AMDGPUInstrInfo::isRegPreload(const MachineInstr &MI) const
 {
-  return (get(MI.getOpcode()).TSFlags >> AMDISA_TFLAG_SHIFTS::PRELOAD_REG) & 0x1;
+  return (get(MI.getOpcode()).TSFlags >> AMDGPU_TFLAG_SHIFTS::PRELOAD_REG) & 0x1;
 }
 
-#include "AMDISAInstrEnums.inc"
+#include "AMDGPUInstrEnums.inc"

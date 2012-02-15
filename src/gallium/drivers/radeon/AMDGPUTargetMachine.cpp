@@ -25,14 +25,14 @@
  */
 
 
-#include "AMDISATargetMachine.h"
+#include "AMDGPUTargetMachine.h"
 
 #include "AMDILGlobalManager.h"
 #include "AMDILKernelManager.h"
 #include "AMDILMCAsmInfo.h"
 #include "AMDILTargetMachine.h"
-#include "AMDISA.h"
-#include "AMDISAISelLowering.h"
+#include "AMDGPU.h"
+#include "AMDGPUISelLowering.h"
 #include "R600InstrInfo.h"
 
 #include "llvm/Analysis/Passes.h"
@@ -60,7 +60,7 @@ MCAsmInfo* llvm::createMCAsmInfo(const Target &T, StringRef TT)
   }
 }
 
-AMDISATargetMachine::AMDISATargetMachine(const Target &T, StringRef TT,
+AMDGPUTargetMachine::AMDGPUTargetMachine(const Target &T, StringRef TT,
     StringRef CPU, StringRef FS,
 #if LLVM_VERSION > 3000
   TargetOptions Options,
@@ -92,29 +92,29 @@ AMDISATargetMachine::AMDISATargetMachine(const Target &T, StringRef TT,
 
 {
   /* XXX: Add these two initializations to fix a segfault, not sure if this
-   * is correct.  These are normally initialized in the AsmPrinter, but AMDISA
+   * is correct.  These are normally initialized in the AsmPrinter, but AMDGPU
    * does not use the asm printer */
   Subtarget.setGlobalManager(mGM);
   Subtarget.setKernelManager(mKM);
 }
 
-AMDISATargetMachine::~AMDISATargetMachine()
+AMDGPUTargetMachine::~AMDGPUTargetMachine()
 {
     delete mGM;
     delete mKM;
 }
 
-bool AMDISATargetMachine::addInstSelector(PassManagerBase &PM
+bool AMDGPUTargetMachine::addInstSelector(PassManagerBase &PM
                                           AMDIL_OPT_LEVEL_DECL) {
   if (AMDILTargetMachine::addInstSelector(PM AMDIL_OPT_LEVEL_VAR)) {
     return true;
   }
 
-//  PM.add(createAMDISAFixRegClassesPass(*this));
+//  PM.add(createAMDGPUFixRegClassesPass(*this));
   return false;
 }
 
-bool AMDISATargetMachine::addPreEmitPass(PassManagerBase &PM
+bool AMDGPUTargetMachine::addPreEmitPass(PassManagerBase &PM
      AMDIL_OPT_LEVEL_DECL)
 {
   /* This is exactly the same as in AMDILTargetManager, minus theSwizzleEncoder
@@ -126,7 +126,7 @@ bool AMDISATargetMachine::addPreEmitPass(PassManagerBase &PM
   return false;
 }
 
-bool AMDISATargetMachine::addPreRegAlloc(PassManagerBase &PM
+bool AMDGPUTargetMachine::addPreRegAlloc(PassManagerBase &PM
      AMDIL_OPT_LEVEL_DECL)
 {
 //  if (AMDILTargetMachine::addPreRegAlloc(PM AMDIL_OPT_LEVEL_VAR)) {
@@ -134,17 +134,17 @@ bool AMDISATargetMachine::addPreRegAlloc(PassManagerBase &PM
 //  }
 
 //  PM.add(createAMDILLiteralManager(*this AMDIL_OPT_LEVEL_VAR));
-  PM.add(createAMDISAReorderPreloadInstructionsPass(*this));
+  PM.add(createAMDGPUReorderPreloadInstructionsPass(*this));
   if (Subtarget.device()->getGeneration() <= AMDILDeviceInfo::HD6XXX) {
     PM.add(createR600LowerShaderInstructionsPass(*this));
     PM.add(createR600LowerInstructionsPass(*this));
   }
-  PM.add(createAMDISAConvertToISAPass(*this));
+  PM.add(createAMDGPUConvertToISAPass(*this));
   return false;
 }
 
 /*XXX: We should use addPassesToEmitMC in llvm 3.0 */
-bool AMDISATargetMachine::addPassesToEmitFile(PassManagerBase &PM,
+bool AMDGPUTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
                                               formatted_raw_ostream &Out,
                                               CodeGenFileType FileType,
                                               CodeGenOpt::Level OptLevel,

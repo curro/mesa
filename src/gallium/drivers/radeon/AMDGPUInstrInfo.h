@@ -25,35 +25,51 @@
  */
 
 
-#ifndef AMDISA_UTIL_H
-#define AMDISA_UTIL_H
+#ifndef AMDGPUINSTRUCTIONINFO_H_
+#define AMDGPUINSTRUCTIONINFO_H_
 
-#include "llvm/Support/DataTypes.h"
-#include "AMDISARegisterInfo.h"
+#include "AMDIL.h"
+#include "AMDILInstrInfo.h"
+#include "AMDGPURegisterInfo.h"
+
+#include <map>
+
 
 namespace llvm {
 
-class AMDILMachineFunctionInfo;
+  class AMDGPUTargetMachine;
+  class MachineFunction;
+  class MachineInstr;
+  class MachineInstrBuilder;
 
-class TargetMachine;
-class TargetRegisterInfo;
+  class AMDGPUInstrInfo : public AMDILInstrInfo {
+  private:
+  AMDGPUTargetMachine & TM;
+  std::map<unsigned, unsigned> amdilToISA;
 
-bool isPlaceHolderOpcode(unsigned opcode);
+  public:
+  explicit AMDGPUInstrInfo(AMDGPUTargetMachine &tm);
 
-unsigned getRegElement(const AMDISARegisterInfo * TRI, unsigned regNo);
-unsigned getHWRegNum(const AMDISARegisterInfo * TRI, unsigned amdilRegNo);
+  virtual const AMDGPURegisterInfo &getRegisterInfo() const = 0;
 
-bool isTransOp(unsigned opcode);
-bool isTexOp(unsigned opcode);
-bool isReductionOp(unsigned opcode);
-bool isFCOp(unsigned opcode);
+  virtual unsigned getISAOpcode(unsigned AMDILopcode) const;
 
-/* XXX: Move these to AMDISAInstrInfo.h */
-#define MO_FLAG_CLAMP (1 << 0)
-#define MO_FLAG_NEG   (1 << 1)
-#define MO_FLAG_ABS   (1 << 2)
-#define MO_FLAG_MASK  (1 << 3)
+  MachineInstr * convertToISA(MachineInstr & MI, MachineFunction &MF,
+    DebugLoc DL) const;
 
-} /* End namespace llvm */
+  bool isRegPreload(const MachineInstr &MI) const;
 
-#endif /* AMDISA_UTIL_H */
+  #include "AMDGPUInstrEnums.h.inc"
+  };
+
+} // End llvm namespace
+
+/* AMDGPU target flags are stored in bits 32-39 */
+namespace AMDGPU_TFLAG_SHIFTS {
+  enum TFLAGS {
+    PRELOAD_REG = 32
+  };
+}
+
+
+#endif // AMDGPUINSTRINFO_H_

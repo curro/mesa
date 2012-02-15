@@ -2,7 +2,7 @@
 GENERATED_SOURCES := \
 	R600ShaderPatterns.td		\
 	R600RegisterInfo.td		\
-	AMDISAInstrEnums.td		\
+	AMDGPUInstrEnums.td		\
 	AMDILGenRegisterInfo.inc	\
 	AMDILGenInstrInfo.inc		\
 	AMDILGenAsmWriter.inc		\
@@ -11,9 +11,9 @@ GENERATED_SOURCES := \
 	AMDILGenSubtarget.inc		\
 	AMDILGenEDInfo.inc		\
 	AMDILGenIntrinsics.inc		\
-	AMDISAGenCodeEmitter.inc	\
-	AMDISAInstrEnums.h.inc	\
-	AMDISAInstrEnums.inc
+	AMDGPUGenCodeEmitter.inc	\
+	AMDGPUInstrEnums.h.inc	\
+	AMDGPUInstrEnums.inc
 
 CPP_SOURCES := \
 	AMDIL7XXDevice.cpp		\
@@ -56,16 +56,16 @@ CPP_SOURCES := \
 	AMDILEGAsmPrinter.cpp		\
 	AMDIL7XXAsmPrinter.cpp		\
 	macrodata.cpp			\
-	AMDISATargetMachine.cpp		\
-	AMDISADelimitInstGroups.cpp	\
-	AMDISAFixRegClasses.cpp		\
-	AMDISAISelLowering.cpp		\
-	AMDISAConvertToISA.cpp		\
-	AMDISALowerShaderInstructions.cpp	\
-	AMDISAReorderPreloadInstructions.cpp	\
-	AMDISAInstrInfo.cpp		\
-	AMDISARegisterInfo.cpp		\
-	AMDISAUtil.cpp			\
+	AMDGPUTargetMachine.cpp		\
+	AMDGPUDelimitInstGroups.cpp	\
+	AMDGPUFixRegClasses.cpp		\
+	AMDGPUISelLowering.cpp		\
+	AMDGPUConvertToISA.cpp		\
+	AMDGPULowerShaderInstructions.cpp	\
+	AMDGPUReorderPreloadInstructions.cpp	\
+	AMDGPUInstrInfo.cpp		\
+	AMDGPURegisterInfo.cpp		\
+	AMDGPUUtil.cpp			\
 	R600CodeEmitter.cpp		\
 	R600InstrInfo.cpp		\
 	R600LowerInstructions.cpp	\

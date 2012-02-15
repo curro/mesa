@@ -25,15 +25,19 @@
  */
 
 
-#include "AMDISARegisterInfo.h"
-
-#include "AMDISATargetMachine.h"
+#include "AMDILSubtarget.h"
+#include "AMDILUtilityFunctions.h"
+#include "AMDGPUISelLowering.h"
 
 using namespace llvm;
 
-AMDISARegisterInfo::AMDISARegisterInfo(AMDISATargetMachine &tm,
-    const TargetInstrInfo &tii)
-: AMDILRegisterInfo(tm, tii),
-  TM(tm),
-  TII(tii)
-  { }
+AMDGPUTargetLowering::AMDGPUTargetLowering(TargetMachine &TM) :
+  AMDILTargetLowering(TM)
+{
+  const AMDILSubtarget &STM = TM.getSubtarget<AMDILSubtarget>();
+
+  /* XXX: Not supported yet on R600 */
+  if (STM.device()->getGeneration() > AMDILDeviceInfo::HD6XXX) {
+    setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v4f32, Legal);
+  }
+}

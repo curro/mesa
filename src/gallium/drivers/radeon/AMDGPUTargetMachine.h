@@ -25,43 +25,43 @@
  */
 
 
-#ifndef AMDISA_TARGET_MACHINE_H
-#define AMDISA_TARGET_MACHINE_H
+#ifndef AMDGPU_TARGET_MACHINE_H
+#define AMDGPU_TARGET_MACHINE_H
 
 #include "AMDILTargetMachine.h"
 
-#include "AMDISAInstrInfo.h"
-#include "AMDISAISelLowering.h"
+#include "AMDGPUInstrInfo.h"
+#include "AMDGPUISelLowering.h"
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetData.h"
 //#include "llvm/Target/TargetFrameInfo.h"
 
 /*
-#include "AMDISA.h"
-#include "AMDISAFrameLowering.h"
-#include "AMDISAInstrInfo.h"
-#include "AMDISAISelLowering.h"
-#include "AMDISASelectionDAGInfo.h"
-#include "AMDISASubtarget.h"
+#include "AMDGPU.h"
+#include "AMDGPUFrameLowering.h"
+#include "AMDGPUInstrInfo.h"
+#include "AMDGPUISelLowering.h"
+#include "AMDGPUSelectionDAGInfo.h"
+#include "AMDGPUSubtarget.h"
 */
 namespace llvm {
 
 MCAsmInfo* createMCAsmInfo(const Target &T, StringRef TT);
 
-class AMDISATargetMachine : public AMDILTargetMachine {
+class AMDGPUTargetMachine : public AMDILTargetMachine {
   AMDILSubtarget Subtarget;
 /*   const TargetData DataLayout;
-*/   AMDISATargetLowering TLInfo;
-/*   AMDISASelectionDAGInfo TSInfo;
-*/   OwningPtr<AMDISAInstrInfo> InstrInfo;
-//   AMDISAFrameLowering FrameLowering;
+*/   AMDGPUTargetLowering TLInfo;
+/*   AMDGPUSelectionDAGInfo TSInfo;
+*/   OwningPtr<AMDGPUInstrInfo> InstrInfo;
+//   AMDGPUFrameLowering FrameLowering;
      AMDILGlobalManager *mGM;
      AMDILKernelManager *mKM;
      bool mDump;
 
 public:
-   AMDISATargetMachine(const Target &T, StringRef TT, StringRef FS,
+   AMDGPUTargetMachine(const Target &T, StringRef TT, StringRef FS,
                        StringRef CPU,
 #if LLVM_VERSION > 3000
                        TargetOptions Options,
@@ -71,21 +71,21 @@ public:
                        ,CodeGenOpt::Level OL
 #endif
 );
-   ~AMDISATargetMachine();
-   virtual const AMDISAInstrInfo *getInstrInfo() const {return InstrInfo.get();}
+   ~AMDGPUTargetMachine();
+   virtual const AMDGPUInstrInfo *getInstrInfo() const {return InstrInfo.get();}
 /*
    virtual const TargetFrameLowering *getFrameLowering() const {
       return &FrameLowering;
    }
 */
    virtual const AMDILSubtarget *getSubtargetImpl() const {return &Subtarget; }
-   virtual const AMDISARegisterInfo *getRegisterInfo() const {
+   virtual const AMDGPURegisterInfo *getRegisterInfo() const {
       return &InstrInfo->getRegisterInfo();
    }
-   virtual AMDISATargetLowering * getTargetLowering() const {
-      return const_cast<AMDISATargetLowering*>(&TLInfo);
+   virtual AMDGPUTargetLowering * getTargetLowering() const {
+      return const_cast<AMDGPUTargetLowering*>(&TLInfo);
    }
-/*   virtual const AMDISASelectionDAGInfo* getSelectionDAGInfo() const {
+/*   virtual const AMDGPUSelectionDAGInfo* getSelectionDAGInfo() const {
       return &TSInfo;
    }
    virtual const TargetData *getTargetData() const { return &DataLayout; }
@@ -105,4 +105,4 @@ public:
 
 } /* End namespace llvm */
 
-#endif /* AMDISA_TARGET_MACHINE_H */
+#endif /* AMDGPU_TARGET_MACHINE_H */

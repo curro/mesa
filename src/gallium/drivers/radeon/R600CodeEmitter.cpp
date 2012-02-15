@@ -35,8 +35,8 @@
 #include "AMDILInstrInfo.h"
 #include "AMDILMachineFunctionInfo.h"
 #include "AMDILUtilityFunctions.h"
-#include "AMDISA.h"
-#include "AMDISAUtil.h"
+#include "AMDGPU.h"
+#include "AMDGPUUtil.h"
 
 #include <stdio.h>
 
@@ -62,7 +62,7 @@ namespace {
   const TargetMachine * TM;
   const MachineRegisterInfo * MRI;
   AMDILMachineFunctionInfo * MFI;
-  const AMDISARegisterInfo * TRI;
+  const AMDGPURegisterInfo * TRI;
   bool evergreenEncoding;
 
   bool isReduction;
@@ -77,7 +77,7 @@ namespace {
       _OS(OS), TM(NULL), evergreenEncoding(false), isReduction(false),
       isLast(true) { }
 
-  const char *getPassName() const { return "AMDISA Machine Code Emitter"; }
+  const char *getPassName() const { return "AMDGPU Machine Code Emitter"; }
 
   bool runOnMachineFunction(MachineFunction &MF);
 
@@ -163,7 +163,7 @@ bool R600CodeEmitter::runOnMachineFunction(MachineFunction &MF) {
   TM = &MF.getTarget();
   MRI = &MF.getRegInfo();
   MFI = MF.getInfo<AMDILMachineFunctionInfo>();
-  TRI = static_cast<const AMDISARegisterInfo *>(TM->getRegisterInfo());
+  TRI = static_cast<const AMDGPURegisterInfo *>(TM->getRegisterInfo());
   const AMDILSubtarget &STM = TM->getSubtarget<AMDILSubtarget>();
   std::string gpu = STM.getDeviceName();
   if (!gpu.compare(0,3, "rv7")) {
@@ -171,8 +171,8 @@ bool R600CodeEmitter::runOnMachineFunction(MachineFunction &MF) {
   } else {
     evergreenEncoding = true;
   }
-  const AMDISATargetMachine *amdtm =
-    static_cast<const AMDISATargetMachine *>(&MF.getTarget());
+  const AMDGPUTargetMachine *amdtm =
+    static_cast<const AMDGPUTargetMachine *>(&MF.getTarget());
 
   if (amdtm->shouldDumpCode()) {
     MF.dump();
@@ -702,5 +702,5 @@ unsigned int dstSwizzleToWriteMask(unsigned swizzle)
   }
 }
 
-#include "AMDISAGenCodeEmitter.inc"
+#include "AMDGPUGenCodeEmitter.inc"
 

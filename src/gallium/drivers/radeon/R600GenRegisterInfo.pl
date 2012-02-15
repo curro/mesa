@@ -26,21 +26,21 @@
 use strict;
 use warnings;
 
-use AMDISAConstants;
+use AMDGPUConstants;
 
 my $REPL_REG_COUNT = 100;
 my $CREG_MAX = CONST_REG_COUNT - 1;
 
 print <<STRING;
 
-class AMDISAReg <bits<16> value, string name> : Register<name> {
+class AMDGPUReg <bits<16> value, string name> : Register<name> {
   field bits<16> Value;
   let Value = value;
   let Namespace = "AMDIL";
 }
 
-class AMDISAInputReg <bits<16> value, string name, Register gprAlias> :
-    AMDISAReg<value, name> {
+class AMDGPUInputReg <bits<16> value, string name, Register gprAlias> :
+    AMDGPUReg<value, name> {
 
   let Aliases = [gprAlias];
 }
@@ -61,7 +61,7 @@ print 'def R600_CReg_32 : RegisterClass <"AMDIL", [f32, i32], 32, (sequence "C%u
 
 sub const_reg {
   my ($index) = @_;
-  return sprintf(qq{def C%d : AMDISAReg <%d, "C%d">;\n}, $index, $index, $index);
+  return sprintf(qq{def C%d : AMDGPUReg <%d, "C%d">;\n}, $index, $index, $index);
 }
 
 print <<STRING;
@@ -85,7 +85,7 @@ def sel_z : SubRegIndex;
 def sel_w : SubRegIndex;
 }
 
-class AMDISARegWithSubReg<string n, list<Register> subregs> : RegisterWithSubRegs<n, subregs> {
+class AMDGPURegWithSubReg<string n, list<Register> subregs> : RegisterWithSubRegs<n, subregs> {
   let Namespace = "AMDIL";
   let SubRegIndices = [sel_x, sel_y, sel_z, sel_w];
 }
@@ -106,7 +106,7 @@ print ">;\n\n";
 sub repl_reg {
   my ($index) = @_;
 
-  return sprintf(qq{def REPL%d : AMDISARegWithSubReg<"R%d.xyzw", [R%d, R%d, R%d, R%d]>;\n},
+  return sprintf(qq{def REPL%d : AMDGPURegWithSubReg<"R%d.xyzw", [R%d, R%d, R%d, R%d]>;\n},
     $index, $index, ($index * 4) + 1, ($index * 4) + 2, ($index * 4) + 3, ($index * 4) + 4);
 }
 

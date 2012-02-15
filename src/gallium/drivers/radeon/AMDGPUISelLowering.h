@@ -25,19 +25,20 @@
  */
 
 
-#include "AMDILSubtarget.h"
-#include "AMDILUtilityFunctions.h"
-#include "AMDISAISelLowering.h"
+#ifndef AMDGPUISELLOWERING_H
+#define AMDGPUISELLOWERING_H
 
-using namespace llvm;
+#include "AMDILISelLowering.h"
 
-AMDISATargetLowering::AMDISATargetLowering(TargetMachine &TM) :
-  AMDILTargetLowering(TM)
-{
-  const AMDILSubtarget &STM = TM.getSubtarget<AMDILSubtarget>();
+namespace llvm {
 
-  /* XXX: Not supported yet on R600 */
-  if (STM.device()->getGeneration() > AMDILDeviceInfo::HD6XXX) {
-    setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v4f32, Legal);
-  }
-}
+  class AMDGPUTargetLowering : public AMDILTargetLowering
+  {
+    public:
+      AMDGPUTargetLowering(TargetMachine &TM);
+
+  };
+
+} /* End namespace llvm */
+
+#endif /* AMDGPUISELLOWERING_H */

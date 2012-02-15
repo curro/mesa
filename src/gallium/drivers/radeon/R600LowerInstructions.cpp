@@ -33,9 +33,9 @@
 #include "AMDIL.h"
 #include "AMDILMachineFunctionInfo.h"
 #include "AMDILRegisterInfo.h"
-#include "AMDISA.h"
-#include "AMDISAInstrInfo.h"
-#include "AMDISAUtil.h"
+#include "AMDGPU.h"
+#include "AMDGPUInstrInfo.h"
+#include "AMDGPUUtil.h"
 
 #include "R600InstrInfo.h"
 

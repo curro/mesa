@@ -26,65 +26,59 @@
 
 
 #include "llvm/CodeGen/MachineFunctionPass.h"
-#include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
-#include "llvm/Constants.h"
-#include "llvm/Target/TargetInstrInfo.h"
 
 #include "AMDIL.h"
-#include "AMDILMachineFunctionInfo.h"
-#include "AMDILRegisterInfo.h"
-#include "AMDISA.h"
-#include "AMDISAInstrInfo.h"
-#include "AMDISAUtil.h"
-
-#include "R600InstrInfo.h"
-
-#include <stdio.h>
+#include "AMDGPU.h"
+#include "AMDGPURegisterInfo.h"
 
 using namespace llvm;
 
 namespace {
-  class AMDISAConvertToISAPass : public MachineFunctionPass {
+  class AMDGPUFixRegClassesPass : public MachineFunctionPass {
 
   private:
     static char ID;
     TargetMachine &TM;
 
-    void lowerFLT(MachineInstr &MI);
-
   public:
-    AMDISAConvertToISAPass(TargetMachine &tm) :
+    AMDGPUFixRegClassesPass(TargetMachine &tm) :
       MachineFunctionPass(ID), TM(tm) { }
 
     virtual bool runOnMachineFunction(MachineFunction &MF);
 
   };
+
 } /* End anonymous namespace */
 
-char AMDISAConvertToISAPass::ID = 0;
+char AMDGPUFixRegClassesPass::ID = 0;
 
-FunctionPass *llvm::createAMDISAConvertToISAPass(TargetMachine &tm) {
-  return new AMDISAConvertToISAPass(tm);
+FunctionPass *llvm::createAMDGPUFixRegClassesPass(TargetMachine &tm)
+{
+  return new AMDGPUFixRegClassesPass(tm);
 }
 
-bool AMDISAConvertToISAPass::runOnMachineFunction(MachineFunction &MF)
+bool AMDGPUFixRegClassesPass::runOnMachineFunction(MachineFunction &MF)
 {
-  const AMDISAInstrInfo * TII =
-                      static_cast<const AMDISAInstrInfo*>(TM.getInstrInfo());
-
+  MachineRegisterInfo & MRI = MF.getRegInfo();
   for (MachineFunction::iterator BB = MF.begin(), BB_E = MF.end();
                                                   BB != BB_E; ++BB) {
     MachineBasicBlock &MBB = *BB;
     for (MachineBasicBlock::iterator I = MBB.begin(), Next = llvm::next(I);
          I != MBB.end(); I = Next, Next = llvm::next(I) ) {
       MachineInstr &MI = *I;
-      MachineInstr * newInstr = TII->convertToISA(MI, MF, MBB.findDebugLoc(I));
-      if (!newInstr) {
-        continue;
+
+      for (unsigned i = 0; i < MI.getNumOperands(); i++) {
+        MachineOperand & MO = MI.getOperand(i);
+        if (!MO.isReg() || !TargetRegisterInfo::isVirtualRegister(MO.getReg())) {
+          continue;
+        }
+
+        const TargetRegisterClass * TRC = MRI.getRegClass(MO.getReg());
+        if (TRC->getID() == AMDIL::GPRV4F32RegClassID) {
+          MRI.setRegClass(MO.getReg(), &AMDIL::REPLRegClass);
+        }
       }
-      MBB.insert(I, newInstr);
-      MI.eraseFromParent();
     }
   }
   return false;

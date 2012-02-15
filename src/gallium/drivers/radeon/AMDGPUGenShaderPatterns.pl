@@ -23,13 +23,18 @@
 # Authors: Tom Stellard <thomas.stellard@amd.com>
 #
 
-package AMDISAConstants;
+use strict;
+use warnings;
 
-use base 'Exporter';
+use AMDGPUConstants;
 
-use constant INPUT_REG_COUNT => 64;
-use constant CONST_REG_COUNT => 1024;
+my $reg_prefix = $ARGV[0];
 
-our @EXPORT = ('INPUT_REG_COUNT', 'CONST_REG_COUNT');
-
-1;
+for (my $i = 0; $i < CONST_REG_COUNT; $i++) {
+print <<STRING;
+def : Pat <
+  (int_AMDGPU_load_const $i),
+  (f32 (MOV (f32 $reg_prefix$i)))
+>;
+STRING
+}

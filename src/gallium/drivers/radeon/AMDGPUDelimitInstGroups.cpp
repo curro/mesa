@@ -26,9 +26,9 @@
 
 
 #include "AMDIL.h"
-#include "AMDISA.h"
-#include "AMDISARegisterInfo.h"
-#include "AMDISAUtil.h"
+#include "AMDGPU.h"
+#include "AMDGPURegisterInfo.h"
+#include "AMDGPUUtil.h"
 
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -42,7 +42,7 @@ using namespace llvm;
 
 namespace {
 
-  class AMDISADelimitInstGroupsPass : public MachineFunctionPass {
+  class AMDGPUDelimitInstGroupsPass : public MachineFunctionPass {
 
   private:
   static char ID;
@@ -63,24 +63,24 @@ namespace {
   void addConstantReads(MachineInstr &MI);
 
   public:
-  AMDISADelimitInstGroupsPass(TargetMachine &tm) :
+  AMDGPUDelimitInstGroupsPass(TargetMachine &tm) :
     MachineFunctionPass(ID), TM(tm), currentLast(-1) { }
 
   virtual bool runOnMachineFunction(MachineFunction &MF);
   };
 } /* End anonymous namespace */
 
-char AMDISADelimitInstGroupsPass::ID = 0;
+char AMDGPUDelimitInstGroupsPass::ID = 0;
 
-FunctionPass *llvm::createAMDISADelimitInstGroupsPass(TargetMachine &tm) {
-  return new AMDISADelimitInstGroupsPass(tm);
+FunctionPass *llvm::createAMDGPUDelimitInstGroupsPass(TargetMachine &tm) {
+  return new AMDGPUDelimitInstGroupsPass(tm);
 }
 
-bool AMDISADelimitInstGroupsPass::runOnMachineFunction(MachineFunction &MF)
+bool AMDGPUDelimitInstGroupsPass::runOnMachineFunction(MachineFunction &MF)
 {
 //  MF.dump();
-  const AMDISARegisterInfo * TRI =
-                  static_cast<const AMDISARegisterInfo*>(TM.getRegisterInfo());
+  const AMDGPURegisterInfo * TRI =
+                  static_cast<const AMDGPURegisterInfo*>(TM.getRegisterInfo());
   for (MachineFunction::iterator BB = MF.begin(), BB_E = MF.end();
                                                   BB != BB_E; ++BB) {
     MachineBasicBlock &MBB = *BB;
@@ -169,7 +169,7 @@ bool AMDISADelimitInstGroupsPass::runOnMachineFunction(MachineFunction &MF)
   return false;
 }
 
-void AMDISADelimitInstGroupsPass::endGroup(MachineBasicBlock &BB,
+void AMDGPUDelimitInstGroupsPass::endGroup(MachineBasicBlock &BB,
     MachineFunction &MF, MachineBasicBlock::iterator lastInst)
 {
   currentLast = -1;
@@ -180,7 +180,7 @@ void AMDISADelimitInstGroupsPass::endGroup(MachineBasicBlock &BB,
                                 TM.getInstrInfo()->get(AMDIL::LAST)));
 }
 
-void AMDISADelimitInstGroupsPass::addConstantReads(MachineInstr &MI)
+void AMDGPUDelimitInstGroupsPass::addConstantReads(MachineInstr &MI)
 {
   for (unsigned i = 1; i < MI.getNumOperands(); ++i) {
     MachineOperand MO = MI.getOperand(i);

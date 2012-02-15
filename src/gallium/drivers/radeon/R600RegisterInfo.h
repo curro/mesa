@@ -29,19 +29,19 @@
 #define R600REGISTERINFO_H_
 
 #include "AMDILRegisterInfo.h"
-#include "AMDISATargetMachine.h"
+#include "AMDGPUTargetMachine.h"
 
 namespace llvm {
 
   class R600TargetMachine;
   class TargetInstrInfo;
 
-  struct R600RegisterInfo : public AMDISARegisterInfo
+  struct R600RegisterInfo : public AMDGPURegisterInfo
   {
-    AMDISATargetMachine &TM;
+    AMDGPUTargetMachine &TM;
     const TargetInstrInfo &TII;
 
-    R600RegisterInfo(AMDISATargetMachine &tm, const TargetInstrInfo &tii);
+    R600RegisterInfo(AMDGPUTargetMachine &tm, const TargetInstrInfo &tii);
 
     virtual BitVector getReservedRegs(const MachineFunction &MF) const;
 

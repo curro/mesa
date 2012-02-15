@@ -24,37 +24,49 @@
  *
  */
 
-
-#ifndef AMDISAREGISTERINFO_H_
-#define AMDISAREGISTERINFO_H_
-
-#include "AMDILRegisterInfo.h"
-
-namespace llvm {
-
-  class AMDISATargetMachine;
-  class TargetInstrInfo;
-
-  struct AMDISARegisterInfo : public AMDILRegisterInfo
-  {
-    AMDISATargetMachine &TM;
-    const TargetInstrInfo &TII;
-
-    AMDISARegisterInfo(AMDISATargetMachine &tm, const TargetInstrInfo &tii);
-
-    virtual BitVector getReservedRegs(const MachineFunction &MF) const = 0;
-
-    /* This is used to help calculate the index of a register.  A return value
-     * of true means that the index of any register in this class may be
-     * calcluated in this way:
-     * TargetRegisterClass * TRC;
-     * index = register - TRC->getRegister(0);
-     */
-    virtual bool isBaseRegClass(unsigned regClassID) const = 0;
-
-    virtual const TargetRegisterClass *
-    getISARegClass(const TargetRegisterClass * rc) const = 0;
+namespace AMDGPUInstrInfo {
+  enum AMDILInstructions {
+    NONE = 0,
+    ADD_f32 = 1,
+    ABS_f32 = 2,
+    FRAC_f32 = 3,
+    PIREDUCE_f32 = 4,
+    ACOS_f32 = 5,
+    ATAN_f32 = 6,
+    ASIN_f32 = 7,
+    TAN_f32 = 8,
+    SIN_f32 = 9,
+    COS_f32 = 10,
+    SQRT_f32 = 11,
+    EXP_f32 = 12,
+    EXPVEC_f32 = 13,
+    SQRTVEC_f32 = 14,
+    COSVEC_f32 = 15,
+    SINVEC_f32 = 16,
+    LOGVEC_f32 = 17,
+    RSQVEC_f32 = 18,
+    EXN_f32 = 19,
+    SIGN_f32 = 20,
+    LENGTH_f32 = 21,
+    POW_f32 = 22,
+    MIN_f32 = 23,
+    MAX_f32 = 24,
+    MAD_f32 = 25,
+    LN_f32 = 26,
+    LOG_f32 = 27,
+    RSQ_f32 = 28,
+    DIV_f32 = 29,
+    CLAMP_f32 = 30,
+    FMA_f32 = 31,
+    LERP_f32 = 32,
+    NEG_f32 = 33,
+    INTTOANY_f32 = 34,
   };
-} // End namespace llvm
-
-#endif // AMDIDSAREGISTERINFO_H_
+}
+namespace AMDGPUInstrInfo {
+  enum AMDGPUGen {
+    R600_CAYMAN = 0,
+    EG_CAYMAN = 1,
+    CAYMAN = 2,
+  };
+}

@@ -28,12 +28,12 @@
 #include "R600InstrInfo.h"
 
 #include "R600RegisterInfo.h"
-#include "AMDISATargetMachine.h"
+#include "AMDGPUTargetMachine.h"
 
 using namespace llvm;
 
-R600InstrInfo::R600InstrInfo(AMDISATargetMachine &tm)
-  : AMDISAInstrInfo(tm),
+R600InstrInfo::R600InstrInfo(AMDGPUTargetMachine &tm)
+  : AMDGPUInstrInfo(tm),
     RI(tm, *this),
     TM(tm)
   { }
@@ -61,7 +61,7 @@ R600InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 unsigned R600InstrInfo::getISAOpcode(unsigned opcode) const
 {
   switch (opcode) {
-    default: return AMDISAInstrInfo::getISAOpcode(opcode);
+    default: return AMDGPUInstrInfo::getISAOpcode(opcode);
     case AMDIL::MOVE_f32:
     case AMDIL::MOVE_i32:
       return AMDIL::MOV;
