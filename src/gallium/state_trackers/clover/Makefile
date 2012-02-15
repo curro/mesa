@@ -15,7 +15,7 @@ DEFINES = -DMESA_VERSION=\"$(MESA_VERSION)\" \
 	  $(PIPE_DEFINES) \
 	  -DHAVE_LLVM=$(HAVE_LLVM)
 
-LIBS =	$(TOP)/src/gallium/winsys/loader/libws_loader.a \
+LIBS =  $(TOP)/src/gallium/winsys/loader/libws_loader.a \
 	$(TOP)/src/gallium/winsys/loader/drm/libws_loader_drm.a \
 	$(GALLIUM_AUXILIARIES) \
 	$(LIBUDEV_LIBS) \
@@ -64,6 +64,7 @@ LLVM_CPPFLAGS = $(shell llvm-config --cppflags)
 
 #XXX: There is a global config for this, but it is missing some needed libraries
 LLVM_LIBS += $(shell llvm-config --libs)
+LLVM_LIBS += -L$(shell llvm-config --libdir)
 
 OBJECTS = $(C_SOURCES:.c=.o) \
 	$(CPP_SOURCES:.cpp=.o) \
@@ -78,14 +79,14 @@ PIPE_INSTALL_DIR = $(OPENCL_LIB_INSTALL_DIR)
 %.o: %.c
 	$(CC) -c $(INCLUDES) $(CFLAGS) $< -o $@
 
-%.o: %.cpp
-	$(CXX) -c $(INCLUDES) $(CXXFLAGS) $(LLVM_CPPFLAGS) $< -o $@
-
 %.o: %.S
 	$(CC) -c $(INCLUDES) $(CFLAGS)  $< -o $@
 
 llvm/%.o: llvm/%.cpp
 	$(CXX) -c $(INCLUDES) $(DEFINES) $(CXXFLAGS) $(LLVM_CXXFLAGS) $< -o $@
+
+%.o: %.cpp
+	$(CXX) -c $(INCLUDES) $(CXXFLAGS) $(LLVM_CPPFLAGS) $< -o $@
 
 
 ##### TARGETS #####
