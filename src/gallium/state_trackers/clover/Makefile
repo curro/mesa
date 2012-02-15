@@ -94,6 +94,10 @@ default: depend $(TARGET)
 
 include $(TOP)/src/gallium/targets/pipe-loader/Makefile.template
 
+#XXX: We shouldn't be linking with these:
+MESA_LIBS_FILTER = -ldricore -lglsl
+PIPE_SYS := $(filter-out $(MESA_LIBS_FILTER), $(PIPE_SYS))
+
 $(TARGET): $(OBJECTS) $(LIBS) $(PIPE_TARGETS) Makefile
 	$(MKLIB) -o $(LIBNAME) -linker '$(CXX)' -ldflags '$(LDFLAGS)' \
 		-major $(OPENCL_MAJOR) -minor $(OPENCL_MINOR) $(MKLIB_OPTIONS) \
