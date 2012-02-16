@@ -123,9 +123,6 @@ bool R600LowerShaderInstructionsPass::runOnMachineFunction(MachineFunction &MF)
     }
   }
 
-  MRI->EmitLiveInCopies(MF.begin(), *TM.getRegisterInfo(), *TM.getInstrInfo());
-
-//  MF.dump();
   return false;
 }
 
@@ -144,7 +141,8 @@ void R600LowerShaderInstructionsPass::lowerLOAD_INPUT(MachineInstr &MI)
   unsigned newRegister = inputClass->getRegister(inputIndex);
   unsigned dstReg = dst.getReg();
 
-  preloadRegister(newRegister, dstReg);
+  preloadRegister(MI.getParent()->getParent(), TM.getInstrInfo(), newRegister,
+                  dstReg);
 }
 
 bool R600LowerShaderInstructionsPass::lowerSTORE_OUTPUT(MachineInstr &MI,

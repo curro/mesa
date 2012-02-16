@@ -15,7 +15,8 @@ class AMDGPULowerShaderInstructionsPass {
      * @param virtReg The virtual register that currently holds the
      *                preloaded value.
      */
-    void preloadRegister(unsigned physReg, unsigned virtReg) const;
+    void preloadRegister(MachineFunction * MF, const TargetInstrInfo * TII,
+                         unsigned physReg, unsigned virtReg) const;
 };
 
 } // end namespace llvm
