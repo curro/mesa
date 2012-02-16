@@ -44,14 +44,6 @@ namespace llvm {
 
     virtual BitVector getReservedRegs(const MachineFunction &MF) const = 0;
 
-    /* This is used to help calculate the index of a register.  A return value
-     * of true means that the index of any register in this class may be
-     * calcluated in this way:
-     * TargetRegisterClass * TRC;
-     * index = register - TRC->getRegister(0);
-     */
-    virtual bool isBaseRegClass(unsigned regClassID) const = 0;
-
     virtual const TargetRegisterClass *
     getISARegClass(const TargetRegisterClass * rc) const = 0;
   };

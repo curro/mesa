@@ -45,10 +45,13 @@ namespace llvm {
 
     virtual BitVector getReservedRegs(const MachineFunction &MF) const;
 
-    virtual bool isBaseRegClass(unsigned regClassID) const;
-
     virtual const TargetRegisterClass *
     getISARegClass(const TargetRegisterClass * rc) const;
+    unsigned getHWRegIndex(unsigned reg) const;
+    unsigned getHWRegChan(unsigned reg) const;
+private:
+    unsigned getHWRegChanGen(unsigned reg) const;
+    unsigned getHWRegIndexGen(unsigned reg) const;
   };
 } // End namespace llvm
 

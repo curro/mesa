@@ -27,8 +27,9 @@
 
 #include "AMDIL.h"
 #include "AMDGPU.h"
-#include "AMDGPURegisterInfo.h"
 #include "AMDGPUUtil.h"
+
+#include "R600RegisterInfo.h"
 
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -79,8 +80,8 @@ FunctionPass *llvm::createAMDGPUDelimitInstGroupsPass(TargetMachine &tm) {
 bool AMDGPUDelimitInstGroupsPass::runOnMachineFunction(MachineFunction &MF)
 {
 //  MF.dump();
-  const AMDGPURegisterInfo * TRI =
-                  static_cast<const AMDGPURegisterInfo*>(TM.getRegisterInfo());
+  const R600RegisterInfo * TRI =
+                  static_cast<const R600RegisterInfo*>(TM.getRegisterInfo());
   for (MachineFunction::iterator BB = MF.begin(), BB_E = MF.end();
                                                   BB != BB_E; ++BB) {
     MachineBasicBlock &MBB = *BB;
@@ -124,7 +125,7 @@ bool AMDGPUDelimitInstGroupsPass::runOnMachineFunction(MachineFunction &MF)
       if (MI.getOpcode() == AMDIL::SET_CHAN) {
         element = MI.getOperand(2).getImm();
       } else {
-        element = getRegElement(TRI, dstReg);
+        element = TRI->getHWRegChan(dstReg);
       }
       if (currentLast > -1 && element <= (unsigned)currentLast) {
         endGroup(MBB, MF, lastRealInst);
@@ -187,7 +188,7 @@ void AMDGPUDelimitInstGroupsPass::addConstantReads(MachineInstr &MI)
     if (!MO.isReg()) {
       continue;
     }
-    if (AMDIL::R600_CReg_32RegClass.contains(MO.getReg())) {
+    if (AMDIL::R600_CReg32RegClass.contains(MO.getReg())) {
       constantReads[MO.getReg()] = true;
     }
   }

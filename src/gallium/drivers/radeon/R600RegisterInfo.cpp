@@ -48,8 +48,10 @@ BitVector R600RegisterInfo::getReservedRegs(const MachineFunction &MF) const
   Reserved.set(AMDIL::NEG_ONE);
   Reserved.set(AMDIL::PV_X);
   Reserved.set(AMDIL::ALU_LITERAL_X);
-  for (unsigned i = AMDIL::C0; i <= AMDIL::C1023; i++) {
-    Reserved.set(i);
+
+  for (TargetRegisterClass::iterator I = AMDIL::R600_CReg32RegClass.begin(),
+                        E = AMDIL::R600_CReg32RegClass.end(); I != E; ++I) {
+    Reserved.set(*I);
   }
 
   for (MachineFunction::const_iterator BB = MF.begin(),
@@ -68,30 +70,45 @@ BitVector R600RegisterInfo::getReservedRegs(const MachineFunction &MF) const
   return Reserved;
 }
 
-bool R600RegisterInfo::isBaseRegClass(unsigned regClassID) const
-{
-  switch(regClassID) {
-  case AMDIL::R600_CReg_32RegClassID:
-  case AMDIL::GPRF32RegClassID:
-  case AMDIL::REPLRegClassID:
-    return true;
-  default:
-    return false;
-  }
-}
-
 const TargetRegisterClass *
 R600RegisterInfo::getISARegClass(const TargetRegisterClass * rc) const
 {
   switch (rc->getID()) {
   case AMDIL::GPRV4F32RegClassID:
   case AMDIL::GPRV4I32RegClassID:
-    return &AMDIL::REPLRegClass;
+    return &AMDIL::R600_Reg128RegClass;
   case AMDIL::GPRF32RegClassID:
   case AMDIL::GPRI32RegClassID:
     return &AMDIL::R600_Reg32RegClass;
   default: return rc;
+  }
 }
 
-
+unsigned R600RegisterInfo::getHWRegIndex(unsigned reg) const
+{
+  switch(reg) {
+  case AMDIL::ZERO: return 248;
+  case AMDIL::ONE:
+  case AMDIL::NEG_ONE: return 249;
+  case AMDIL::HALF:
+  case AMDIL::NEG_HALF: return 252;
+  case AMDIL::ALU_LITERAL_X: return 253;
+  default: return getHWRegIndexGen(reg);
+  }
 }
+
+unsigned R600RegisterInfo::getHWRegChan(unsigned reg) const
+{
+  switch(reg) {
+  case AMDIL::ZERO:
+  case AMDIL::ONE:
+  case AMDIL::NEG_ONE:
+  case AMDIL::HALF:
+  case AMDIL::NEG_HALF:
+  case AMDIL::ALU_LITERAL_X:
+    return 0;
+  default: return getHWRegChanGen(reg);
+  }
+}
+
+#include "R600HwRegInfo.inc"

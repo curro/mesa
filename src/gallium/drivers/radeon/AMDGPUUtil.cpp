@@ -50,33 +50,6 @@ bool llvm::isPlaceHolderOpcode(unsigned opcode)
   }
 }
 
-/* For f32 registers, this returns the corresponding element (X,Y,Z, or W) of
- * the v4f32 super register that it belongs to.
- */
-unsigned llvm::getRegElement(const AMDGPURegisterInfo * TRI, unsigned regNo)
-{
-  if (AMDIL::REPLRegisterClass->contains(regNo)
-      || AMDIL::SPECIALRegisterClass->contains(regNo)
-      || regNo == AMDIL::ALU_LITERAL_X) {
-    return 0;
-  } else {
-    return getHWRegNum(TRI, regNo) % 4;
-  }
-}
-
-unsigned llvm::getHWRegNum(const AMDGPURegisterInfo * TRI, unsigned amdilRegNo)
-{
-  for (TargetRegisterInfo::regclass_iterator RI = TRI->regclass_begin(),
-       RE = TRI->regclass_end(); RI != RE; ++RI) {
-    const TargetRegisterClass * TRC = *RI;
-    if (TRC->contains(amdilRegNo) && TRI->isBaseRegClass(TRC->getID())) {
-      return amdilRegNo - TRC->getRegister(0);
-    }
-  }
-  abort();
-  return 0;
-}
-
 bool llvm::isTransOp(unsigned opcode)
 {
   switch(opcode) {

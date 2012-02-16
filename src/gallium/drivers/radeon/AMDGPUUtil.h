@@ -40,9 +40,6 @@ class TargetRegisterInfo;
 
 bool isPlaceHolderOpcode(unsigned opcode);
 
-unsigned getRegElement(const AMDGPURegisterInfo * TRI, unsigned regNo);
-unsigned getHWRegNum(const AMDGPURegisterInfo * TRI, unsigned amdilRegNo);
-
 bool isTransOp(unsigned opcode);
 bool isTexOp(unsigned opcode);
 bool isReductionOp(unsigned opcode);

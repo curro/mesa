@@ -51,7 +51,6 @@ namespace {
     void lowerLOAD_INPUT(MachineInstr & MI);
     bool lowerSTORE_OUTPUT(MachineInstr & MI, MachineBasicBlock &MBB,
         MachineBasicBlock::iterator I);
-    void lowerSWIZZLE(MachineInstr &MI);
 
   public:
     R600LowerShaderInstructionsPass(TargetMachine &tm) :
@@ -114,10 +113,6 @@ bool R600LowerShaderInstructionsPass::runOnMachineFunction(MachineFunction &MF)
         deleteInstr = lowerSTORE_OUTPUT(MI, MBB, I);
         break;
 
-      case AMDIL::SWIZZLE:
-        lowerSWIZZLE(MI);
-        deleteInstr = true;
-        break;
       }
 
       ++I;
@@ -145,7 +140,7 @@ void R600LowerShaderInstructionsPass::lowerLOAD_INPUT(MachineInstr &MI)
   MachineOperand &dst = MI.getOperand(0);
   MachineOperand &arg = MI.getOperand(1);
   int64_t inputIndex = arg.getImm();
-  const TargetRegisterClass * inputClass = TM.getRegisterInfo()->getRegClass(AMDIL::GPRF32RegClassID);
+  const TargetRegisterClass * inputClass = TM.getRegisterInfo()->getRegClass(AMDIL::R600_TReg32RegClassID);
   unsigned newRegister = inputClass->getRegister(inputIndex);
   unsigned dstReg = dst.getReg();
 
@@ -159,7 +154,7 @@ bool R600LowerShaderInstructionsPass::lowerSTORE_OUTPUT(MachineInstr &MI,
   MachineOperand &indexOp = MI.getOperand(2);
   unsigned valueReg = valueOp.getReg();
   int64_t outputIndex = indexOp.getImm();
-  const TargetRegisterClass * outputClass = TM.getRegisterInfo()->getRegClass(AMDIL::GPRF32RegClassID);
+  const TargetRegisterClass * outputClass = TM.getRegisterInfo()->getRegClass(AMDIL::R600_TReg32RegClassID);
   unsigned newRegister = outputClass->getRegister(outputIndex);
 
   BuildMI(MBB, I, MBB.findDebugLoc(I), TM.getInstrInfo()->get(AMDIL::COPY),
@@ -171,21 +166,4 @@ bool R600LowerShaderInstructionsPass::lowerSTORE_OUTPUT(MachineInstr &MI,
 
   return true;
 
-}
-
-void R600LowerShaderInstructionsPass::lowerSWIZZLE(MachineInstr &MI)
-{
-  MachineOperand &dstOp = MI.getOperand(0);
-  MachineOperand &valOp = MI.getOperand(1);
-  MachineOperand &swzOp = MI.getOperand(2);
-  int64_t swizzle = swzOp.getImm();
-
-  /* Set the swizzle for all of the uses */
-  for (MachineRegisterInfo::use_iterator UI = MRI->use_begin(dstOp.getReg()),
-       UE = MRI->use_end(); UI != UE; ++UI) {
-    UI.getOperand().setTargetFlags(swizzle);
-  }
-
-  /* Progate the swizzle instruction */
-  MRI->replaceRegWith(dstOp.getReg(), valOp.getReg());
 }

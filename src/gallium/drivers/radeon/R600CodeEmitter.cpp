@@ -38,6 +38,8 @@
 #include "AMDGPU.h"
 #include "AMDGPUUtil.h"
 
+#include "R600RegisterInfo.h"
+
 #include <stdio.h>
 
 #define SRC_BYTE_COUNT 11
@@ -62,7 +64,7 @@ namespace {
   const TargetMachine * TM;
   const MachineRegisterInfo * MRI;
   AMDILMachineFunctionInfo * MFI;
-  const AMDGPURegisterInfo * TRI;
+  const R600RegisterInfo * TRI;
   bool evergreenEncoding;
 
   bool isReduction;
@@ -103,7 +105,6 @@ namespace {
   unsigned getHWReg(unsigned regNo);
 
   unsigned getElement(unsigned regNo);
-  int getElement(MachineInstr &MI);
 
 };
 
@@ -163,7 +164,7 @@ bool R600CodeEmitter::runOnMachineFunction(MachineFunction &MF) {
   TM = &MF.getTarget();
   MRI = &MF.getRegInfo();
   MFI = MF.getInfo<AMDILMachineFunctionInfo>();
-  TRI = static_cast<const AMDGPURegisterInfo *>(TM->getRegisterInfo());
+  TRI = static_cast<const R600RegisterInfo *>(TM->getRegisterInfo());
   const AMDILSubtarget &STM = TM->getSubtarget<AMDILSubtarget>();
   std::string gpu = STM.getDeviceName();
   if (!gpu.compare(0,3, "rv7")) {
@@ -298,7 +299,7 @@ void R600CodeEmitter::emitSrc(const MachineOperand & MO)
     if (parent->getOpcode() == AMDIL::VEXTRACT_v4f32) {
       emitByte(parent->getOperand(2).getImm());
     } else {
-      emitByte(getRegElement(TRI, MO.getReg()));
+      emitByte(TRI->getHWRegChan(MO.getReg()));
     }
   } else {
     emitByte(0);
@@ -349,7 +350,7 @@ void R600CodeEmitter::emitDst(const MachineOperand & MO)
     } else if (parent->getOpcode() == AMDIL::VCREATE_v4f32) {
       emitByte(ELEMENT_X);
     } else {
-      emitByte(getRegElement(TRI, MO.getReg()));
+      emitByte(TRI->getHWRegChan(MO.getReg()));
     }
 
     /* Emit isClamped (1 byte) */
@@ -360,7 +361,7 @@ void R600CodeEmitter::emitDst(const MachineOperand & MO)
     }
 
     /* Emit writemask (1 byte).  */
-    if ((isReduction && reductionElement != getRegElement(TRI, MO.getReg()))
+    if ((isReduction && reductionElement != TRI->getHWRegChan(MO.getReg()))
          || MO.getTargetFlags() & MO_FLAG_MASK) {
       emitByte(0);
     } else {
@@ -614,40 +615,11 @@ unsigned R600CodeEmitter::getHWReg(unsigned regNo)
 {
   unsigned hwReg;
 
-  switch(regNo) {
-  case AMDIL::ZERO: return 248;
-  case AMDIL::ONE:
-  case AMDIL::NEG_ONE: return 249;
-  case AMDIL::HALF:
-  case AMDIL::NEG_HALF: return 252;
-  case AMDIL::ALU_LITERAL_X: return 253;
-  }
-
-  hwReg = getHWRegNum(TRI, regNo);
-  /* XXX: Clean this up */
-  if (AMDIL::REPLRegClass.contains(regNo)) {
-    return hwReg;
-  }
-  hwReg = hwReg / 4;
-  if (AMDIL::R600_CReg_32RegClass.contains(regNo)) {
+  hwReg = TRI->getHWRegIndex(regNo);
+  if (AMDIL::R600_CReg32RegClass.contains(regNo)) {
     hwReg += 512;
   }
   return hwReg;
-}
-
-int R600CodeEmitter::getElement(MachineInstr &MI)
-{
-  if (MI.getNumOperands() == 0 || !MI.getOperand(0).isReg()) {
-    return -1;
-  } else {
-    switch(MI.getOpcode()) {
-    case AMDIL::EXPORT_REG:
-    case AMDIL::SWIZZLE:
-      return -1;
-    default:
-      return getRegElement(TRI, MI.getOperand(0).getReg());
-    }
-  }
 }
 
 RegElement maskBitToElement(unsigned int maskBit)

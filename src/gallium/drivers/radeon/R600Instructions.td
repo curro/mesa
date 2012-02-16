@@ -104,8 +104,8 @@ class R600_REDUCTION <bits<32> inst, dag ins, string asm, list<dag> pattern,
 class R600_TEX <bits<32> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
   InstR600 <inst,
-          (outs REPL:$dst),
-          (ins REPL:$src0, i32imm:$src1, i32imm:$src2),
+          (outs R600_Reg128:$dst),
+          (ins R600_Reg128:$src0, i32imm:$src1, i32imm:$src2),
           !strconcat(opName, "$dst, $src0, $src1, $src2"),
           pattern,
           itin
@@ -229,42 +229,42 @@ def AND_INT : R600_2OP <
 
 def TEX_SAMPLE : R600_TEX <
   0x10, "TEX_SAMPLE",
-  [(set REPL:$dst, (int_AMDGPU_tex REPL:$src0, imm:$src1, imm:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_tex R600_Reg128:$src0, imm:$src1, imm:$src2))]
 >;
 
 def TEX_SAMPLE_C : R600_TEX <
   0x18, "TEX_SAMPLE_C",
-  [(set REPL:$dst, (int_AMDGPU_tex REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_tex R600_Reg128:$src0, imm:$src1, TEX_SHADOW:$src2))]
 >;
 
 def TEX_SAMPLE_L : R600_TEX <
   0x11, "TEX_SAMPLE_L",
-  [(set REPL:$dst, (int_AMDGPU_txl REPL:$src0, imm:$src1, imm:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txl R600_Reg128:$src0, imm:$src1, imm:$src2))]
 >;
 
 def TEX_SAMPLE_C_L : R600_TEX <
   0x19, "TEX_SAMPLE_C_L",
-  [(set REPL:$dst, (int_AMDGPU_txl REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txl R600_Reg128:$src0, imm:$src1, TEX_SHADOW:$src2))]
 >;
 
 def TEX_SAMPLE_LB : R600_TEX <
   0x12, "TEX_SAMPLE_LB",
-  [(set REPL:$dst, (int_AMDGPU_txb REPL:$src0, imm:$src1, imm:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txb R600_Reg128:$src0, imm:$src1, imm:$src2))]
 >;
 
 def TEX_SAMPLE_C_LB : R600_TEX <
   0x1A, "TEX_SAMPLE_C_LB",
-  [(set REPL:$dst, (int_AMDGPU_txb REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txb R600_Reg128:$src0, imm:$src1, TEX_SHADOW:$src2))]
 >;
 
 def TEX_SAMPLE_G : R600_TEX <
   0x14, "TEX_SAMPLE_G",
-  [(set REPL:$dst, (int_AMDGPU_txd REPL:$src0, imm:$src1, imm:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txd R600_Reg128:$src0, imm:$src1, imm:$src2))]
 >;
 
 def TEX_SAMPLE_C_G : R600_TEX <
   0x1C, "TEX_SAMPLE_C_G",
-  [(set REPL:$dst, (int_AMDGPU_txd REPL:$src0, imm:$src1, TEX_SHADOW:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txd R600_Reg128:$src0, imm:$src1, TEX_SHADOW:$src2))]
 >;
 
 } // End Gen R600_CAYMAN
@@ -305,9 +305,9 @@ class CNDGE_Common <bits<32> inst> : R600_3OP <
 
 class DOT4_Common <bits<32> inst> : R600_REDUCTION <
   inst,
-  (ins REPL:$src0, REPL:$src1),
+  (ins R600_Reg128:$src0, R600_Reg128:$src1),
   "DOT4 $dst $src0, $src1",
-  [(set R600_Reg32:$dst, (int_AMDGPU_dp4 REPL:$src0, REPL:$src1))]
+  [(set R600_Reg32:$dst, (int_AMDGPU_dp4 R600_Reg128:$src0, R600_Reg128:$src1))]
 >;
 
 class EXP_IEEE_Common <bits<32> inst> : R600_1OP <
@@ -493,21 +493,14 @@ let Gen = AMDGPUGen.EG_CAYMAN in {
 /* Other Instructions */
 
 let isCodeGenOnly = 1 in {
-
-  def ARL : AMDGPUShaderInst <
-    (outs RELADDR:$dst),
-    (ins R600_Reg32:$src),
-    "ARL $dst, $src",
-    [(set RELADDR:$dst, (int_AMDGPU_arl R600_Reg32:$src))]
-  >;
-
+/*
   def SWIZZLE : AMDGPUShaderInst <
     (outs GPRV4F32:$dst),
     (ins GPRV4F32:$src0, i32imm:$src1),
     "SWIZZLE $dst, $src0, $src1",
     [(set GPRV4F32:$dst, (int_AMDGPU_swizzle GPRV4F32:$src0, imm:$src1))]
   >;
-
+*/
 
   def LAST : AMDGPUShaderInst <
     (outs),
@@ -518,23 +511,23 @@ let isCodeGenOnly = 1 in {
 
   def GET_CHAN : AMDGPUShaderInst <
     (outs R600_Reg32:$dst),
-    (ins REPL:$src0, i32imm:$src1),
+    (ins R600_Reg128:$src0, i32imm:$src1),
     "GET_CHAN $dst, $src0, $src1",
     []
   >;
 
   def SET_CHAN : AMDGPUShaderInst <
-    (outs REPL:$dst),
+    (outs R600_Reg128:$dst),
     (ins R600_Reg32:$src0, i32imm:$src1),
     "SET_CHAN $dst, $src0, $src1",
     []
   >;
 
   def MULLIT : AMDGPUShaderInst <
-    (outs REPL:$dst),
+    (outs R600_Reg128:$dst),
     (ins R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2),
     "MULLIT $dst, $src0, $src1",
-    [(set REPL:$dst, (int_AMDGPU_mullit R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2))]
+    [(set R600_Reg128:$dst, (int_AMDGPU_mullit R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2))]
   >;
 
 }

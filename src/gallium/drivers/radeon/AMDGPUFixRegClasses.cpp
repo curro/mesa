@@ -76,7 +76,7 @@ bool AMDGPUFixRegClassesPass::runOnMachineFunction(MachineFunction &MF)
 
         const TargetRegisterClass * TRC = MRI.getRegClass(MO.getReg());
         if (TRC->getID() == AMDIL::GPRV4F32RegClassID) {
-          MRI.setRegClass(MO.getReg(), &AMDIL::REPLRegClass);
+          MRI.setRegClass(MO.getReg(), &AMDIL::R600_Reg128RegClass);
         }
       }
     }
