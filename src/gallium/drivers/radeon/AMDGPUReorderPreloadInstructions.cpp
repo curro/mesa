@@ -24,10 +24,11 @@
  *
  */
 
-
+#include <iostream>
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/Function.h"
 
 #include "AMDIL.h"
 #include "AMDGPU.h"
@@ -64,6 +65,9 @@ FunctionPass *llvm::createAMDGPUReorderPreloadInstructionsPass(TargetMachine &tm
  * start of the program. */
 bool AMDGPUReorderPreloadInstructionsPass::runOnMachineFunction(MachineFunction &MF)
 {
+
+  std::cout << MF.getFunction()->getName().str() << std::endl;
+  
   const AMDGPUInstrInfo * TII =
                         static_cast<const AMDGPUInstrInfo*>(TM.getInstrInfo());
 
