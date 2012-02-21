@@ -113,7 +113,7 @@ _cl_kernel::_cl_kernel(clover::program &prog,
             switch (address_space) {
             default: assert(!"XXX: Unhandled address space\n");
             /* fall through */
-            case 0:
+            case 1:
                args.emplace_back(new global_argument);
                break;
             }
