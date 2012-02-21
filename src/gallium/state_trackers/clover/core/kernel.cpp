@@ -25,6 +25,9 @@
 #include "core/kernel.hpp"
 #include "pipe/p_context.h"
 
+#include <llvm-c/Core.h>
+#include <llvm/Bitcode/BitstreamWriter.h>
+#include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/DerivedTypes.h>
 #include <llvm/Function.h>
 #include <llvm/Metadata.h>
@@ -227,9 +230,12 @@ _cl_kernel::exec_context::bind(clover::kernel *kern1,
       cs.tokens = (const struct tgsi_token *)kern->prog.binaries()
          .find(&q->dev)->second.data();
 #else
-      /*XXX: Modify this so we can pass LLVM. */
-//      cs.tokens = (tgsi_token *)sec.ptr;
-	cs.shader.ir = m.llvm_module;
+      std::vector<unsigned char> llvm_bitcode;
+      llvm::BitstreamWriter writer(llvm_bitcode);
+      llvm::WriteBitcodeToStream(m.llvm_module, writer);
+      cs.shader.ir_len = llvm_bitcode.size() * sizeof(unsigned char);
+      cs.shader.ir = (unsigned char *)malloc(cs.shader.ir_len);
+      memcpy(cs.shader.ir, &llvm_bitcode[0], cs.shader.ir_len);
 #endif
       cs.req_local_mem = mem_local;
       cs.req_input_mem = input.size();

@@ -109,11 +109,10 @@ clover::compile_program(const char *source, char **pbinary, size_t *binary_sz) {
    if (!c.ExecuteAction(act))
       throw error(CL_BUILD_PROGRAM_FAILURE, log);
 
+   c.getLangOpts().SinglePrecisionConstants = true;
+
    std::cerr << "build log: " << log << std::endl;
 
-   return act.takeModule();
-//   std::auto_ptr<llvm::Module> mod(act.takeModule());
-//  mod->dump();
-//   load_binary("cl_input.o", pbinary, binary_sz);
-   // std::remove("cl_input.o");
+   llvm::Module * mod = act.takeModule();
+   return mod;
 }

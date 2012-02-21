@@ -56,7 +56,7 @@ private:
 
    private:
       void *st;
-      pipe_compute_state cs;
+      struct pipe_compute_state cs;
    };
 
 public:
