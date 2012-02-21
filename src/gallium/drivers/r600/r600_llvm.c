@@ -248,12 +248,7 @@ LLVMModuleRef r600_tgsi_llvm(
 	return ctx->gallivm.module;
 }
 
-unsigned r600_llvm_compile(
-	LLVMModuleRef mod,
-	unsigned char ** inst_bytes,
-	unsigned * inst_byte_count,
-	enum radeon_family family,
-	unsigned dump)
+const char * r600_llvm_gpu_string(enum radeon_family family)
 {
 	const char * gpu_family;
 
@@ -310,7 +305,18 @@ unsigned r600_llvm_compile(
 			"backend, please file a bug at bugs.freedesktop.org\n");
 		break;
 	}
+	return gpu_family;
+}
 
+unsigned r600_llvm_compile(
+	LLVMModuleRef mod,
+	unsigned char ** inst_bytes,
+	unsigned * inst_byte_count,
+	enum radeon_family family,
+	unsigned dump)
+{
+
+	const char * gpu_family = r600_llvm_gpu_string(family);
 	return radeon_llvm_compile(mod, inst_bytes, inst_byte_count,
 							gpu_family, dump);
 }
