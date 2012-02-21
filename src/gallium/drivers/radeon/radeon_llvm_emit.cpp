@@ -25,11 +25,14 @@
  */
 #include "radeon_llvm.h"
 
+#include <llvm/LLVMContext.h>
 #include <llvm/Module.h>
 #include <llvm/PassManager.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/Support/FormattedStream.h>
 #include <llvm/Support/Host.h>
+#include <llvm/Support/IRReader.h>
+#include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetData.h>
@@ -50,6 +53,20 @@ using namespace llvm;
 Target TheAMDGPUTarget;
 #endif
 
+extern "C" unsigned
+radeon_llvm_bitcode_compile(unsigned char * bitcode, unsigned bitcode_len,
+                            unsigned char ** bytes, unsigned * byte_count,
+                            const  char * gpu_family, unsigned dump)
+{
+	Module * M;
+	StringRef str((const char*)bitcode, bitcode_len);
+	MemoryBuffer*  buffer = MemoryBuffer::getMemBufferCopy(str);
+	SMDiagnostic Err;
+	M = ParseIR(buffer, Err, llvm::getGlobalContext());
+
+   return radeon_llvm_compile(wrap(M), bytes, byte_count, gpu_family, dump);
+
+}
 
 /**
  * Compile an LLVM module to machine code.

@@ -21,6 +21,6 @@ DRIVER_DEFINES = \
 
 include ../Makefile.dri
 
-DRI_LIB_DEPS +=
+DRI_LIB_DEPS += $(shell llvm-config --libs)
 
 symlinks:

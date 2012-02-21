@@ -111,6 +111,11 @@ struct radeon_llvm_context {
 	struct gallivm_state gallivm;
 };
 
+unsigned radeon_llvm_bitcode_compile(
+   unsigned char * bitcode, unsigned bitcode_len,
+   unsigned char ** bytes, unsigned * byte_count,
+   const  char * gpu_family, unsigned dump);
+
 unsigned  radeon_llvm_compile(
 	LLVMModuleRef M,
 	unsigned char ** bytes,

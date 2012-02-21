@@ -224,6 +224,27 @@ static int tgsi_loop_brk_cont(struct r600_shader_ctx *ctx);
  * bytestream -> r600 shader
  */
 
+static void r600_bytecode_from_byte_stream(struct r600_shader_ctx *ctx,
+				unsigned char * bytes,	unsigned num_bytes);
+int r600_compute_shader_create(struct pipe_context * ctx,
+	const struct pipe_shader_state * shader,  struct r600_bytecode * bytecode)
+{
+	struct r600_context *r600_ctx = (struct r600_context *)ctx;
+	unsigned char * bytes;
+	unsigned byte_count;
+	struct r600_shader_ctx shader_ctx;
+	const char * gpu_family = r600_llvm_gpu_string(r600_ctx->family);
+
+	radeon_llvm_bitcode_compile(shader->ir, shader->ir_len, &bytes,
+				&byte_count, gpu_family , 1);
+	shader_ctx.bc = bytecode;
+	r600_bytecode_init(shader_ctx.bc, r600_ctx->chip_class, r600_ctx->family);
+	shader_ctx.bc->type = TGSI_PROCESSOR_COMPUTE;
+	r600_bytecode_from_byte_stream(&shader_ctx, bytes, byte_count);
+	r600_bytecode_build(shader_ctx.bc);
+	return 1;
+}
+
 static unsigned r600_src_from_byte_stream(unsigned char * bytes,
 		unsigned bytes_read, struct r600_bytecode_alu * alu, unsigned src_idx)
 {

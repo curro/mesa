@@ -224,14 +224,21 @@ void *evergreen_create_compute_state(struct pipe_context *ctx_, const const stru
   shader->input_size = cso->req_input_mem;
 
 
-  
+
+#if 1
+
+  r600_compute_shader_create(ctx_, &cso->shader, &shader->bc);
+
+
+#else
   shader->bc.bytecode = malloc(1024);
 
   memcpy(shader->bc.bytecode, shader_shader_binary, sizeof(shader_shader_binary)),
   
   shader->bc.ndw = sizeof(shader_shader_binary)/4;
   shader->bc.ngpr = 8;
-  
+
+#endif
   return shader;
 }
 

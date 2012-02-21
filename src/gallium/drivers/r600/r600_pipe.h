@@ -35,6 +35,7 @@
 #include "util/u_slab.h"
 #include "util/u_vbuf.h"
 #include "r600.h"
+#include "r600_llvm.h"
 #include "r600_public.h"
 #include "r600_shader.h"
 #include "r600_resource.h"
@@ -415,6 +416,8 @@ void r600_init_context_resource_functions(struct r600_context *r600);
 
 /* r600_shader.c */
 int r600_pipe_shader_create(struct pipe_context *ctx, struct r600_pipe_shader *shader);
+int r600_compute_shader_create(struct pipe_context * ctx,
+	const struct pipe_shader_state * shader,  struct r600_bytecode * bytecode);
 void r600_pipe_shader_destroy(struct pipe_context *ctx, struct r600_pipe_shader *shader);
 int r600_find_vs_semantic_index(struct r600_shader *vs,
 				struct r600_shader *ps, int id);
