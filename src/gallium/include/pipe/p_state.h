@@ -211,7 +211,8 @@ struct pipe_shader_state
 {
    const struct tgsi_token *tokens;
    struct pipe_stream_output_info stream_output;
-   void * ir;
+   unsigned char * ir;
+   unsigned ir_len;
 };
 
 
