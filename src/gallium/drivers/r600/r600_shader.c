@@ -242,6 +242,7 @@ int r600_compute_shader_create(struct pipe_context * ctx,
 	shader_ctx.bc->no_merge_inst_groups = 1;
 	r600_bytecode_from_byte_stream(&shader_ctx, bytes, byte_count);
 	r600_bytecode_build(shader_ctx.bc);
+	r600_bytecode_dump(shader_ctx.bc);
 	return 1;
 }
 
