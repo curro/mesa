@@ -74,8 +74,6 @@
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/TargetRegistry.h"
 
-#include "KernelParameters.h"
-
 using namespace llvm;
 
 static MCAsmInfo* createMCAsmInfo(const Target &T, StringRef TT)
@@ -220,7 +218,6 @@ AMDILTargetMachine::addInstSelector(PassManagerBase &PM AMDIL_OPT_LEVEL_DECL)
 #else
   mOptLevel = getOptLevel();
 #endif
-  PM.add(createKernelParametersPass(this->getTargetData()));
   PM.add(createAMDILBarrierDetect(*this AMDIL_OPT_LEVEL_VAR));
   PM.add(createAMDILPrintfConvert(*this AMDIL_OPT_LEVEL_VAR));
   PM.add(createAMDILInlinePass(*this AMDIL_OPT_LEVEL_VAR));
