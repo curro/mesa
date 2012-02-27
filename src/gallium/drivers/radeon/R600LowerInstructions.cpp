@@ -71,6 +71,7 @@ FunctionPass *llvm::createR600LowerInstructionsPass(TargetMachine &tm) {
 
 bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
 {
+  MF.dump();
   MachineRegisterInfo & MRI = MF.getRegInfo();
   MFI = MF.getInfo<AMDILMachineFunctionInfo>();
   const R600InstrInfo * TII =
@@ -157,6 +158,22 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
           break;
         }
 */        /* XXX: This is an optimization */
+
+      case AMDIL::GLOBALSTORE_i32:
+        {
+          unsigned index_reg =
+                   MRI.createVirtualRegister(&AMDIL::R600_TReg32_XRegClass);
+          BuildMI(MBB, I, MBB.findDebugLoc(I),
+                          TII->get(AMDIL::MOV), index_reg)
+                  .addReg(AMDIL::ZERO);
+          /* XXX: Check GPU Family */
+          BuildMI(MBB, I, MBB.findDebugLoc(I),
+                          TII->get(AMDIL::RAT_WRITE_CACHELESS_eg))
+                  .addOperand(MI.getOperand(0))
+                  .addReg(index_reg)
+                  .addImm(0);
+          break;
+        }
       case AMDIL::LOADCONST_f32:
       case AMDIL::LOADCONST_i32:
         {

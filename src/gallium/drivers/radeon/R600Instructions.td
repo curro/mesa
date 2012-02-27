@@ -47,6 +47,14 @@ class InstR600 <bits<32> inst, dag outs, dag ins, string asm, list<dag> pattern,
   let TSFlags{5} = Op3;
 }
 
+class InstR600ISA <dag outs, dag ins, string asm, list<dag> pattern> :
+    AMDGPUInst <outs, ins, asm, pattern>
+{
+  field bits<32> Inst;
+
+  let Namespace = "AMDIL";
+}
+
 class R600_ALU {
 
   bits<7> DST_GPR = 0;
@@ -57,6 +65,7 @@ class R600_ALU {
   bits<1> CLAMP = 0;
   
 }
+
 
 class R600_1OP <bits<32> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
@@ -118,6 +127,94 @@ def TEX_SHADOW : PatLeaf<
   }]
 >;
 
+class EG_CF_RAT <bits <8> cf_inst, bits <6> rat_inst, dag outs, dag ins,
+                 string asm> :
+    InstR600ISA <outs, ins, asm, []>
+{
+  bits<7>  RW_GPR;
+  bits<7>  INDEX_GPR;
+  bits<4>  RAT_ID;
+
+  bits<2>  RIM;
+  bits<2>  TYPE;
+  bits<1>  RW_REL;
+  bits<2>  ELEM_SIZE;
+
+  bits<12> ARRAY_SIZE;
+  bits<4>  COMP_MASK;
+  bits<4>  BURST_COUNT;
+  bits<1>  VPM;
+  bits<1>  EOP;
+  bits<1>  MARK;
+  bits<1>  BARRIER;
+
+  /* CF_ALLOC_EXPORT_WORD0_RAT */
+  let Inst{3-0}   = RAT_ID;
+  let Inst{9-4}   = rat_inst;
+  let Inst{10}    = 0; /* Reserved */
+  let Inst{12-11} = RIM;
+  let Inst{14-13} = TYPE;
+  let Inst{21-15} = RW_GPR;
+  let Inst{22}    = RW_REL;
+  let Inst{29-23} = INDEX_GPR;
+  let Inst{31-30} = ELEM_SIZE;
+
+  /* CF_ALLOC_EXPORT_WORD1_BUF */
+/* XXX: We can't have auto encoding of 64-bit instructions until LLVM 3.1 :( */
+/*
+  let Inst{43-32} = ARRAY_SIZE;
+  let Inst{47-44} = COMP_MASK;
+  let Inst{51-48} = BURST_COUNT;
+  let Inst{52}    = VPM;
+  let Inst{53}    = EOP;
+  let Inst{61-54} = cf_inst;
+  let Inst{62}    = MARK;
+  let Inst{63}    = BARRIER;
+*/
+}
+
+
+def store_global : PatFrag<(ops node:$value, node:$ptr),
+                           (store node:$value, node:$ptr),
+                           [{
+                            const Value *Src;
+                            const PointerType *Type;
+                            if ((src = cast<StoreSDNode>(N)->getSrcValue() &&
+                                 PT = dyn_cast<PointerType>(Src->getType()))) {
+                              return PT->getAddressSpace() == 1;
+                            }
+                            return false;
+                           }]>;
+//class EG_CF <bits<32> inst, string asm> :
+//    InstR600 <inst, (outs), (ins), asm, []>;
+
+/* XXX: We will use this when we emit the real ISA.
+  bits<24> ADDR = 0;
+  bits<3> JTS = 0;
+
+  bits<3> PC = 0;
+  bits<5> CF_CONS = 0;
+  bits<2> COND = 0;
+  bits<6> COUNT = 0;
+  bits<1> VPM = 0;
+  bits<1> EOP = 0;
+  bits<8> CF_INST = 0;
+  bits<1> WQM = 0;
+  bits<1> B = 0;
+
+  let Inst{23-0} = ADDR;
+  let Inst{26-24} = JTS;
+  let Inst{34-32} = PC;
+  let Inst{39-35} = CF_CONST;
+  let Inst{41-40} = COND;
+  let Inst{47-42} = COUNT;
+  let Inst{52} = VPM;
+  let Inst{53} = EOP;
+  let Inst{61-54} = CF_INST;
+  let Inst{62} = WQM;
+  let Inst{63} = B;
+//}
+*/
 def isR600 : Predicate<"Subtarget.device()"
                             "->getGeneration() == AMDILDeviceInfo::HD4XXX">;
 def isEG : Predicate<"Subtarget.device()"
@@ -447,6 +544,54 @@ class TRIG_HELPER_r700 <InstR600 trig_inst>: Pat <
 >;
 */
 
+/* ---------------------- */
+/* Evergreen Instructions */
+/* ---------------------- */
+
+
+let Predicates = [isEG] in {
+
+let Gen = AMDGPUGen.EG in {
+
+def RAT_WRITE_CACHELESS_eg :
+    EG_CF_RAT <0x57, 0x2, (outs), (ins R600_Reg128:$rw_gpr,
+                                   R600_Reg32:$index_gpr, i32imm:$rat_id), "">
+{
+/*
+  let Inst{3-0}   = RAT_ID;
+  let Inst{21-15} = RW_GPR;
+  let Inst{29-23} = INDEX_GPR;
+  /* Propery of the UAV */
+  let Inst{31-30} = ELEM_SIZE;
+*/
+  let RIM         = 0;
+  /* XXX: Have a separate instruction for non-indexed writes. */
+  let TYPE        = 1;
+  let RW_REL      = 0;
+  let ELEM_SIZE   = 0;
+
+/*
+  let ARRAY_SIZE  = 0;
+  let COMP_MASK   = 1;
+  let BURST_COUNT = 0;
+  let VPM         = 0;
+  let EOP         = 0;
+  let MARK        = 0;
+  let BARRIER     = 1;
+*/
+}
+
+} // End AMDGPUGen.EG
+/* XXX: Need to convert PTR to rat_id */
+/*
+def : Pat <(store_global (f32 R600_Reg32:$value), node:$ptr),
+           (RAT_WRITE_CACHELESS_eg (INSERT_SUBREG (v4f32 (IMPLICIT_DEF)),
+                                                  (f32 R600_Reg32:$value),
+                                                   sel_x),
+                                    (f32 ZERO), 0, R600_Reg32:$ptr)>;
+*/
+} // End isEG Predicate
+
 /* ------------------------------- */
 /* Evergreen / Cayman Instructions */
 /* ------------------------------- */
@@ -490,6 +635,7 @@ let Gen = AMDGPUGen.EG_CAYMAN in {
   def : TRIG_eg <COS_eg, int_AMDGPU_cos>;
 
 }
+
 /* Other Instructions */
 
 let isCodeGenOnly = 1 in {

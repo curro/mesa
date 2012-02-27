@@ -53,6 +53,8 @@ namespace {
   class AMDILCodeEmitter {
   public:
     uint64_t getBinaryCodeForInstr(const MachineInstr &MI) const;
+    virtual uint64_t getMachineOpValue(const MachineInstr &MI,
+                               const MachineOperand &MO) const {}
   };
 
   class R600CodeEmitter : public MachineFunctionPass, public AMDILCodeEmitter {
@@ -82,6 +84,8 @@ namespace {
   const char *getPassName() const { return "AMDGPU Machine Code Emitter"; }
 
   bool runOnMachineFunction(MachineFunction &MF);
+  virtual uint64_t getMachineOpValue(const MachineInstr &MI,
+                                     const MachineOperand &MO) const;
 
   private:
 
@@ -101,8 +105,9 @@ namespace {
   void emitTwoBytes(uint32_t bytes);
 
   void emit(uint32_t value);
+  void emit(uint64_t value);
 
-  unsigned getHWReg(unsigned regNo);
+  unsigned getHWReg(unsigned regNo) const;
 
   unsigned getElement(unsigned regNo);
 
@@ -125,7 +130,8 @@ enum RegElement {
 enum InstrTypes {
   INSTR_ALU = 0,
   INSTR_TEX,
-  INSTR_FC
+  INSTR_FC,
+  INSTR_NATIVE
 };
 
 enum FCInstr {
@@ -185,6 +191,9 @@ bool R600CodeEmitter::runOnMachineFunction(MachineFunction &MF) {
      for (MachineBasicBlock::iterator I = MBB.begin(), E = MBB.end();
                                                        I != E; ++I) {
           MachineInstr &MI = *I;
+          if (MI.getNumOperands() > 1 && MI.getOperand(0).isReg() && MI.getOperand(0).isDead()) {
+            continue;
+          }
           if (isTexOp(MI.getOpcode())) {
             emitTexInstr(MI);
           } else if (isFCOp(MI.getOpcode())){
@@ -200,9 +209,34 @@ bool R600CodeEmitter::runOnMachineFunction(MachineFunction &MF) {
           } else if (MI.getOpcode() == AMDIL::RETURN) {
             continue;
           } else {
-            emitALUInstr(MI);
+            switch(MI.getOpcode()) {
+            case AMDIL::RAT_WRITE_CACHELESS_eg:
+              {
+                /* XXX: Support for autoencoding 64-bit instructions was added
+                 * in LLVM 3.1.  Until we drop support for 3.0, we will use Magic
+                 * numbers for the high bits. */
+                  uint64_t high = 0x95c0100000000000;
+                  uint64_t inst = getBinaryCodeForInstr(MI);
+                  inst |= high;
+                /* Set End Of Program bit */
+                /* XXX: Need better check of end of program.  EOP should be
+                 * encoded in one of the operands of the MI, and it should be
+                 * set in a prior pass. */
+                MachineBasicBlock::iterator NextI = llvm::next(I);
+                MachineInstr &NextMI = *NextI;
+                if (NextMI.getOpcode() == AMDIL::RETURN) {
+                  inst |= (((uint64_t)1) << 53);
+                }
+                emitByte(INSTR_NATIVE);
+                emit(inst);
+                break;
+              }
+            default:
+              emitALUInstr(MI);
+              break;
           }
-     }
+        }
+    }
   }
   return false;
 }
@@ -611,7 +645,14 @@ void R600CodeEmitter::emit(uint32_t value)
   }
 }
 
-unsigned R600CodeEmitter::getHWReg(unsigned regNo)
+void R600CodeEmitter::emit(uint64_t value)
+{
+  for (unsigned i = 0; i < 8; i++) {
+    emitByte((value >> (8 * i)) & 0xff);
+  }
+}
+
+unsigned R600CodeEmitter::getHWReg(unsigned regNo) const
 {
   unsigned hwReg;
 
@@ -621,6 +662,17 @@ unsigned R600CodeEmitter::getHWReg(unsigned regNo)
   }
   return hwReg;
 }
+
+uint64_t R600CodeEmitter::getMachineOpValue(const MachineInstr &MI,
+                                            const MachineOperand &MO) const
+{
+  if (MO.isReg()) {
+    return getHWReg(MO.getReg());
+  } else {
+    return MO.getImm();
+  }
+}
+
 
 RegElement maskBitToElement(unsigned int maskBit)
 {
