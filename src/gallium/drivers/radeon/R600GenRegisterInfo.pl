@@ -59,15 +59,18 @@ my @creg_list = print_reg_defs(CONST_REG_COUNT * 4, "C");
 my @treg_list = print_reg_defs(TEMP_REG_COUNT * 4, "T");
 
 my @t128reg;
+my @treg_x;
 for (my $i = 0; $i < TEMP_REG_COUNT; $i++) {
   my $name = "T$i\_XYZW";
   print qq{def $name : R600Reg_128 <"T$i.XYZW", [T$i\_X, T$i\_Y, T$i\_Z, T$i\_W] >;\n};
   $t128reg[$i] = $name;
+  $treg_x[$i] = "T$i\_X";
 }
 
 my $treg_string = join(",", @treg_list);
 my $creg_list = join(",", @creg_list);
 my $t128_string = join(",", @t128reg);
+my $treg_x_string = join(",", @treg_x);
 print <<STRING;
 
 class RegSet <dag s> {
@@ -87,6 +90,9 @@ def R600_CReg32 : RegisterClass <"AMDIL", [f32, i32], 32, (add
 
 def R600_TReg32 : RegisterClass <"AMDIL", [f32, i32], 32, (add
     $treg_string)>;
+
+def R600_TReg32_X : RegisterClass <"AMDIL", [f32, i32], 32, (add
+    $treg_x_string)>;
     
 def R600_Reg32 : RegisterClass <"AMDIL", [f32, i32], 32, (add
     R600_TReg32,
