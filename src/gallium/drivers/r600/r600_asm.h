@@ -203,6 +203,16 @@ struct r600_bytecode {
 	unsigned	ar_reg;
 	unsigned        ar_handling;
 	unsigned        r6xx_nop_after_rel_dst;
+
+	/* Setting this bit will prevent the r600 assembler from trying to
+	 * merge instruction groups.  This is necessary for compute shaders,
+	 * because the CF_ALLOC_EXPORT_WORD0_RAT instructions expects the index
+	 * values to be in the X, Y, and Z channels depending on the
+	 * dimension of the surface.  The merge_inst_groups function will move
+	 * these values around to the wrong channels and the RAT read or write
+	 * will fail.
+	 */
+	unsigned			no_merge_inst_groups;
 };
 
 /* eg_asm.c */

@@ -1037,6 +1037,7 @@ static int merge_inst_groups(struct r600_bytecode *bc, struct r600_bytecode_alu 
 	int have_mova = 0, have_rel = 0;
 	int max_slots = bc->chip_class == CAYMAN ? 4 : 5;
 
+	assert(!bc->no_merge_inst_groups);
 	r = assign_alu_units(bc, alu_prev, prev);
 	if (r)
 		return r;
@@ -1490,7 +1491,7 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc, const struct r600_bytec
 		if (r)
 			return r;
 
-		if (bc->cf_last->prev_bs_head) {
+		if (!bc->no_merge_inst_groups && bc->cf_last->prev_bs_head) {
 			r = merge_inst_groups(bc, slots, bc->cf_last->prev_bs_head);
 			if (r)
 				return r;
