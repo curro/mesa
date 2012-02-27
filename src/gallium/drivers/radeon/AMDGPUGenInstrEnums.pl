@@ -42,6 +42,7 @@ my @I32_MULTICLASSES = qw {
 my @GENERATION_ENUM = qw {
   R600_CAYMAN
   R600
+  EG
   EG_CAYMAN
   CAYMAN
 };
