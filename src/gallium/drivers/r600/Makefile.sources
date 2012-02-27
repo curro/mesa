@@ -19,4 +19,5 @@ C_SOURCES := \
 	evergreen_compute.c \
 	evergreen_compute_internal.c \
 	compute_memory_pool.c
-	
+
+CPP_SOURCES := llvm_wrapper.cpp

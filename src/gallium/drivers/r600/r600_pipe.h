@@ -40,6 +40,7 @@
 #include "r600_shader.h"
 #include "r600_resource.h"
 #include "evergreen_compute.h"
+#include <llvm-c/Core.h>
 
 #define R600_MAX_CONST_BUFFERS 2
 #define R600_MAX_CONST_BUFFER_SIZE 4096
@@ -191,6 +192,7 @@ struct r600_pipe_compute
   unsigned private_size;
   unsigned input_size;
 
+	LLVMModuleRef mod;
   struct r600_resource *kernel_param;
   struct r600_resource *shader_code_bo;
 };
@@ -417,7 +419,7 @@ void r600_init_context_resource_functions(struct r600_context *r600);
 /* r600_shader.c */
 int r600_pipe_shader_create(struct pipe_context *ctx, struct r600_pipe_shader *shader);
 int r600_compute_shader_create(struct pipe_context * ctx,
-	const struct pipe_shader_state * shader,  struct r600_bytecode * bytecode);
+	LLVMModuleRef mod,  struct r600_bytecode * bytecode);
 void r600_pipe_shader_destroy(struct pipe_context *ctx, struct r600_pipe_shader *shader);
 int r600_find_vs_semantic_index(struct r600_shader *vs,
 				struct r600_shader *ps, int id);

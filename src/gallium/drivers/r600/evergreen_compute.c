@@ -56,6 +56,7 @@
 #include "gallivm/lp_bld_const.h"
 #include "gallivm/lp_bld_intr.h"
 #include "radeon_llvm.h"
+#include "llvm_wrapper.h"
 
 /**
 RAT0 is for global binding write
@@ -226,8 +227,9 @@ void *evergreen_create_compute_state(struct pipe_context *ctx_, const const stru
 
 
 #if 1
+	shader->mod = llvm_parse_bitcode(cso->shader.ir, cso->shader.ir_len);
+	r600_compute_shader_create(ctx_, shader->mod, &shader->bc);
 
-  r600_compute_shader_create(ctx_, &cso->shader, &shader->bc);
 
 
 #else
