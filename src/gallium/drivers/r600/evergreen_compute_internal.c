@@ -514,7 +514,10 @@ void evergreen_set_kms_compute_mode(struct r600_context* ctx, bool compute_mode_
 
   if (ctx->ws->set_compute_mode(ctx->ws, bb))
   {
+  /* XXX: Ignore this failure for now. */
+#if 0
     assert(0 && "cannot set KMS compute mode");
+#endif
   }
 }
 
