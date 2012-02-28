@@ -122,7 +122,7 @@ bool AMDGPUTargetMachine::addPreEmitPass(PassManagerBase &PM
 
   PM.add(createAMDILCFGPreparationPass(*this AMDIL_OPT_LEVEL_VAR));
   PM.add(createAMDILCFGStructurizerPass(*this AMDIL_OPT_LEVEL_VAR));
-//  PM.add(createAMDILIOExpansion(*this AMDIL_OPT_LEVEL_VAR));
+  PM.add(createAMDILIOExpansion(*this AMDIL_OPT_LEVEL_VAR));
   return false;
 }
 
