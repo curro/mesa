@@ -8,6 +8,8 @@
 #include "llvm/Constants.h"
 #include "llvm/Intrinsics.h"
 
+#include "AMDIL.h"
+
 using namespace llvm;
 using namespace std;
 
@@ -165,11 +167,11 @@ void KernelParameters::Propagete(llvm::Function* fun)
 void KernelParameters::Propagete(Value* v, const Twine& name, bool indirect)
 {
   LoadInst* load = dyn_cast<LoadInst>(v);
-  int addrspace = KERNEL_PARAM_ADDRSPACE;
+  unsigned addrspace = llvm::AMDILAS::PARAM_D_ADDRESS;
 
   if (indirect)
   {
-    addrspace += 1;
+    addrspace = llvm::AMDILAS::PARAM_I_ADDRESS;
   }
   
   if (load)
@@ -185,7 +187,13 @@ void KernelParameters::Propagete(Value* v, const Twine& name, bool indirect)
       
       Type* new_ptr_type = PointerType::get(orig_ptr_type->getElementType(), addrspace);
 
-      Value* new_ptr = new BitCastInst(orig_ptr, new_ptr_type, "", load);
+      Value* new_ptr = orig_ptr;
+      
+      if (orig_ptr->getType() != new_ptr_type)
+      {
+        new_ptr = new BitCastInst(orig_ptr, new_ptr_type, "prop_cast", load);
+      }
+      
       Value* new_load = new LoadInst(new_ptr, name, load);
       load->replaceAllUsesWith(new_load);
       load->eraseFromParent();
@@ -232,20 +240,20 @@ Value* KernelParameters::ConstantRead(Function* fun, param& p)
     return NULL;
   }
   
-  int addrspace = KERNEL_PARAM_ADDRSPACE;
+  int addrspace = llvm::AMDILAS::PARAM_D_ADDRESS;
   
   Argument *arg = dyn_cast<Argument>(p.val);
   
   if (dyn_cast<PointerType>(p.val->getType()) and arg->hasByValAttr())
   {
-    Value* ptr = new BitCastInst(ConstantInt::get(Type::getInt32Ty(*Context), p.offset_in_dw*4), PointerType::get(dyn_cast<PointerType>(p.val->getType())->getElementType(), addrspace), p.val->getName(), first_inst);
+    Value* ptr = new IntToPtrInst(ConstantInt::get(Type::getInt32Ty(*Context), p.offset_in_dw*4), PointerType::get(dyn_cast<PointerType>(p.val->getType())->getElementType(), addrspace), p.val->getName(), first_inst);
     
     p.ptr_val = ptr;
     return ptr;
   }
   else
   {
-    Value* ptr = new BitCastInst(ConstantInt::get(Type::getInt32Ty(*Context), p.offset_in_dw*4), PointerType::get(p.val->getType(), addrspace), "", first_inst);
+    Value* ptr = new IntToPtrInst(ConstantInt::get(Type::getInt32Ty(*Context), p.offset_in_dw*4), PointerType::get(p.val->getType(), addrspace), "", first_inst);
     
     p.ptr_val = ptr;
     return new LoadInst(ptr, p.val->getName(), first_inst);
@@ -288,6 +296,7 @@ Value* KernelParameters::handleSpecial(Function* fun, param& p)
   else
   {
     ///TODO: give some error message
+    return NULL;
   }
     
   p.specialType = name;
@@ -295,7 +304,7 @@ Value* KernelParameters::handleSpecial(Function* fun, param& p)
 
   Instruction *first_inst = fun->front().begin();
 
-  return new BitCastInst(ConstantInt::get(Type::getInt32Ty(*Context), p.specialID), p.val->getType(), "resourceID", first_inst);
+  return new IntToPtrInst(ConstantInt::get(Type::getInt32Ty(*Context), p.specialID), p.val->getType(), "resourceID", first_inst);
 }
 
 
@@ -338,6 +347,8 @@ bool KernelParameters::runOnFunction (Function &F)
     return false;
   }
 
+  F.dump();
+  
   RunAna(&F);
   Replace(&F);
   Propagete(&F);
@@ -362,6 +373,7 @@ bool KernelParameters::doInitialization(Module &M)
 {
   Context = &M.getContext();
   mod = &M;
+  
   return false;
 }
 
@@ -373,8 +385,7 @@ bool KernelParameters::doFinalization(Module &M)
 llvm::FunctionPass* createKernelParametersPass(const llvm::TargetData* TD)
 {
   FunctionPass *p = new KernelParameters(TD);
-
-  cout << " addpass: "<< p << endl;
+  
   return p;
 }
 

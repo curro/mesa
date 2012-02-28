@@ -50,7 +50,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-
+#include "KernelParameters.h"
 #include "AMDILTargetMachine.h"
 #include "AMDILDevices.h"
 #if LLVM_VERSION >= 2500
@@ -73,6 +73,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/TargetRegistry.h"
+
 
 using namespace llvm;
 
@@ -207,7 +208,9 @@ AMDILTargetMachine::addPreISel(PassManagerBase &PM
 #endif
 )
 {
-  return true;
+  PM.add(createKernelParametersPass(getTargetData()));
+
+  return false;
 }
 
   bool

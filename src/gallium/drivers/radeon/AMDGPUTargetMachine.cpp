@@ -109,7 +109,7 @@ bool AMDGPUTargetMachine::addInstSelector(PassManagerBase &PM
   if (AMDILTargetMachine::addInstSelector(PM AMDIL_OPT_LEVEL_VAR)) {
     return true;
   }
-
+  
 //  PM.add(createAMDGPUFixRegClassesPass(*this));
   return false;
 }

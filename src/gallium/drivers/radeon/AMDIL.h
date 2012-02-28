@@ -194,11 +194,13 @@ namespace llvm {
 namespace AMDILAS {
 enum AddressSpaces {
   PRIVATE_ADDRESS  = 0, // Address space for private memory.
-  GLOBAL_ADDRESS   = 1, // Address space for global memory.
+  GLOBAL_ADDRESS   = 1, // Address space for global memory (RAT0, VTX0).
   CONSTANT_ADDRESS = 2, // Address space for constant memory.
   LOCAL_ADDRESS    = 3, // Address space for local memory.
   REGION_ADDRESS   = 4, // Address space for region memory.
-  ADDRESS_NONE     = 5  // Address space for unknown memory.
+  ADDRESS_NONE     = 5, // Address space for unknown memory.
+  PARAM_D_ADDRESS  = 6, // Address space for direct addressible parameter memory (CONST0)
+  PARAM_I_ADDRESS  = 7  // Address space for indirect addressible parameter memory (VTX1)
 };
 
 // We are piggybacking on the CommentFlag enum in MachineInstr.h to

@@ -8,8 +8,6 @@
 #include "llvm/Pass.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 
-#define KERNEL_PARAM_ADDRSPACE 10
-
 llvm::FunctionPass* createKernelParametersPass(const llvm::TargetData* TD);
 
 
