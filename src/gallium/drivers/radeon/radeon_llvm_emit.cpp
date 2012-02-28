@@ -24,6 +24,7 @@
  *
  */
 #include "radeon_llvm.h"
+#include "KernelParameters.h"
 
 #include <llvm/LLVMContext.h>
 #include <llvm/Module.h>
@@ -146,6 +147,7 @@ radeon_llvm_compile(LLVMModuleRef M, unsigned char ** bytes,
    const TargetData * AMDGPUData = AMDGPUTargetMachine.getTargetData();
    PassManager PM;
    PM.add(new TargetData(*AMDGPUData));
+   PM.add(createKernelParametersPass(AMDGPUData));
    PM.add(createPromoteMemoryToRegisterPass());
    AMDGPUTargetMachine.setAsmVerbosityDefault(true);
 

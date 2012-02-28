@@ -208,7 +208,6 @@ AMDILTargetMachine::addPreISel(PassManagerBase &PM
 #endif
 )
 {
-  PM.add(createKernelParametersPass(getTargetData()));
 
   return false;
 }

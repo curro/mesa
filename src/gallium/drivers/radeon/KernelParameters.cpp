@@ -9,6 +9,7 @@
 #include "llvm/Intrinsics.h"
 
 #include "AMDIL.h"
+#include <map>
 
 using namespace llvm;
 using namespace std;
@@ -20,6 +21,7 @@ class KernelParameters : public llvm::FunctionPass
   const llvm::TargetData * TD;
   LLVMContext* Context;
   Module *mod;
+  std::map<unsigned, GlobalVariable *> globalPointers;
   struct param
   {
     param() : val(NULL), ptr_val(NULL), offset_in_dw(0), size_in_dw(0), specialID(0) {}
@@ -145,7 +147,6 @@ void KernelParameters::Replace(llvm::Function* fun)
     {
       new_val = ConstantRead(fun, *i);
     }
-    
     if (new_val)
     {
       i->val->replaceAllUsesWith(new_val);
@@ -234,17 +235,19 @@ Value* KernelParameters::ConstantRead(Function* fun, param& p)
   assert(fun->front().begin() != fun->front().end());
   
   Instruction *first_inst = fun->front().begin();
+  IRBuilder <> builder (first_inst);
 
   if (!p.val->hasNUsesOrMore(1))
   {
     return NULL;
   }
-  
-  int addrspace = llvm::AMDILAS::PARAM_D_ADDRESS;
+  cout << "ConstantRead" << endl;
+  unsigned addrspace = llvm::AMDILAS::PARAM_D_ADDRESS;
   
   Argument *arg = dyn_cast<Argument>(p.val);
+  PointerType * argPtrType = dyn_cast<PointerType>(p.val->getType());
   
-  if (dyn_cast<PointerType>(p.val->getType()) and arg->hasByValAttr())
+  if (argPtrType and arg->hasByValAttr())
   {
     Value* ptr = new IntToPtrInst(ConstantInt::get(Type::getInt32Ty(*Context), p.offset_in_dw*4), PointerType::get(dyn_cast<PointerType>(p.val->getType())->getElementType(), addrspace), p.val->getName(), first_inst);
     
@@ -253,10 +256,14 @@ Value* KernelParameters::ConstantRead(Function* fun, param& p)
   }
   else
   {
-    Value* ptr = new IntToPtrInst(ConstantInt::get(Type::getInt32Ty(*Context), p.offset_in_dw*4), PointerType::get(p.val->getType(), addrspace), "", first_inst);
-    
-    p.ptr_val = ptr;
-    return new LoadInst(ptr, p.val->getName(), first_inst);
+  cout << "else" << endl;
+    Value* param_addr_space_ptr = globalPointers[addrspace];
+    Value* param_ptr = builder.CreateGEP(param_addr_space_ptr,
+             ConstantInt::get(Type::getInt32Ty(*Context), p.offset_in_dw * 4));
+    Value* param_value = builder.CreateLoad(param_ptr, "");
+    Value* arg_addr_space_ptr = globalPointers[argPtrType->getAddressSpace()];
+    Value* new_arg_ptr = builder.CreateGEP(arg_addr_space_ptr, param_value, "");
+    return builder.CreateBitCast(new_arg_ptr, argPtrType);
   }
 }
 
@@ -347,13 +354,23 @@ bool KernelParameters::runOnFunction (Function &F)
     return false;
   }
 
-  F.dump();
+//  F.dump();
   
+  for (unsigned i = 0; i < AMDILAS::LAST_ADDRESS; i++) {
+    globalPointers[i] = new GlobalVariable(*mod,
+                           Type::getInt32Ty(*Context),
+                           true,
+                           GlobalValue::InternalLinkage,
+                           NULL,
+                           "", NULL, false, i);
+  }
+
   RunAna(&F);
   Replace(&F);
   Propagete(&F);
   
-  F.dump();
+ // F.dump();
+  mod->dump();
   return false;
 }
 
