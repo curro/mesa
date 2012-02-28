@@ -80,6 +80,7 @@ public:
 
   SDNode *Select(SDNode *N);
   // Complex pattern selectors
+  bool SelectADDRParam(SDValue Addr, SDValue& R1, SDValue& R2);
   bool SelectADDR(
 #if LLVM_VERSION < 2500
       SDNode *Op,
@@ -132,15 +133,8 @@ SDValue AMDILDAGToDAGISel::getSmallIPtrImm(unsigned int Imm) {
   return CurDAG->getTargetConstant(Imm, MVT::i32);
 }
 
-bool AMDILDAGToDAGISel::SelectADDR(
-#if LLVM_VERSION < 2500
-    SDNode *N, 
-#endif
+bool AMDILDAGToDAGISel::SelectADDRParam(
     SDValue Addr, SDValue& R1, SDValue& R2) {
-  if (Addr.getOpcode() == ISD::TargetExternalSymbol ||
-      Addr.getOpcode() == ISD::TargetGlobalAddress) {
-    return false;
-  }
 
   if (Addr.getOpcode() == ISD::FrameIndex) {
     if (FrameIndexSDNode *FIN = dyn_cast<FrameIndexSDNode>(Addr)) {
@@ -158,6 +152,18 @@ bool AMDILDAGToDAGISel::SelectADDR(
     R2 = CurDAG->getTargetConstant(0, MVT::i32);
   }
   return true;
+}
+
+bool AMDILDAGToDAGISel::SelectADDR(
+#if LLVM_VERSION < 2500
+    SDNode *N, 
+#endif
+    SDValue Addr, SDValue& R1, SDValue& R2) {
+  if (Addr.getOpcode() == ISD::TargetExternalSymbol ||
+      Addr.getOpcode() == ISD::TargetGlobalAddress) {
+    return false;
+  }
+  return SelectADDRParam(Addr, R1, R2);
 }
 
 

@@ -40,4 +40,5 @@ AMDGPUTargetLowering::AMDGPUTargetLowering(TargetMachine &TM) :
   if (STM.device()->getGeneration() > AMDILDeviceInfo::HD6XXX) {
     setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v4f32, Legal);
   }
+  setOperationAction(ISD::BITCAST, MVT::iPTRAny, Legal);
 }
