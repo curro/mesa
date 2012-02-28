@@ -55,6 +55,12 @@ class InstR600ISA <dag outs, dag ins, string asm, list<dag> pattern> :
   let Namespace = "AMDIL";
 }
 
+def MEMri : Operand<iPTRAny> {
+  let MIOperandInfo = (ops R600_Reg32:$ptr, R600_Reg32:$index);
+}
+
+def ADDRParam : ComplexPattern<i32, 2, "SelectADDRParam", [], []>;
+
 class R600_ALU {
 
   bits<7> DST_GPR = 0;
@@ -173,7 +179,7 @@ class EG_CF_RAT <bits <8> cf_inst, bits <6> rat_inst, dag outs, dag ins,
 */
 }
 
-
+/*
 def store_global : PatFrag<(ops node:$value, node:$ptr),
                            (store node:$value, node:$ptr),
                            [{
@@ -185,6 +191,21 @@ def store_global : PatFrag<(ops node:$value, node:$ptr),
                             }
                             return false;
                            }]>;
+
+*/
+
+def load_param : PatFrag<(ops node:$ptr),
+                         (load node:$ptr),
+                          [{
+                           return true;
+                           const Value *Src = cast<LoadSDNode>(N)->getSrcValue();
+                           if (Src) {
+                                PointerType * PT = dyn_cast<PointerType>(Src->getType());
+                                return PT && PT->getAddressSpace() == AMDILAS::PARAM_I_ADDRESS;
+                           }
+                           return false;
+                          }]>;
+
 //class EG_CF <bits<32> inst, string asm> :
 //    InstR600 <inst, (outs), (ins), asm, []>;
 
@@ -677,6 +698,19 @@ let isCodeGenOnly = 1 in {
   >;
 
 }
+
+let isPseudo = 1 in {
+
+def LOAD_VTX : AMDGPUShaderInst <
+    (outs R600_Reg32:$dst),
+    (ins MEMri:$mem),
+    "LOAD_VTX",
+    [(set (i32 R600_Reg32:$dst), (load_param ADDRParam:$mem))]
+>;
+
+
+} //End isPseudo
+
 
 include "R600ShaderPatterns.td"
 
