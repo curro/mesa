@@ -427,7 +427,7 @@ static int r600_vtx_from_byte_stream(struct r600_shader_ctx *ctx,
 		fprintf(stderr, "Error adding vtx\n");
 	}
 	/* Use the Texture Cache */
-	ctx->bc->cf_last->inst = CM_V_SQ_CF_WORD1_SQ_CF_INST_TC;
+	ctx->bc->cf_last->inst = EG_V_SQ_CF_WORD1_SQ_CF_INST_TEX;
 	return bytes_read;
 }
 
