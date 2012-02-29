@@ -86,6 +86,18 @@ public:
    std::vector<std::unique_ptr<argument>> args;
 
 private:
+   class literal_argument : public argument {
+      size_t size;
+   public:
+      literal_argument(size_t size) : size(size) {}
+      virtual void set(size_t size, const void *value);
+      virtual void bind(exec_context &ctx);
+      virtual void unbind(exec_context &ctx);
+
+   private:
+      std::vector<uint8_t> data;
+   };
+   
    class scalar_argument : public argument {
    public:
       virtual void set(size_t size, const void *value);

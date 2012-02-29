@@ -575,8 +575,8 @@ let Predicates = [isEG] in {
 let Gen = AMDGPUGen.EG in {
 
 def RAT_WRITE_CACHELESS_eg :
-    EG_CF_RAT <0x57, 0x2, (outs), (ins R600_Reg128:$rw_gpr,
-                                   R600_Reg32:$index_gpr, i32imm:$rat_id), "">
+    EG_CF_RAT <0x57, 0x2, (outs), (ins R600_TReg32_X:$rw_gpr,
+                                   R600_TReg32_X:$index_gpr, i32imm:$rat_id), "">
 {
 /*
   let Inst{3-0}   = RAT_ID;

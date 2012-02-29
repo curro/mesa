@@ -147,6 +147,7 @@ radeon_llvm_compile(LLVMModuleRef M, unsigned char ** bytes,
    const TargetData * AMDGPUData = AMDGPUTargetMachine.getTargetData();
    PassManager PM;
    PM.add(new TargetData(*AMDGPUData));
+   PM.add(createPromoteMemoryToRegisterPass());
    PM.add(createKernelParametersPass(AMDGPUData));
    PM.add(createPromoteMemoryToRegisterPass());
    AMDGPUTargetMachine.setAsmVerbosityDefault(true);

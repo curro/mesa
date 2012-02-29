@@ -32,6 +32,7 @@
 #include <llvm/Function.h>
 #include <llvm/Metadata.h>
 #include <llvm/Type.h>
+#include <llvm/Target/TargetData.h>
 
 using namespace clover;
 
@@ -106,6 +107,12 @@ _cl_kernel::_cl_kernel(clover::program &prog,
                                E = kernel_func->arg_end(); I != E; ++I) {
          llvm::Argument & arg = *I;
          llvm::Type * arg_type = arg.getType();
+
+         if (llvm::isa<llvm::PointerType>(arg_type) and arg.hasByValAttr())
+         {
+           arg_type = llvm::dyn_cast<llvm::PointerType>(arg_type)->getElementType();
+         }
+         
          if (arg_type->isPointerTy()) {
             /* XXX: Figure out LLVM->OpenCL address space mappings. */
             unsigned address_space =
@@ -118,7 +125,8 @@ _cl_kernel::_cl_kernel(clover::program &prog,
                break;
             }
          } else {
-               args.emplace_back(new scalar_argument);
+               llvm::TargetData TD(kernel_func->getParent());
+               args.emplace_back(new literal_argument(TD.getTypeStoreSize(arg_type)));
          }
       }
   }
@@ -262,6 +270,30 @@ _cl_kernel::exec_context::unbind() {
    g_buffers.clear();
    g_handles.clear();
    mem_local = 0;
+}
+
+void
+_cl_kernel::literal_argument::set(size_t size_, const void *value) {
+   if (size != size_)
+      throw error(CL_INVALID_ARG_SIZE);
+
+   data.resize(((size+3)/4)*4); ///It should be always a sane choice to round it up 32bit boundary
+   
+   memcpy(&data[0], value, size);
+}
+
+void
+_cl_kernel::literal_argument::bind(exec_context &ctx) {
+   size_t offset = ctx.input.size();
+   
+   assert(data.size() % 4 == 0);
+   
+   ctx.input.resize(offset + data.size());
+   ctx.input.insert(ctx.input.end(), data.begin(), data.end());
+}
+
+void
+_cl_kernel::literal_argument::unbind(exec_context &ctx) {
 }
 
 void

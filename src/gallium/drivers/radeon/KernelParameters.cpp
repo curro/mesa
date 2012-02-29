@@ -10,6 +10,7 @@
 
 #include "AMDIL.h"
 #include <map>
+#include <set>
 
 using namespace llvm;
 using namespace std;
@@ -21,16 +22,18 @@ class KernelParameters : public llvm::FunctionPass
   const llvm::TargetData * TD;
   LLVMContext* Context;
   Module *mod;
-  std::map<unsigned, GlobalVariable *> globalPointers;
+  
   struct param
   {
-    param() : val(NULL), ptr_val(NULL), offset_in_dw(0), size_in_dw(0), specialID(0) {}
+    param() : val(NULL), ptr_val(NULL), offset_in_dw(0), size_in_dw(0), indirect(false), specialID(0) {}
     
     llvm::Value* val;
     llvm::Value* ptr_val;
     int offset_in_dw;
     int size_in_dw;
 
+    bool indirect;
+    
     string specialType;
     int specialID;
     
@@ -46,8 +49,9 @@ class KernelParameters : public llvm::FunctionPass
   int calculateArgumentSize(llvm::Argument* arg);
   void RunAna(llvm::Function* fun);
   void Replace(llvm::Function* fun);
-  void Propagete(llvm::Function* fun);
-  void Propagete(llvm::Value* v, const llvm::Twine& name, bool indirect = false);
+  bool isIndirect(Value* val, set<Value*>& visited);
+  void Propagate(llvm::Function* fun);
+  void Propagate(llvm::Value* v, const llvm::Twine& name, bool indirect = false);
   Value* ConstantRead(Function* fun, param& p);
   Value* handleSpecial(Function* fun, param& p);
   bool isSpecialType(Type*);
@@ -93,6 +97,56 @@ int KernelParameters::getListSize()
   return params.back().end();
 }
 
+bool KernelParameters::isIndirect(Value* val, set<Value*>& visited)
+{
+  if (isa<LoadInst>(val))
+  {
+    return false;
+  }
+
+  if (isa<IntegerType>(val->getType()))
+  {
+    assert(0 and "Internal error");
+    return false;
+  }
+
+  if (visited.count(val))
+  {
+    return false;
+  }
+
+  visited.insert(val);
+  
+  if (isa<GetElementPtrInst>(val))
+  {
+    GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(val);
+    GetElementPtrInst::op_iterator i = GEP->op_begin();
+
+    for (i++; i != GEP->op_end(); i++)
+    {
+      if (!isa<Constant>(*i))
+      {
+        return true;
+      }
+    }
+  }
+  
+  for (Value::use_iterator i = val->use_begin(); i != val->use_end(); i++)
+  {
+    Value* v2 = dyn_cast<Value>(*i);
+
+    if (v2)
+    {
+      if (isIndirect(v2, visited))
+      {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 void KernelParameters::AddParam(llvm::Argument* arg)
 {
   param p;
@@ -101,6 +155,12 @@ void KernelParameters::AddParam(llvm::Argument* arg)
   p.offset_in_dw = getListSize();
   p.size_in_dw = calculateArgumentSize(arg);
 
+  if (isa<PointerType>(arg->getType()) and arg->hasByValAttr())
+  {
+    set<Value*> visited;
+    p.indirect = isIndirect(p.val, visited);
+  }
+  
   params.push_back(p);
 }
 
@@ -154,34 +214,55 @@ void KernelParameters::Replace(llvm::Function* fun)
   }
 }
 
-void KernelParameters::Propagete(llvm::Function* fun)
+void KernelParameters::Propagate(llvm::Function* fun)
 {
   for (std::vector<param>::iterator i = params.begin(); i != params.end(); i++)
   {
     if (i->ptr_val)
     {
-      Propagete(i->ptr_val, i->val->getName());
-    }
+      Propagate(i->ptr_val, i->val->getName(), i->indirect);
+   }
   }
 }
 
-void KernelParameters::Propagete(Value* v, const Twine& name, bool indirect)
+void KernelParameters::Propagate(Value* v, const Twine& name, bool indirect)
 {
   LoadInst* load = dyn_cast<LoadInst>(v);
-  unsigned addrspace = llvm::AMDILAS::PARAM_D_ADDRESS;
+  GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(v);
+  
+  unsigned addrspace; 
 
   if (indirect)
   {
     addrspace = llvm::AMDILAS::PARAM_I_ADDRESS;
   }
+  else
+  {
+    addrspace = llvm::AMDILAS::PARAM_D_ADDRESS;
+  }
+
+  if (GEP and GEP->getType()->getAddressSpace() != addrspace)
+  {
+    Value* op = GEP->getPointerOperand();
+
+    if (dyn_cast<PointerType>(op->getType())->getAddressSpace() != addrspace)
+    {
+      op = new BitCastInst(op, PointerType::get(dyn_cast<PointerType>(op->getType())->getElementType(), addrspace), name, dyn_cast<Instruction>(v));
+    }
+
+    vector<Value*> params(GEP->idx_begin(), GEP->idx_end());
+    
+    GetElementPtrInst* GEP2 = GetElementPtrInst::Create(op, params, name, dyn_cast<Instruction>(v));
+    GEP2->setIsInBounds(GEP->isInBounds());
+    v = dyn_cast<Value>(GEP2);
+    GEP->replaceAllUsesWith(GEP2);
+    GEP->eraseFromParent();
+    load = NULL;
+  }
   
   if (load)
   {
-//     cout << "LOAD found: ";
-//     load->dump();
-//     cout << " addrspace: " << load->getPointerAddressSpace() << endl;
-
-    if (load->getPointerAddressSpace() != addrspace)
+    if (load->getPointerAddressSpace() != addrspace) ///normally at this point we have the right address space
     {
       Value *orig_ptr = load->getPointerOperand();
       PointerType *orig_ptr_type = dyn_cast<PointerType>(orig_ptr->getType());
@@ -203,29 +284,15 @@ void KernelParameters::Propagete(Value* v, const Twine& name, bool indirect)
     return;
   }
 
-  for (Value::use_iterator i = v->use_begin(); i != v->use_end(); i++)
+  vector<User*> users(v->use_begin(), v->use_end());
+  
+  for (int i = 0; i < int(users.size()); i++)
   {
-    GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(*i);
-    Value* v2 = dyn_cast<Value>(*i);
-
-    cout << "propagate: " << v2 << endl;
+    Value* v2 = dyn_cast<Value>(users[i]);
     
-    if (GEP)
-    {
-      GetElementPtrInst::op_iterator i = GEP->op_begin();
-      
-      for (i++; i != GEP->op_end(); i++)
-      {
-        if (!isa<Constant>(*i))
-        {
-          indirect = true;
-        }
-      }
-    }
-      
     if (v2)
     {
-      Propagete(v2, name, indirect);
+      Propagate(v2, name, indirect);
     }
   }
 }
@@ -242,28 +309,40 @@ Value* KernelParameters::ConstantRead(Function* fun, param& p)
     return NULL;
   }
   cout << "ConstantRead" << endl;
-  unsigned addrspace = llvm::AMDILAS::PARAM_D_ADDRESS;
+  unsigned addrspace;
+
+  if (p.indirect)
+  {
+    addrspace = llvm::AMDILAS::PARAM_I_ADDRESS;
+  }
+  else
+  {
+    addrspace = llvm::AMDILAS::PARAM_D_ADDRESS;
+  }
   
   Argument *arg = dyn_cast<Argument>(p.val);
+  Type * argType = p.val->getType();
   PointerType * argPtrType = dyn_cast<PointerType>(p.val->getType());
   
   if (argPtrType and arg->hasByValAttr())
   {
-    Value* ptr = new IntToPtrInst(ConstantInt::get(Type::getInt32Ty(*Context), p.offset_in_dw*4), PointerType::get(dyn_cast<PointerType>(p.val->getType())->getElementType(), addrspace), p.val->getName(), first_inst);
-    
-    p.ptr_val = ptr;
-    return ptr;
+    Value* param_addr_space_ptr = ConstantPointerNull::get(PointerType::get(Type::getInt32Ty(*Context), addrspace));
+    Value* param_ptr = GetElementPtrInst::Create(param_addr_space_ptr, ConstantInt::get(Type::getInt32Ty(*Context), p.offset_in_dw), arg->getName(), first_inst);
+    param_ptr = new BitCastInst(param_ptr, PointerType::get(argPtrType->getElementType(), addrspace), arg->getName(), first_inst);
+    p.ptr_val = param_ptr;
+    return param_ptr;
   }
   else
   {
-  cout << "else" << endl;
-    Value* param_addr_space_ptr = globalPointers[addrspace];
+    cout << "else" << endl;
+    Value* param_addr_space_ptr = ConstantPointerNull::get(PointerType::get(argType, addrspace));
+    
     Value* param_ptr = builder.CreateGEP(param_addr_space_ptr,
-             ConstantInt::get(Type::getInt32Ty(*Context), p.offset_in_dw * 4));
-    Value* param_value = builder.CreateLoad(param_ptr, "");
-    Value* arg_addr_space_ptr = globalPointers[argPtrType->getAddressSpace()];
-    Value* new_arg_ptr = builder.CreateGEP(arg_addr_space_ptr, param_value, "");
-    return builder.CreateBitCast(new_arg_ptr, argPtrType);
+             ConstantInt::get(Type::getInt32Ty(*Context), p.offset_in_dw), arg->getName());
+    
+    Value* param_value = builder.CreateLoad(param_ptr, arg->getName());
+    
+    return param_value;
   }
 }
 
@@ -356,20 +435,10 @@ bool KernelParameters::runOnFunction (Function &F)
 
 //  F.dump();
   
-  for (unsigned i = 0; i < AMDILAS::LAST_ADDRESS; i++) {
-    globalPointers[i] = new GlobalVariable(*mod,
-                           Type::getInt32Ty(*Context),
-                           true,
-                           GlobalValue::InternalLinkage,
-                           NULL,
-                           "", NULL, false, i);
-  }
-
   RunAna(&F);
   Replace(&F);
-  Propagete(&F);
+  Propagate(&F);
   
- // F.dump();
   mod->dump();
   return false;
 }

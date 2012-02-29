@@ -161,15 +161,22 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
 
       case AMDIL::GLOBALSTORE_i32:
         {
+          unsigned rw_reg =
+                   MRI.createVirtualRegister(&AMDIL::R600_TReg32_XRegClass);
+          BuildMI(MBB, I, MBB.findDebugLoc(I),
+                          TII->get(AMDIL::COPY), rw_reg)
+                  .addOperand(MI.getOperand(0));
+
           unsigned index_reg =
                    MRI.createVirtualRegister(&AMDIL::R600_TReg32_XRegClass);
           BuildMI(MBB, I, MBB.findDebugLoc(I),
-                          TII->get(AMDIL::MOV), index_reg)
-                  .addReg(AMDIL::ZERO);
+                          TII->get(AMDIL::COPY), index_reg)
+                  .addOperand(MI.getOperand(1));
+
           /* XXX: Check GPU Family */
           BuildMI(MBB, I, MBB.findDebugLoc(I),
                           TII->get(AMDIL::RAT_WRITE_CACHELESS_eg))
-                  .addOperand(MI.getOperand(0))
+                  .addReg(rw_reg)
                   .addReg(index_reg)
                   .addImm(0);
           break;
