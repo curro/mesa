@@ -50,7 +50,7 @@ class InstR600 <bits<32> inst, dag outs, dag ins, string asm, list<dag> pattern,
 class InstR600ISA <dag outs, dag ins, string asm, list<dag> pattern> :
     AMDGPUInst <outs, ins, asm, pattern>
 {
-  field bits<32> Inst;
+  field bits<64> Inst;
 
   let Namespace = "AMDIL";
 }
@@ -602,6 +602,75 @@ def RAT_WRITE_CACHELESS_eg :
 */
 }
 
+def VTX_READ_eg : InstR600ISA < (outs R600_TReg32_X:$dst),
+                                (ins R600_TReg32_X:$src),
+                                "VTX_READ_eg $dst, $src", []>
+{
+  bits<7> DST_GPR;
+  bits<7> SRC_GPR;
+
+  /* If any of these field below need to be calculated at compile time, and
+   * a ins operand for them and move them to the list of operands above. */
+
+  /* XXX: This instruction is manual encoded, so none of these values are used.
+   */
+
+  bits<5> VC_INST          = 0; //VC_INST_FETCH
+  bits<2> FETCH_TYPE       = 2;
+  bits<1> FETCH_WHOLE_QUAD = 1;
+  bits<8> BUFFER_ID        = 0; //XXX ?
+  bits<1> SRC_REL          = 0;
+  bits<2> SRC_SEL_X        = 0;
+  bits<6> MEGA_FETCH_COUNT = 4;
+/*
+
+  bits<1> DST_REL          = 0;
+  bits<3> DST_SEL_X        = 0;
+  bits<3> DST_SEL_Y        = 7; //Masked
+  bits<3> DST_SEL_Z        = 7; //Masked
+  bits<3> DST_SEL_W        = 7; //Masked
+  bits<1> USE_CONST_FIELDS = 1; //Masked
+  bits<6> DATA_FORMAT      = 0;
+  bits<2> NUM_FORMAT_ALL   = 0;
+  bits<1> FORMAT_COMP_ALL  = 0;
+  bits<1> SRF_MODE_ALL     = 0;
+*/
+
+
+  let Inst{4-0}   = VC_INST;
+  let Inst{6-5}   = FETCH_TYPE;
+  let Inst{7}     = FETCH_WHOLE_QUAD;
+  let Inst{15-8}  = BUFFER_ID;
+  let Inst{22-16} = SRC_GPR;
+  let Inst{23}    = SRC_REL;
+  let Inst{25-24} = SRC_SEL_X;
+  let Inst{31-26} = MEGA_FETCH_COUNT;
+
+  /* DST_GPR is OK to leave uncommented, because LLVM 3.0 only prevents you
+   * from statically setting bits > 31.  This field will be set by
+   * getMachineValueOp which can set bits > 31.
+   */
+  let Inst{32-38} = DST_GPR;
+
+  /* XXX: Uncomment for LLVM 3.1 which supports 64-bit instructions */
+
+/*
+  let Inst{39}    = DST_REL;
+  let Inst{40}    = 0; //Reserved
+  let Inst{43-41} = DST_SEL_X;
+  let Inst{46-44} = DST_SEL_Y;
+  let Inst{49-47} = DST_SEL_Z;
+  let Inst{52-50} = DST_SEL_W;
+  let Inst{53}    = USE_CONST_FIELDS;
+  let Inst{59-54} = DATA_FORMAT;
+  let Inst{61-60} = NUM_FORMAT_ALL;
+  let Inst{62}    = FORMAT_COMP_ALL;
+  let Inst{63}    = SRF_MODE_ALL;
+*/
+}
+
+
+
 } // End AMDGPUGen.EG
 /* XXX: Need to convert PTR to rat_id */
 /*
@@ -611,6 +680,14 @@ def : Pat <(store_global (f32 R600_Reg32:$value), node:$ptr),
                                                    sel_x),
                                     (f32 ZERO), 0, R600_Reg32:$ptr)>;
 */
+
+class VTX_READ_Pattern <ValueType vt> : Pat <
+    (vt (load_param ADDRParam:$mem)),
+    (VTX_READ_eg (i32 R600_Reg32:$mem))>;
+
+def : VTX_READ_Pattern <f32>;
+def : VTX_READ_Pattern <i32>;
+
 } // End isEG Predicate
 
 /* ------------------------------- */
@@ -698,19 +775,6 @@ let isCodeGenOnly = 1 in {
   >;
 
 }
-
-let isPseudo = 1 in {
-
-def LOAD_VTX : AMDGPUShaderInst <
-    (outs R600_Reg32:$dst),
-    (ins MEMri:$mem),
-    "LOAD_VTX",
-    [(set (i32 R600_Reg32:$dst), (load_param ADDRParam:$mem))]
->;
-
-
-} //End isPseudo
-
 
 include "R600ShaderPatterns.td"
 
