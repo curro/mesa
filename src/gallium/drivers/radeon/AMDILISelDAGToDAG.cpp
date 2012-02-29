@@ -295,7 +295,9 @@ bool AMDILDAGToDAGISel::isPrivateLoad(const LoadSDNode *N) {
   if (!check_type(N->getSrcValue(), AMDILAS::LOCAL_ADDRESS)
       && !check_type(N->getSrcValue(), AMDILAS::GLOBAL_ADDRESS)
       && !check_type(N->getSrcValue(), AMDILAS::REGION_ADDRESS)
-      && !check_type(N->getSrcValue(), AMDILAS::CONSTANT_ADDRESS))
+      && !check_type(N->getSrcValue(), AMDILAS::CONSTANT_ADDRESS)
+      && !check_type(N->getSrcValue(), AMDILAS::PARAM_D_ADDRESS)
+      && !check_type(N->getSrcValue(), AMDILAS::PARAM_I_ADDRESS))
   {
     return true;
   }
