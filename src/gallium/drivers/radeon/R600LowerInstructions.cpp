@@ -161,17 +161,34 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
 
       case AMDIL::GLOBALSTORE_i32:
         {
+          MachineOperand &ptrOperand = MI.getOperand(1);
+          MachineOperand &indexOperand = MI.getOperand(2);
+          unsigned calculated_index_reg;
           unsigned rw_reg =
                    MRI.createVirtualRegister(&AMDIL::R600_TReg32_XRegClass);
           BuildMI(MBB, I, MBB.findDebugLoc(I),
                           TII->get(AMDIL::COPY), rw_reg)
                   .addOperand(MI.getOperand(0));
 
+          /* Optimize the case where the indexOperand to GLOBALSTORE_i32 is 0 */
+          if (indexOperand.isImm() && indexOperand.getImm() == 0) {
+            assert(ptrOperand.isReg());
+            calculated_index_reg = ptrOperand.getReg();
+          } else {
+            calculated_index_reg =
+                      MRI.createVirtualRegister(&AMDIL::R600_TReg32RegClass);
+            BuildMI(MBB, I, MBB.findDebugLoc(I),
+                            TII->get(AMDIL::ADD), calculated_index_reg)
+                    .addOperand(indexOperand)
+                    .addOperand(ptrOperand);
+          }
+
           unsigned index_reg =
                    MRI.createVirtualRegister(&AMDIL::R600_TReg32_XRegClass);
+
           BuildMI(MBB, I, MBB.findDebugLoc(I),
                           TII->get(AMDIL::COPY), index_reg)
-                  .addOperand(MI.getOperand(1));
+                  .addReg(calculated_index_reg);
 
           /* XXX: Check GPU Family */
           BuildMI(MBB, I, MBB.findDebugLoc(I),
