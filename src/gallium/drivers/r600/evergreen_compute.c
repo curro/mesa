@@ -784,7 +784,10 @@ void* r600_compute_global_transfer_map(struct pipe_context *ctx_, struct pipe_tr
 {
   assert(transfer->resource->target == PIPE_BUFFER);
   assert(transfer->resource->bind & PIPE_BIND_GLOBAL);
-  
+	assert(transfer->box.x >= 0);
+	assert(transfer->box.y == 0);
+	assert(transfer->box.z == 0);
+	
   struct r600_context *ctx = (struct r600_context *)ctx_;
   struct r600_resource_global* buffer = (struct r600_resource_global*)transfer->resource;
   struct pb_buffer *buf = buffer->chunk->pool->bo->buf;//buffer->base.buf;
@@ -797,7 +800,7 @@ void* r600_compute_global_transfer_map(struct pipe_context *ctx_, struct pipe_tr
   }
 
   printf("buffer start: %lli\n", buffer->chunk->start_in_dw);
-  return map + buffer->chunk->start_in_dw;
+  return ((char*)(map + buffer->chunk->start_in_dw)) + transfer->box.x;
 }
 
 void r600_compute_global_transfer_unmap(struct pipe_context *ctx_, struct pipe_transfer* transfer)
