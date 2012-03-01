@@ -460,6 +460,11 @@ class LOG_IEEE_Common <bits<32> inst> : R600_1OP <
   let AMDILOp = AMDILInst.LOG_f32;
 }
 
+class LSHR_Common <bits<32> inst> : R600_2OP <
+  inst, "LSHR $dst, $src0, $src1",
+  []
+>;
+
 class RECIP_CLAMPED_Common <bits<32> inst> : R600_1OP <
   inst, "RECIP_CLAMPED",
   []
@@ -709,6 +714,7 @@ class TRIG_eg <InstR600 trig, Intrinsic intr> : Pat<
 let Gen = AMDGPUGen.EG_CAYMAN in {
 
   def MULADD_eg : MULADD_Common<0x14>;
+  def LSHR_eg : LSHR_Common<0x16>;
   def CNDE_eg : CNDE_Common<0x19>;
   def CNDGT_eg : CNDGT_Common<0x1A>;
   def CNDGE_eg : CNDGE_Common<0x1B>;

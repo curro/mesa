@@ -569,20 +569,7 @@ static void evergreen_set_global_binding(
     assert(resources[i]->target == PIPE_BUFFER);
     assert(resources[i]->bind & PIPE_BIND_GLOBAL);
 
-    if (buffers[i]->base.b.b.b.format == PIPE_FORMAT_NONE)
-    {
-      *(handles[i]) = buffers[i]->chunk->start_in_dw; ///default 32bit wordlength
-    }
-    else if (util_format_get_blockwidth(buffers[i]->base.b.b.b.format) == 1)
-    {
-      printf("format: %i\n", buffers[i]->base.b.b.b.format);
-      assert(0 && "TODO");
-      *(handles[i]) = buffers[i]->chunk->start_in_dw*4; ///byte addressing
-    }
-    else
-    {
-      *(handles[i]) = buffers[i]->chunk->start_in_dw;
-    }
+    *(handles[i]) = buffers[i]->chunk->start_in_dw * 4;
   }
   
   evergreen_set_rat(ctx->cs_shader, 0, pool->bo, 0, pool->size_in_dw);

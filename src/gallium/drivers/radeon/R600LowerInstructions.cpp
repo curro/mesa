@@ -182,13 +182,22 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
                     .addOperand(indexOperand)
                     .addOperand(ptrOperand);
           }
-
           unsigned index_reg =
                    MRI.createVirtualRegister(&AMDIL::R600_TReg32_XRegClass);
 
+          unsigned shift_reg =
+                   MRI.createVirtualRegister(&AMDIL::R600_TReg32RegClass);
+
           BuildMI(MBB, I, MBB.findDebugLoc(I),
-                          TII->get(AMDIL::COPY), index_reg)
-                  .addReg(calculated_index_reg);
+                          TII->get(AMDIL::MOV), shift_reg)
+                  .addReg(AMDIL::ALU_LITERAL_X)
+                  .addImm(2);
+
+          /* XXX: Check GPU family */
+          BuildMI(MBB, I, MBB.findDebugLoc(I),
+                          TII->get(AMDIL::LSHR_eg), index_reg)
+                  .addReg(calculated_index_reg)
+                  .addReg(shift_reg);
 
           /* XXX: Check GPU Family */
           BuildMI(MBB, I, MBB.findDebugLoc(I),
