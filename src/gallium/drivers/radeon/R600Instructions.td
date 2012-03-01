@@ -343,6 +343,11 @@ def AND_INT : R600_2OP <
   let AMDILOp = AMDILInst.AND_i32;
 }
 
+def ADD_INT : R600_2OP <
+  0x34, "ADD_INT $dst, $src0, $src1",
+  []
+>;
+
 /* Texture instructions */
 
 def TEX_SAMPLE : R600_TEX <

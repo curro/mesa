@@ -178,7 +178,7 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
             calculated_index_reg =
                       MRI.createVirtualRegister(&AMDIL::R600_TReg32RegClass);
             BuildMI(MBB, I, MBB.findDebugLoc(I),
-                            TII->get(AMDIL::ADD), calculated_index_reg)
+                            TII->get(AMDIL::ADD_INT), calculated_index_reg)
                     .addOperand(indexOperand)
                     .addOperand(ptrOperand);
           }
