@@ -229,8 +229,15 @@ void *evergreen_create_compute_state(struct pipe_context *ctx_, const const stru
 #if 1
 	shader->mod = llvm_parse_bitcode(cso->shader.ir, cso->shader.ir_len);
 	r600_compute_shader_create(ctx_, shader->mod, &shader->bc);
+//   r600_bytecode_build(&shader->bc);
+  
+  r600_bytecode_dump(&shader->bc);
+  
+  FILE *f = fopen("dump.bin", "w");
 
-
+  fwrite(shader->bc.bytecode, 4, shader->bc.ndw, f);
+  
+  fclose(f);
 
 #else
   shader->bc.bytecode = malloc(1024);
