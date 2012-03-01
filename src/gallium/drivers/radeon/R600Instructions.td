@@ -613,25 +613,27 @@ def RAT_WRITE_CACHELESS_eg :
 }
 
 def VTX_READ_eg : InstR600ISA < (outs R600_TReg32_X:$dst),
-                                (ins R600_TReg32_X:$src),
+                                (ins R600_TReg32_X:$src, i32imm:$buffer_id),
                                 "VTX_READ_eg $dst, $src", []>
 {
+/*
   bits<7> DST_GPR;
   bits<7> SRC_GPR;
-
+  bits<8> BUFFER_ID;
+*/
   /* If any of these field below need to be calculated at compile time, and
    * a ins operand for them and move them to the list of operands above. */
 
   /* XXX: This instruction is manual encoded, so none of these values are used.
    */
-
+/*
   bits<5> VC_INST          = 0; //VC_INST_FETCH
   bits<2> FETCH_TYPE       = 2;
   bits<1> FETCH_WHOLE_QUAD = 1;
-  bits<8> BUFFER_ID        = 0; //XXX ?
   bits<1> SRC_REL          = 0;
   bits<2> SRC_SEL_X        = 0;
   bits<6> MEGA_FETCH_COUNT = 4;
+*/
 /*
 
   bits<1> DST_REL          = 0;
@@ -646,7 +648,7 @@ def VTX_READ_eg : InstR600ISA < (outs R600_TReg32_X:$dst),
   bits<1> SRF_MODE_ALL     = 0;
 */
 
-
+/*
   let Inst{4-0}   = VC_INST;
   let Inst{6-5}   = FETCH_TYPE;
   let Inst{7}     = FETCH_WHOLE_QUAD;
@@ -655,12 +657,12 @@ def VTX_READ_eg : InstR600ISA < (outs R600_TReg32_X:$dst),
   let Inst{23}    = SRC_REL;
   let Inst{25-24} = SRC_SEL_X;
   let Inst{31-26} = MEGA_FETCH_COUNT;
-
+*/
   /* DST_GPR is OK to leave uncommented, because LLVM 3.0 only prevents you
    * from statically setting bits > 31.  This field will be set by
    * getMachineValueOp which can set bits > 31.
    */
-  let Inst{32-38} = DST_GPR;
+//  let Inst{32-38} = DST_GPR;
 
   /* XXX: Uncomment for LLVM 3.1 which supports 64-bit instructions */
 
@@ -691,12 +693,12 @@ def : Pat <(store_global (f32 R600_Reg32:$value), node:$ptr),
                                     (f32 ZERO), 0, R600_Reg32:$ptr)>;
 */
 
-class VTX_READ_Pattern <ValueType vt> : Pat <
+class VTX_Param_Read_Pattern <ValueType vt> : Pat <
     (vt (load_param ADDRParam:$mem)),
-    (VTX_READ_eg (i32 R600_Reg32:$mem))>;
+    (VTX_READ_eg (i32 R600_Reg32:$mem), 0)>;
 
-def : VTX_READ_Pattern <f32>;
-def : VTX_READ_Pattern <i32>;
+def : VTX_Param_Read_Pattern <f32>;
+def : VTX_Param_Read_Pattern <i32>;
 
 } // End isEG Predicate
 

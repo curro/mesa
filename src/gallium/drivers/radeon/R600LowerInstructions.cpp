@@ -50,12 +50,23 @@ namespace {
     static char ID;
     TargetMachine &TM;
     AMDILMachineFunctionInfo * MFI;
+    const R600InstrInfo * TII;
+    MachineRegisterInfo * MRI;
 
     void lowerFLT(MachineInstr &MI);
 
+    void calcAddress(const MachineOperand &ptrOp,
+                     const MachineOperand &indexOp,
+                     unsigned indexReg,
+                     MachineBasicBlock &MBB,
+                     MachineBasicBlock::iterator I) const;
+
   public:
     R600LowerInstructionsPass(TargetMachine &tm) :
-      MachineFunctionPass(ID), TM(tm) { }
+      MachineFunctionPass(ID), TM(tm),
+      TII(static_cast<const R600InstrInfo*>(tm.getInstrInfo())),
+      MRI(NULL)
+      { }
 
     const char *getPassName() const { return "R600 Lower Instructions"; }
     virtual bool runOnMachineFunction(MachineFunction &MF);
@@ -71,11 +82,8 @@ FunctionPass *llvm::createR600LowerInstructionsPass(TargetMachine &tm) {
 
 bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
 {
-  MF.dump();
-  MachineRegisterInfo & MRI = MF.getRegInfo();
+  MRI = &MF.getRegInfo();
   MFI = MF.getInfo<AMDILMachineFunctionInfo>();
-  const R600InstrInfo * TII =
-                        static_cast<const R600InstrInfo*>(TM.getInstrInfo());
 
   for (MachineFunction::iterator BB = MF.begin(), BB_E = MF.end();
                                                   BB != BB_E; ++BB) {
@@ -104,13 +112,13 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
 
       case AMDIL::BINARY_OR_f32:
         {
-        unsigned tmp0 = MRI.createVirtualRegister(&AMDIL::GPRI32RegClass);
+        unsigned tmp0 = MRI->createVirtualRegister(&AMDIL::GPRI32RegClass);
         BuildMI(MBB, I, MBB.findDebugLoc(I), TM.getInstrInfo()->get(AMDIL::FTOI), tmp0)
                 .addOperand(MI.getOperand(1));
-        unsigned tmp1 = MRI.createVirtualRegister(&AMDIL::GPRI32RegClass);
+        unsigned tmp1 = MRI->createVirtualRegister(&AMDIL::GPRI32RegClass);
         BuildMI(MBB, I, MBB.findDebugLoc(I), TM.getInstrInfo()->get(AMDIL::FTOI), tmp1)
                 .addOperand(MI.getOperand(2));
-        unsigned tmp2 = MRI.createVirtualRegister(&AMDIL::GPRI32RegClass);
+        unsigned tmp2 = MRI->createVirtualRegister(&AMDIL::GPRI32RegClass);
         BuildMI(MBB, I, MBB.findDebugLoc(I), TM.getInstrInfo()->get(AMDIL::BINARY_OR_i32), tmp2)
                 .addReg(tmp0)
                 .addReg(tmp1);
@@ -146,7 +154,7 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
       /* XXX: Figure out the semantics of DIV_INF_f32 and make sure this is OK */
 /*      case AMDIL::DIV_INF_f32:
         {
-          unsigned tmp0 = MRI.createVirtualRegister(&AMDIL::GPRF32RegClass);
+          unsigned tmp0 = MRI->createVirtualRegister(&AMDIL::GPRF32RegClass);
           BuildMI(MBB, I, MBB.findDebugLoc(I),
                           TM.getInstrInfo()->get(AMDIL::RECIP_CLAMPED), tmp0)
                   .addOperand(MI.getOperand(2));
@@ -159,51 +167,52 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
         }
 */        /* XXX: This is an optimization */
 
-      case AMDIL::GLOBALSTORE_i32:
+      case AMDIL::GLOBALLOAD_f32:
+      case AMDIL::GLOBALLOAD_i32:
         {
           MachineOperand &ptrOperand = MI.getOperand(1);
           MachineOperand &indexOperand = MI.getOperand(2);
-          unsigned calculated_index_reg;
-          unsigned rw_reg =
-                   MRI.createVirtualRegister(&AMDIL::R600_TReg32_XRegClass);
+          unsigned indexReg =
+                   MRI->createVirtualRegister(&AMDIL::R600_TReg32_XRegClass);
+
+          /* Calculate the address with in the VTX buffer */
+          calcAddress(ptrOperand, indexOperand, indexReg, MBB, I);
+
+          /* Make sure the VTX_READ_eg writes to the X chan */
+          MRI->setRegClass(MI.getOperand(0).getReg(),
+                          &AMDIL::R600_TReg32_XRegClass);
+
+          /* Add the VTX_READ_eg instruction */
           BuildMI(MBB, I, MBB.findDebugLoc(I),
-                          TII->get(AMDIL::COPY), rw_reg)
+                          TII->get(AMDIL::VTX_READ_eg))
+                  .addOperand(MI.getOperand(0))
+                  .addReg(indexReg)
+                  .addImm(1);
+          break;
+        }
+
+      case AMDIL::GLOBALSTORE_i32:
+      case AMDIL::GLOBALSTORE_f32:
+        {
+          MachineOperand &ptrOperand = MI.getOperand(1);
+          MachineOperand &indexOperand = MI.getOperand(2);
+          unsigned rwReg =
+                   MRI->createVirtualRegister(&AMDIL::R600_TReg32_XRegClass);
+          unsigned indexReg =
+                   MRI->createVirtualRegister(&AMDIL::R600_TReg32_XRegClass);
+
+          /* Move the store value to the correct register class */
+          BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDIL::COPY), rwReg)
                   .addOperand(MI.getOperand(0));
 
-          /* Optimize the case where the indexOperand to GLOBALSTORE_i32 is 0 */
-          if (indexOperand.isImm() && indexOperand.getImm() == 0) {
-            assert(ptrOperand.isReg());
-            calculated_index_reg = ptrOperand.getReg();
-          } else {
-            calculated_index_reg =
-                      MRI.createVirtualRegister(&AMDIL::R600_TReg32RegClass);
-            BuildMI(MBB, I, MBB.findDebugLoc(I),
-                            TII->get(AMDIL::ADD_INT), calculated_index_reg)
-                    .addOperand(indexOperand)
-                    .addOperand(ptrOperand);
-          }
-          unsigned index_reg =
-                   MRI.createVirtualRegister(&AMDIL::R600_TReg32_XRegClass);
-
-          unsigned shift_reg =
-                   MRI.createVirtualRegister(&AMDIL::R600_TReg32RegClass);
-
-          BuildMI(MBB, I, MBB.findDebugLoc(I),
-                          TII->get(AMDIL::MOV), shift_reg)
-                  .addReg(AMDIL::ALU_LITERAL_X)
-                  .addImm(2);
-
-          /* XXX: Check GPU family */
-          BuildMI(MBB, I, MBB.findDebugLoc(I),
-                          TII->get(AMDIL::LSHR_eg), index_reg)
-                  .addReg(calculated_index_reg)
-                  .addReg(shift_reg);
+          /* Calculate the address with in the RAT */
+          calcAddress(ptrOperand, indexOperand, indexReg, MBB, I);
 
           /* XXX: Check GPU Family */
           BuildMI(MBB, I, MBB.findDebugLoc(I),
                           TII->get(AMDIL::RAT_WRITE_CACHELESS_eg))
-                  .addReg(rw_reg)
-                  .addReg(index_reg)
+                  .addReg(rwReg)
+                  .addReg(indexReg)
                   .addImm(0);
           break;
         }
@@ -255,7 +264,7 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
       {
         unsigned maskedRegister = MI.getOperand(0).getReg();
         assert(TargetRegisterInfo::isVirtualRegister(maskedRegister));
-        MachineInstr * defInstr = MRI.getVRegDef(maskedRegister);
+        MachineInstr * defInstr = MRI->getVRegDef(maskedRegister);
         MachineOperand * def = defInstr->findRegisterDefOperand(maskedRegister);
         def->addTargetFlag(MO_FLAG_MASK);
         break;
@@ -331,4 +340,38 @@ bool R600LowerInstructionsPass::runOnMachineFunction(MachineFunction &MF)
     }
   }
   return false;
+}
+
+void R600LowerInstructionsPass::calcAddress(const MachineOperand &ptrOp,
+                                            const MachineOperand &indexOp,
+                                            unsigned indexReg,
+                                            MachineBasicBlock &MBB,
+                                            MachineBasicBlock::iterator I) const
+{
+  unsigned calculated_index_reg;
+
+  /* Optimize the case where the indexOperand to GLOBALSTORE_i32 is 0 */
+  if (indexOp.isImm() && indexOp.getImm() == 0) {
+    assert(ptrOp.isReg());
+    calculated_index_reg = ptrOp.getReg();
+  } else {
+    calculated_index_reg =
+      MRI->createVirtualRegister(&AMDIL::R600_TReg32RegClass);
+    BuildMI(MBB, I, MBB.findDebugLoc(I),
+                    TII->get(AMDIL::ADD_INT), calculated_index_reg)
+            .addOperand(indexOp)
+            .addOperand(ptrOp);
+  }
+
+  unsigned shift_reg = MRI->createVirtualRegister(&AMDIL::R600_TReg32RegClass);
+
+  BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDIL::MOV), shift_reg)
+          .addReg(AMDIL::ALU_LITERAL_X)
+          .addImm(2);
+
+  /* XXX: Check GPU family */
+  BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDIL::LSHR_eg), indexReg)
+          .addReg(calculated_index_reg)
+          .addReg(shift_reg);
+
 }

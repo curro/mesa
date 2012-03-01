@@ -241,8 +241,8 @@ bool R600CodeEmitter::runOnMachineFunction(MachineFunction &MF) {
                 /* fetch_type */
                 emitByte(2);
 
-                /* buffer_id XXX: What should this be? */
-                emitByte(0);
+                /* buffer_id */
+                emitByte(MI.getOperand(2).getImm());
 
                 /* src_gpr */
                 emitByte(getHWReg(MI.getOperand(1).getReg()));
