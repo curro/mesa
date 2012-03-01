@@ -66,6 +66,8 @@ unsigned R600InstrInfo::getISAOpcode(unsigned opcode) const
 {
   switch (opcode) {
     default: return AMDGPUInstrInfo::getISAOpcode(opcode);
+    case AMDIL::CUSTOM_ADD_i32:
+      return AMDIL::ADD;
     case AMDIL::MOVE_f32:
     case AMDIL::MOVE_i32:
       return AMDIL::MOV;
