@@ -109,7 +109,7 @@ clover::compile_program(const char *source, char **pbinary, size_t *binary_sz) {
 
    c.getLangOpts().SinglePrecisionConstants = true;
 
-   std::cerr << "build log: " << log << std::endl;
+//   std::cerr << "build log: " << log << std::endl;
 
    llvm::Module * mod = act.takeModule();
    return mod;

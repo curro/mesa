@@ -439,7 +439,7 @@ bool KernelParameters::runOnFunction (Function &F)
   Replace(&F);
   Propagate(&F);
   
-  mod->dump();
+//   mod->dump();
   return false;
 }
 
