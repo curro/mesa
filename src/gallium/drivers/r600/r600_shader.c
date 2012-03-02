@@ -234,15 +234,22 @@ int r600_compute_shader_create(struct pipe_context * ctx,
 	unsigned byte_count;
 	struct r600_shader_ctx shader_ctx;
 	const char * gpu_family = r600_llvm_gpu_string(r600_ctx->family);
+	unsigned dump = 0;
 
-	radeon_llvm_compile(mod, &bytes, &byte_count, gpu_family , 1);
+	if (debug_get_bool_option("R600_DUMP_SHADERS", FALSE)) {
+		dump = 1;
+	}
+
+	radeon_llvm_compile(mod, &bytes, &byte_count, gpu_family , dump);
 	shader_ctx.bc = bytecode;
 	r600_bytecode_init(shader_ctx.bc, r600_ctx->chip_class, r600_ctx->family);
 	shader_ctx.bc->type = TGSI_PROCESSOR_COMPUTE;
 	shader_ctx.bc->no_merge_inst_groups = 1;
 	r600_bytecode_from_byte_stream(&shader_ctx, bytes, byte_count);
 	r600_bytecode_build(shader_ctx.bc);
-	r600_bytecode_dump(shader_ctx.bc);
+	if (dump) {
+		r600_bytecode_dump(shader_ctx.bc);
+	}
 	return 1;
 }
 
