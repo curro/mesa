@@ -229,9 +229,8 @@ void *evergreen_create_compute_state(struct pipe_context *ctx_, const const stru
 #if 1
 	shader->mod = llvm_parse_bitcode(cso->shader.ir, cso->shader.ir_len);
 	r600_compute_shader_create(ctx_, shader->mod, &shader->bc);
-//   r600_bytecode_build(&shader->bc);
   
-  r600_bytecode_dump(&shader->bc);
+//   r600_bytecode_dump(&shader->bc);
   
   FILE *f = fopen("dump.bin", "w");
 
@@ -323,8 +322,6 @@ void evergreen_compute_upload_input(struct pipe_context *ctx_, const void *input
   if (!ctx->cs_shader->kernel_param)
   {
     ctx->cs_shader->kernel_param = r600_compute_buffer_alloc_vram(ctx->screen, (ctx->cs_shader->input_size+3) / 4);
-//         (struct r600_resource*)r600_user_buffer_create((struct pipe_screen*)ctx->screen, NULL, ctx->cs_shader->input_size, PIPE_BIND_GLOBAL);
-    //ctx->ws->buffer_create(ctx->ws, ctx->cs_shader->input_size, 4096,  PIPE_BIND_GLOBAL, PIPE_USAGE_DYNAMIC);
   }
 
   void *p = ctx->ws->buffer_map(ctx->cs_shader->kernel_param->buf, ctx->cs, PIPE_TRANSFER_WRITE);
@@ -336,7 +333,6 @@ void evergreen_compute_upload_input(struct pipe_context *ctx_, const void *input
   evergreen_set_vtx_resource(ctx->cs_shader, ctx->cs_shader->kernel_param, 0, 0, 0); ///ID=0 is reserved for the parameters
   evergreen_set_const_cache(ctx->cs_shader, 0, ctx->cs_shader->kernel_param, ctx->cs_shader->input_size, 0); ///ID=0 is reserved for parameters
 }
-
 
 void evergreen_direct_dispatch(
     struct pipe_context *ctx_,
@@ -470,6 +466,8 @@ static void evergreen_launch_grid(
     const uint *block_layout, const uint *grid_layout,
     uint32_t pc, const void *input)
 {
+  printf("PC: %i\n", pc);
+  
   struct r600_context *ctx = (struct r600_context *)ctx_;
   
   evergreen_set_lds(ctx->cs_shader, 0, 0, 0);
@@ -573,7 +571,7 @@ static void evergreen_set_global_binding(
   }
   
   evergreen_set_rat(ctx->cs_shader, 0, pool->bo, 0, pool->size_in_dw);
-  evergreen_set_vtx_resource(ctx->cs_shader, pool->bo, 1, 0, 0);
+  evergreen_set_vtx_resource(ctx->cs_shader, pool->bo, 1, 0, 1);
 }
 
 

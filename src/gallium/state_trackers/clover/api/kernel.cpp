@@ -30,25 +30,57 @@ PUBLIC cl_kernel
 clCreateKernel(cl_program prog, const char *name,
                cl_int *errcode_ret) {
    set_error(errcode_ret, CL_SUCCESS);
-   return new kernel(*prog, name);
+   try{
+      return new kernel(*prog, name);
+   } catch(cl_int& err)
+   {
+      set_error(errcode_ret, err);
+      return NULL;
+   }
 }
 
 PUBLIC cl_int
 clCreateKernelsInProgram(cl_program prog, cl_uint count,
                          cl_kernel *kerns, cl_uint *count_ret) {
+
+  if (!kerns or !count)
+  {
+    return CL_INVALID_VALUE;
+  }
+   
+  std::vector<std::string> names = prog->kernel_functions_names();
+
+  names.resize(std::min(names.size(), size_t(count)));
+
+  for (auto name : names)
+  {
+    *kerns = new kernel(*prog, name);
+    kerns++;
+  }
+  
    if (count_ret)
-      *count_ret = 0;
+      *count_ret = names.size();
    return CL_SUCCESS;
 }
 
 PUBLIC cl_int
 clRetainKernel(cl_kernel kern) {
+   if (!kern)
+   {
+     return CL_INVALID_KERNEL;
+   }
+   
    kern->retain();
    return CL_SUCCESS;
 }
 
 PUBLIC cl_int
 clReleaseKernel(cl_kernel kern) {
+   if (!kern)
+   {
+     return CL_INVALID_KERNEL;
+   }
+   
    if (kern->release())
       delete kern;
    return CL_SUCCESS;
@@ -57,6 +89,16 @@ clReleaseKernel(cl_kernel kern) {
 PUBLIC cl_int
 clSetKernelArg(cl_kernel kern, cl_uint idx, size_t size,
                const void *value) {
+   if (!kern)
+   {
+     return CL_INVALID_KERNEL;
+   }
+   
+   if (idx < 0 or idx >= kern->args.size())
+   {
+     return CL_INVALID_ARG_INDEX;
+   }
+   
    kern->args[idx]->set(size, value);
    return CL_SUCCESS;
 }
@@ -64,6 +106,11 @@ clSetKernelArg(cl_kernel kern, cl_uint idx, size_t size,
 PUBLIC cl_int
 clGetKernelInfo(cl_kernel kern, cl_kernel_info param,
                 size_t size, void *buf, size_t *size_ret) {
+   if (!kern)
+   {
+     return CL_INVALID_KERNEL;
+   }
+   
    switch (param) {
    case CL_KERNEL_FUNCTION_NAME:
       return string_property(buf, size, size_ret, kern->name());
@@ -93,6 +140,11 @@ PUBLIC cl_int
 clGetKernelWorkGroupInfo(cl_kernel kern, cl_device_id dev,
                          cl_kernel_work_group_info param,
                          size_t size, void *buf, size_t *size_ret) {
+   if (!kern)
+   {
+     return CL_INVALID_KERNEL;
+   }
+   
    switch (param) {
    case CL_KERNEL_WORK_GROUP_SIZE:
       return scalar_property<size_t>(buf, size, size_ret,
@@ -136,6 +188,10 @@ clEnqueueNDRangeKernel(cl_command_queue q, cl_kernel kern,
                        const size_t *grid_size, const size_t *block_size,
                        cl_uint num_deps, const cl_event *deps,
                        cl_event *ev) {
+   if (!kern)
+   {
+     return CL_INVALID_KERNEL;
+   }
 
    std::vector<size_t> offsets;
 
