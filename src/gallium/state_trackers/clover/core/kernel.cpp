@@ -20,6 +20,7 @@
  * SOFTWARE.
  */
 
+#include <iostream>
 #include <sstream>
 
 #include "core/kernel.hpp"
@@ -33,6 +34,7 @@
 #include <llvm/Metadata.h>
 #include <llvm/Type.h>
 #include <llvm/Target/TargetData.h>
+#include <llvm/Transforms/Utils/Cloning.h>
 
 using namespace clover;
 
@@ -68,68 +70,40 @@ _cl_kernel::_cl_kernel(clover::program &prog,
    }
 #else
    const module &m = prog.binaries().begin()->second;
-/*
-   const module::symbol &sym = m.syms.find(name)->second;
- 
-   for (auto arg : sym.args) {
-      if (arg.kind == TGSI_ARGUMENT_INLINE)
-          args.emplace_back(new scalar_argument);
-      else if (arg.kind == TGSI_ARGUMENT_CONSTANT)
-         args.emplace_back(new constant_argument);
-      else if (arg.kind == TGSI_ARGUMENT_GLOBAL)
-         args.emplace_back(new global_argument);
-      else if (arg.kind == TGSI_ARGUMENT_LOCAL)
-         args.emplace_back(new local_argument);
-      else if (arg.kind == TGSI_ARGUMENT_RDIMAGE2D ||
-               arg.kind == TGSI_ARGUMENT_WRIMAGE2D ||
-               arg.kind == TGSI_ARGUMENT_RDIMAGE3D ||
-               arg.kind == TGSI_ARGUMENT_WRIMAGE3D)
-          args.emplace_back(new image_argument);
-      else if (arg.kind == TGSI_ARGUMENT_SAMPLER)
-          args.emplace_back(new sampler_argument);
-       else
-         assert(0);
+   
+   llvm::Function * kernel_func = prog.kernel_functions(m)[name];
+
+   if (!kernel_func)
+   {
+     throw CL_INVALID_KERNEL_NAME;
+   }
+
+    for (llvm::Function::arg_iterator I = kernel_func->arg_begin(),
+                              E = kernel_func->arg_end(); I != E; ++I) {
+        llvm::Argument & arg = *I;
+        llvm::Type * arg_type = arg.getType();
+
+        if (llvm::isa<llvm::PointerType>(arg_type) and arg.hasByValAttr())
+        {
+          arg_type = llvm::dyn_cast<llvm::PointerType>(arg_type)->getElementType();
+        }
+
+        if (arg_type->isPointerTy()) {
+          /* XXX: Figure out LLVM->OpenCL address space mappings. */
+          unsigned address_space =
+                    llvm::cast<llvm::PointerType>(arg_type)->getAddressSpace();
+          switch (address_space) {
+          default: assert(!"XXX: Unhandled address space\n");
+          /* fall through */
+          case 1:
+              args.emplace_back(new global_argument);
+              break;
+          }
+        } else {
+              llvm::TargetData TD(kernel_func->getParent());
+              args.emplace_back(new literal_argument(TD.getTypeStoreSize(arg_type)));
+        }
     }
-
-   pc = sym.offset;
-*/
-   const llvm::NamedMDNode * kernels =
-                        m.llvm_module->getNamedMetadata("opencl.kernels");
-   /* XXX: Can we have more than one kernel ? */
-   assert(kernels->getNumOperands() == 1);
-   const llvm::MDNode * kernel_md = kernels->getOperand(0);
-   llvm::Function * kernel_func =
-                     llvm::dyn_cast<llvm::Function>(kernel_md->getOperand(0));
-   if (!kernel_func) {
-      assert(!"Error parsing kernel metadata. XXX: Throw a CL error here.");
-   } else {
-      for (llvm::Function::arg_iterator I = kernel_func->arg_begin(),
-                               E = kernel_func->arg_end(); I != E; ++I) {
-         llvm::Argument & arg = *I;
-         llvm::Type * arg_type = arg.getType();
-
-         if (llvm::isa<llvm::PointerType>(arg_type) and arg.hasByValAttr())
-         {
-           arg_type = llvm::dyn_cast<llvm::PointerType>(arg_type)->getElementType();
-         }
-         
-         if (arg_type->isPointerTy()) {
-            /* XXX: Figure out LLVM->OpenCL address space mappings. */
-            unsigned address_space =
-                     llvm::cast<llvm::PointerType>(arg_type)->getAddressSpace();
-            switch (address_space) {
-            default: assert(!"XXX: Unhandled address space\n");
-            /* fall through */
-            case 1:
-               args.emplace_back(new global_argument);
-               break;
-            }
-         } else {
-               llvm::TargetData TD(kernel_func->getParent());
-               args.emplace_back(new literal_argument(TD.getTypeStoreSize(arg_type)));
-         }
-      }
-  }
 #endif
 }
 
@@ -176,7 +150,7 @@ _cl_kernel::launch(clover::command_queue &q,
 
 size_t
 _cl_kernel::mem_local() const {
-   size_t sz;
+   size_t sz = 0;
 
    for (auto &arg : args) {
       if (auto larg = dynamic_cast<local_argument *>(arg.get()))
@@ -223,6 +197,8 @@ _cl_kernel::exec_context::bind(clover::kernel *kern1,
 
 #ifndef TGSI_SOURCE
    const clover::module & m = kern->prog.binaries().find(&q->dev)->second;
+   llvm::Module* mod_copy = NULL;
+#else
    const module::section &sec = m.secs.find(TGSI_SECTION_TEXT)->second;
 #endif
 
@@ -240,7 +216,24 @@ _cl_kernel::exec_context::bind(clover::kernel *kern1,
 #else
       std::vector<unsigned char> llvm_bitcode;
       llvm::BitstreamWriter writer(llvm_bitcode);
-      llvm::WriteBitcodeToStream(m.llvm_module, writer);
+      
+      mod_copy = CloneModule(m.llvm_module);
+
+      const llvm::NamedMDNode * kernels = mod_copy->getNamedMetadata("opencl.kernels");
+
+      assert(kernels);
+
+      for (int i = 0; i < int(kernels->getNumOperands()); i++)
+      {
+        const llvm::MDNode * kernel_md = kernels->getOperand(i);
+        llvm::Function * kernel_func = llvm::dyn_cast<llvm::Function>(kernel_md->getOperand(0));
+        if (kernel_func->getName().str() != kern->name())
+        {
+          kernel_func->eraseFromParent();
+        }
+      }
+      
+      llvm::WriteBitcodeToStream(mod_copy, writer);
       cs.shader.ir_len = llvm_bitcode.size() * sizeof(unsigned char);
       cs.shader.ir = (unsigned char *)malloc(cs.shader.ir_len);
       memcpy(cs.shader.ir, &llvm_bitcode[0], cs.shader.ir_len);
@@ -248,6 +241,9 @@ _cl_kernel::exec_context::bind(clover::kernel *kern1,
       cs.req_local_mem = mem_local;
       cs.req_input_mem = input.size();
       if (!q->pipe->create_compute_state) {
+#ifndef TGSI_SOURCE
+        delete mod_copy;
+#endif
          /* I think the correct way to handle a missing implementation is
           * to not return a deviceID in clGetDeviceIDs(), but for now we will
           * treat this as CL_OUT_OF_RESOURCES. */
@@ -255,6 +251,10 @@ _cl_kernel::exec_context::bind(clover::kernel *kern1,
       }
       st = q->pipe->create_compute_state(q->pipe, &cs);
    }
+
+#ifndef TGSI_SOURCE
+   delete mod_copy;
+#endif
 
    return st;
 }

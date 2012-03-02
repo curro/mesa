@@ -20,6 +20,7 @@
  * SOFTWARE.
  */
 
+#include <iostream>
 #include <algorithm>
 
 #include "core/program.hpp"
@@ -96,6 +97,45 @@ _cl_program::binaries() const {
 #else
    return __modules;
 #endif
+}
+
+std::map<std::string, llvm::Function*>
+_cl_program::kernel_functions(const clover::module& m) const
+{
+	std::map<std::string, llvm::Function*> kernel_map;
+
+   const llvm::NamedMDNode * kernels =
+                        m.llvm_module->getNamedMetadata("opencl.kernels");
+
+  assert(kernels);
+  
+  for (int i = 0; i < int(kernels->getNumOperands()); i++)
+  {
+    const llvm::MDNode * kernel_md = kernels->getOperand(i);
+    llvm::Function * kernel_func = llvm::dyn_cast<llvm::Function>(kernel_md->getOperand(0));
+    assert(kernel_func);
+    kernel_map[kernel_func->getName().str()] = kernel_func;
+  }
+  
+  return kernel_map;
+}
+
+std::vector<std::string>
+_cl_program::kernel_functions_names() const
+{
+  std::set<std::string> result;
+
+  for (auto bin : this->binaries())
+  {
+    const clover::module& m = bin.second;
+    
+    for (auto ker : kernel_functions(m))
+    {
+      result.insert(ker.first);
+    }
+  }
+  
+  return std::vector<std::string>(result.begin(), result.end());
 }
 
 cl_build_status

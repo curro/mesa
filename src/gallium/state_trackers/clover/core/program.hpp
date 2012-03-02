@@ -26,6 +26,7 @@
 #include <map>
 
 #include <llvm/Module.h>
+#include <llvm/Function.h>
 
 #include "core/base.hpp"
 #include "core/context.hpp"
@@ -71,6 +72,12 @@ public:
    const std::map<clover::device *, clover::module> &binaries() const;
 #endif
 
+#ifndef TGSI_SOURCE
+	 std::map<std::string, llvm::Function*> kernel_functions(const clover::module& m) const;
+#endif
+
+   std::vector<std::string> kernel_functions_names() const;
+   
    cl_build_status build_status(clover::device *dev) const;
    std::string build_opts(clover::device *dev) const;
    std::string build_log(clover::device *dev) const;

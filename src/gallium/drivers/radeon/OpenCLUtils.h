@@ -16,6 +16,11 @@ static bool isOpenCLKernel(const llvm::Function* fun)
 
   for (int i = 0; i < int(md->getNumOperands()); i++)
   {
+    if (!md->getOperand(i) or !md->getOperand(i)->getOperand(0))
+    {
+      continue;
+    }
+    
     assert(md->getOperand(i)->getNumOperands() == 1);
 
     if (md->getOperand(i)->getOperand(0)->getName() == fun->getName())
