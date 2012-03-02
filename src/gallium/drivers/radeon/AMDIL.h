@@ -167,8 +167,6 @@ FunctionPass*
   createAMDILLiteralManager(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 FunctionPass*
   createAMDILIOExpansion(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
-FunctionPass*
-  createAMDILSwizzleEncoder(TargetMachine &TM AMDIL_OPT_LEVEL_DECL);
 
 /// Instruction Emission Passes
 AMDILInstPrinter *createAMDILInstPrinter(const MCAsmInfo &MAI);

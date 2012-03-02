@@ -49,7 +49,6 @@ CPP_SOURCES := \
 	AMDILPrintfConvert.cpp		\
 	AMDILRegisterInfo.cpp		\
 	AMDILSubtarget.cpp		\
-	AMDILSwizzleEncoder.cpp		\
 	AMDILTargetMachine.cpp		\
 	AMDILUtilityFunctions.cpp	\
 	AMDILAsmPrinter.cpp		\

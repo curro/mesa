@@ -271,7 +271,6 @@ AMDILTargetMachine::addPreEmitPass(PassManagerBase &PM
   PM.add(createAMDILCFGStructurizerPass(*this AMDIL_OPT_LEVEL_VAR));
   PM.add(createAMDILLiteralManager(*this AMDIL_OPT_LEVEL_VAR));
   PM.add(createAMDILIOExpansion(*this AMDIL_OPT_LEVEL_VAR));
-  PM.add(createAMDILSwizzleEncoder(*this AMDIL_OPT_LEVEL_VAR));
   return true;
 }
 
