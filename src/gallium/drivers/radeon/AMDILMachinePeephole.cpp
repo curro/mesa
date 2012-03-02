@@ -116,12 +116,18 @@ AMDILMachinePeephole::runOnMachineFunction(MachineFunction &MF)
     for (MachineBasicBlock::iterator MIB = mb->begin(), MIE = mb->end();
         MIB != MIE; ++MIB) {
       MachineInstr *mi = MIB;
+      const char * name;
+#if LLVM_VERSION <= 3000
+      name = mi->getDesc().getName();
+#else
+      name = TM.getInstrInfo()->getName(mi->getOpcode());
+#endif
       switch (mi->getOpcode()) {
         default:
-          if (isAtomicInst(mi)) {
+          if (isAtomicInst(TM.getInstrInfo(), mi)) {
             // If we don't support the hardware accellerated address spaces,
             // then the atomic needs to be transformed to the global atomic.
-            if (strstr(mi->getDesc().getName(), "_L_")
+            if (strstr(name, "_L_")
                 && STM->device()->usesSoftware(AMDILDeviceInfo::LocalMem)) {
               BuildMI(*mb, MIB, mi->getDebugLoc(), 
                   TM.getInstrInfo()->get(AMDIL::ADD_i32), AMDIL::R1011)
@@ -131,14 +137,14 @@ AMDILMachinePeephole::runOnMachineFunction(MachineFunction &MF)
               mi->setDesc(
                   TM.getInstrInfo()->get(
                     (mi->getOpcode() - AMDIL::ATOM_L_ADD) + AMDIL::ATOM_G_ADD));
-            } else if (strstr(mi->getDesc().getName(), "_R_")
+            } else if (strstr(name, "_R_")
                 && STM->device()->usesSoftware(AMDILDeviceInfo::RegionMem)) {
               assert(!"Software region memory is not supported!");
               mi->setDesc(
                   TM.getInstrInfo()->get(
                     (mi->getOpcode() - AMDIL::ATOM_R_ADD) + AMDIL::ATOM_G_ADD));
             }
-          } else if ((isLoadInst(mi) || isStoreInst(mi)) && isVolatileInst(mi)) {
+          } else if ((isLoadInst(TM.getInstrInfo(), mi) || isStoreInst(TM.getInstrInfo(), mi)) && isVolatileInst(TM.getInstrInfo(), mi)) {
             insertFence(MIB);
           }
           continue;

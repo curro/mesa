@@ -226,11 +226,11 @@ namespace llvm {
 
       // If the top or the exit of the block are not marked as reachable
       // by a store, add the load to the list of cacheable loads.
-      void addPossiblyCacheableInst(MachineInstr *load) {
+      void addPossiblyCacheableInst(const TargetMachine * tm, MachineInstr *load) {
         // By definition, if store reaches top, then store reaches exit.
         // So, we only test for exit here.
         // If we have a volatile load we cannot cache it.
-        if (mStoreReachesExit || isVolatileInst(load)) {
+        if (mStoreReachesExit || isVolatileInst(tm->getInstrInfo(), load)) {
           return;
         }
 

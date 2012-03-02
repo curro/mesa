@@ -137,7 +137,8 @@ AMDILEGPointerManager::~AMDILEGPointerManager()
 std::string
 findSamplerName(MachineInstr* MI,
     FIPMap &FIToPtrMap,
-    RVPVec &lookupTable)
+    RVPVec &lookupTable,
+    const TargetMachine *TM)
 {
   std::string sampler = "unknown";
   assert(MI->getNumOperands() == 5 && "Only an "
@@ -165,7 +166,7 @@ findSamplerName(MachineInstr* MI,
       && "We don't have any defs of this register, but we aren't an argument!");
   MachineOperand *defOp = regInfo.getRegUseDefListHead(reg);
   MachineInstr *defMI = defOp->getParent();
-  if (isPrivateInst(defMI) && isLoadInst(defMI)) {
+  if (isPrivateInst(TM->getInstrInfo(), defMI) && isLoadInst(TM->getInstrInfo(), defMI)) {
     if (defMI->getOperand(1).isFI()) {
       RegValPair &fiRVP = FIToPtrMap[reg];
       if (fiRVP.second && dyn_cast<Argument>(fiRVP.second)) {
@@ -207,11 +208,11 @@ isLRPInst(MachineInstr *MI,
   if (!MI) {
     return false;
   }
-  if ((isRegionInst(MI) 
+  if ((isRegionInst(ATM->getInstrInfo(), MI) 
         && STM->device()->usesHardware(AMDILDeviceInfo::RegionMem))
-      || (isLocalInst(MI)
+      || (isLocalInst(ATM->getInstrInfo(), MI)
         && STM->device()->usesHardware(AMDILDeviceInfo::LocalMem))
-      || (isPrivateInst(MI)
+      || (isPrivateInst(ATM->getInstrInfo(), MI)
         && STM->device()->usesHardware(AMDILDeviceInfo::PrivateMem))) {
     return true;
   }
@@ -292,7 +293,7 @@ allocateDefaultID(
   if (usesGlobal(ATM, MI)) {
     curRes.bits.ResourceID =
       STM->device()->getResourceID(AMDILDevice::GLOBAL_ID);
-    if (isAtomicInst(MI)) {
+    if (isAtomicInst(ATM->getInstrInfo(), MI)) {
       MI->getOperand(MI->getNumOperands()-1)
         .setImm(curRes.bits.ResourceID);
     }
@@ -302,34 +303,34 @@ allocateDefaultID(
         KM->setUAVID(NULL, curRes.bits.ResourceID);
         mMFI->uav_insert(curRes.bits.ResourceID);
     }
-  } else if (isPrivateInst(MI)) {
+  } else if (isPrivateInst(ATM->getInstrInfo(), MI)) {
     curRes.bits.ResourceID =
       STM->device()->getResourceID(AMDILDevice::SCRATCH_ID);
-  } else if (isLocalInst(MI) || isLocalAtomic(MI)) {
+  } else if (isLocalInst(ATM->getInstrInfo(), MI) || isLocalAtomic(ATM->getInstrInfo(), MI)) {
     curRes.bits.ResourceID =
       STM->device()->getResourceID(AMDILDevice::LDS_ID);
     AMDILMachineFunctionInfo *mMFI = 
     MI->getParent()->getParent()->getInfo<AMDILMachineFunctionInfo>();
     mMFI->setUsesLocal();
-    if (isAtomicInst(MI)) {
+    if (isAtomicInst(ATM->getInstrInfo(), MI)) {
       assert(curRes.bits.ResourceID && "Atomic resource ID "
           "cannot be zero!");
       MI->getOperand(MI->getNumOperands()-1)
         .setImm(curRes.bits.ResourceID);
     }
-  } else if (isRegionInst(MI) || isRegionAtomic(MI)) {
+  } else if (isRegionInst(ATM->getInstrInfo(), MI) || isRegionAtomic(ATM->getInstrInfo(), MI)) {
     curRes.bits.ResourceID =
       STM->device()->getResourceID(AMDILDevice::GDS_ID);
     AMDILMachineFunctionInfo *mMFI = 
     MI->getParent()->getParent()->getInfo<AMDILMachineFunctionInfo>();
     mMFI->setUsesRegion();
-    if (isAtomicInst(MI)) {
+    if (isAtomicInst(ATM->getInstrInfo(), MI)) {
       assert(curRes.bits.ResourceID && "Atomic resource ID "
           "cannot be zero!");
       (MI)->getOperand((MI)->getNumOperands()-1)
         .setImm(curRes.bits.ResourceID);
     }
-  } else if (isConstantInst(MI)) {
+  } else if (isConstantInst(ATM->getInstrInfo(), MI)) {
     // If we are unknown constant instruction and the base pointer is known.
     // Set the resource ID accordingly, otherwise use the default constant ID.
     // FIXME: this should not require the base pointer to know what constant
@@ -351,7 +352,7 @@ allocateDefaultID(
           curRes.bits.ResourceID = 2;
           curRes.bits.HardwareInst = 1;
       } else {
-        if (isStoreInst(MI)) {
+        if (isStoreInst(ATM->getInstrInfo(), MI)) {
           if (mDebug) {
             dbgs() << __LINE__ << ": Setting byte store bit on instruction: ";
             MI->dump();
@@ -361,7 +362,7 @@ allocateDefaultID(
         curRes.bits.ResourceID = STM->device()->getResourceID(AMDILDevice::CONSTANT_ID);
       }
     } else {
-      if (isStoreInst(MI)) {
+      if (isStoreInst(ATM->getInstrInfo(), MI)) {
         if (mDebug) {
           dbgs() << __LINE__ << ": Setting byte store bit on instruction: ";
           MI->dump();
@@ -373,7 +374,7 @@ allocateDefaultID(
       KM->setUAVID(NULL, curRes.bits.ResourceID);
       mMFI->uav_insert(curRes.bits.ResourceID);
     }
-  } else if (isAppendInst(MI)) {
+  } else if (isAppendInst(ATM->getInstrInfo(), MI)) {
     unsigned opcode = MI->getOpcode();
     if (opcode == AMDIL::APPEND_ALLOC
         || opcode == AMDIL::APPEND_ALLOC_NORET) {
@@ -516,8 +517,13 @@ parseArguments(MachineFunction &MF,
           for (unsigned x = 0, y = nameArray->getNumOperands(); x < y; ++x) {
             const GlobalVariable *gV= dyn_cast_or_null<GlobalVariable>(
                 nameArray->getOperand(x)->getOperand(0));
+#if LLVM_VERSION <= 3000
             const ConstantArray *argName =
               dyn_cast_or_null<ConstantArray>(gV->getInitializer());
+#else
+            const ConstantDataArray *argName =
+              dyn_cast_or_null<ConstantDataArray>(gV->getInitializer());
+#endif
             if (!argName) {
               continue;
             }
@@ -886,7 +892,7 @@ parseLoadInst(
     MachineInstr *MI,
     bool mDebug)
 {
-  assert(isLoadInst(MI) && "Only a load instruction can be parsed by "
+  assert(isLoadInst(ATM->getInstrInfo(), MI) && "Only a load instruction can be parsed by "
       "the parseLoadInst function.");
   AMDILAS::InstrResEnc curRes;
   getAsmPrinterFlags(MI, curRes);
@@ -919,10 +925,10 @@ parseLoadInst(
   InstToPtrMap[MI].insert(basePtr);
   PtrToInstMap[basePtr].push_back(MI);
 
-  if (isGlobalInst(MI)) {
+  if (isGlobalInst(ATM->getInstrInfo(), MI)) {
     // Add to the cacheable set for the block. If there was a store earlier
     // in the block, this call won't actually add it to the cacheable set.
-    bci.addPossiblyCacheableInst(MI);
+    bci.addPossiblyCacheableInst(ATM, MI);
   }
 
   if (mDebug) {
@@ -949,7 +955,7 @@ parseStoreInst(
     ConflictSet &conflictPtrs,
     bool mDebug)
 {
-  assert(isStoreInst(MI) && "Only a store instruction can be parsed by "
+  assert(isStoreInst(ATM->getInstrInfo(), MI) && "Only a store instruction can be parsed by "
       "the parseStoreInst function.");
   AMDILAS::InstrResEnc curRes;
   getAsmPrinterFlags(MI, curRes);
@@ -1092,7 +1098,7 @@ parseAtomicInst(
     ByteSet &bytePtrs,
     bool mDebug)
 {
-  assert(isAtomicInst(MI) && "Only an atomic instruction can be parsed by "
+  assert(isAtomicInst(ATM->getInstrInfo(), MI) && "Only an atomic instruction can be parsed by "
       "the parseAtomicInst function.");
   AMDILAS::InstrResEnc curRes;
   unsigned dstReg = MI->getOperand(0).getReg();
@@ -1162,7 +1168,7 @@ parseAppendInst(
     MachineInstr *MI,
     bool mDebug)
 {
-  assert(isAppendInst(MI) && "Only an atomic counter instruction can be "
+  assert(isAppendInst(ATM->getInstrInfo(), MI) && "Only an atomic counter instruction can be "
       "parsed by the parseAppendInst function.");
   AMDILAS::InstrResEnc curRes;
   unsigned dstReg = MI->getOperand(0).getReg();
@@ -1195,7 +1201,7 @@ parseImageInst(
     MachineInstr *MI,
     bool mDebug)
 {
-  assert(isImageInst(MI) && "Only an image instruction can be "
+  assert(isImageInst(ATM->getInstrInfo(), MI) && "Only an image instruction can be "
       "parsed by the parseImageInst function.");
   AMDILAS::InstrResEnc curRes;
   getAsmPrinterFlags(MI, curRes);
@@ -1249,7 +1255,7 @@ parseImageInst(
             sampler_name = lookupTable[reg].second->getName();
           }
           if (sampler_name.empty()) {
-            sampler_name = findSamplerName(MI, lookupTable, FIToPtrMap);
+            sampler_name = findSamplerName(MI, lookupTable, FIToPtrMap, ATM);
           }
           uint32_t val = mMFI->addSampler(sampler_name, ~0U);
           if (mDebug) {
@@ -1298,8 +1304,8 @@ parseInstruction(
     MachineInstr *MI,
     bool mDebug)
 {
-  assert(!isAtomicInst(MI) && !isStoreInst(MI) && !isLoadInst(MI) &&
-      !isAppendInst(MI) && !isImageInst(MI) &&
+  assert(!isAtomicInst(ATM->getInstrInfo(), MI) && !isStoreInst(ATM->getInstrInfo(), MI) && !isLoadInst(ATM->getInstrInfo(), MI) &&
+      !isAppendInst(ATM->getInstrInfo(), MI) && !isImageInst(ATM->getInstrInfo(), MI) &&
       "Atomic/Load/Store/Append/Image insts should not be handled here!");
   unsigned numOps = MI->getNumOperands();
   // If we don't have any operands, we can skip this instruction
@@ -1392,19 +1398,19 @@ parseBasicBlock(
           mbb, mbe, mDebug);
     } 
 #endif
-    else if (isLoadInst(MI)) {
+    else if (isLoadInst(ATM->getInstrInfo(), MI)) {
       parseLoadInst(ATM, InstToPtrMap, PtrToInstMap,
           FIToPtrMap, lookupTable, cpool, bci, MI, mDebug);
-    } else if (isStoreInst(MI)) {
+    } else if (isStoreInst(ATM->getInstrInfo(), MI)) {
       parseStoreInst(ATM, InstToPtrMap, PtrToInstMap,
           FIToPtrMap, lookupTable, cpool, bci, MI, bytePtrs, conflictPtrs, mDebug);
-    } else if (isAtomicInst(MI)) {
+    } else if (isAtomicInst(ATM->getInstrInfo(), MI)) {
       parseAtomicInst(ATM, InstToPtrMap, PtrToInstMap,
           lookupTable, bci, MI, bytePtrs, mDebug);
-    } else if (isAppendInst(MI)) {
+    } else if (isAppendInst(ATM->getInstrInfo(), MI)) {
       parseAppendInst(ATM, InstToPtrMap, PtrToInstMap,
           lookupTable, MI, mDebug);
-    } else if (isImageInst(MI)) {
+    } else if (isImageInst(ATM->getInstrInfo(), MI)) {
       parseImageInst(ATM, InstToPtrMap, PtrToInstMap,
           FIToPtrMap, lookupTable, MI, mDebug);
     } else {
@@ -1696,7 +1702,7 @@ detectAliasedCPoolOps(
       if (visited.count(cur)) {
         continue;
       }
-      if (isLoadInst(cur) && isPrivateInst(cur)) { 
+      if (isLoadInst(TM.getInstrInfo(), cur) && isPrivateInst(TM.getInstrInfo(), cur)) { 
         // If we are a private load and the register is
         // used in the address register, we need to
         // switch from private to constant pool load.
@@ -1766,9 +1772,9 @@ detectFullyCacheablePointers(
       for (std::vector<MachineInstr*>::iterator 
           miBegin = mapIter->second.begin(),
           miEnd = mapIter->second.end(); miBegin != miEnd; ++miBegin) {
-        if (isStoreInst(*miBegin) ||
-            isImageInst(*miBegin) ||
-            isAtomicInst(*miBegin)) {
+        if (isStoreInst(ATM->getInstrInfo(), *miBegin) ||
+            isImageInst(ATM->getInstrInfo(), *miBegin) ||
+            isAtomicInst(ATM->getInstrInfo(), *miBegin)) {
           cacheable = false;
           break;
         }
@@ -1970,7 +1976,7 @@ annotateBytePtrs(
         // the device to use as the ResourceID
         curRes.bits.ResourceID = STM->device()
           ->getResourceID(AMDILDevice::LDS_ID);
-        if (isAtomicInst(*miBegin)) {
+        if (isAtomicInst(TM.getInstrInfo(), *miBegin)) {
           assert(curRes.bits.ResourceID && "Atomic resource ID "
               "cannot be non-zero!");
           (*miBegin)->getOperand((*miBegin)->getNumOperands()-1)
@@ -1982,7 +1988,7 @@ annotateBytePtrs(
         // the device to use as the ResourceID
         curRes.bits.ResourceID = STM->device()
           ->getResourceID(AMDILDevice::GDS_ID);
-        if (isAtomicInst(*miBegin)) {
+        if (isAtomicInst(TM.getInstrInfo(), *miBegin)) {
           assert(curRes.bits.ResourceID && "Atomic resource ID "
               "cannot be non-zero!");
           (*miBegin)->getOperand((*miBegin)->getNumOperands()-1)
@@ -2003,7 +2009,7 @@ annotateBytePtrs(
         if (STM->device()->isSupported(AMDILDeviceInfo::ArenaSegment)) {
           arenaInc = true;
         }
-        if (isAtomicInst(*miBegin) &&
+        if (isAtomicInst(TM.getInstrInfo(), *miBegin) &&
             STM->device()->isSupported(AMDILDeviceInfo::ArenaUAV)) {
           (*miBegin)->getOperand((*miBegin)->getNumOperands()-1)
             .setImm(curRes.bits.ResourceID);
@@ -2164,7 +2170,7 @@ annotateRawPtrs(
         // the device to use as the ResourceID
         curRes.bits.ResourceID = STM->device()
           ->getResourceID(AMDILDevice::LDS_ID);
-        if (isAtomicInst(*miBegin)) {
+        if (isAtomicInst(TM.getInstrInfo(), *miBegin)) {
           assert(curRes.bits.ResourceID && "Atomic resource ID "
               "cannot be non-zero!");
           (*miBegin)->getOperand((*miBegin)->getNumOperands()-1)
@@ -2176,7 +2182,7 @@ annotateRawPtrs(
         // the device to use as the ResourceID
         curRes.bits.ResourceID = STM->device()
           ->getResourceID(AMDILDevice::GDS_ID);
-        if (isAtomicInst(*miBegin)) {
+        if (isAtomicInst(TM.getInstrInfo(), *miBegin)) {
           assert(curRes.bits.ResourceID && "Atomic resource ID "
               "cannot be non-zero!");
           (*miBegin)->getOperand((*miBegin)->getNumOperands()-1)
@@ -2211,7 +2217,7 @@ annotateRawPtrs(
           curRes.bits.ResourceID = STM->device()
             ->getResourceID(AMDILDevice::ARENA_UAV_ID);
         }
-        if (isAtomicInst(*miBegin)) {
+        if (isAtomicInst(TM.getInstrInfo(), *miBegin)) {
           (*miBegin)->getOperand((*miBegin)->getNumOperands()-1)
             .setImm(curRes.bits.ResourceID);
           if (curRes.bits.ResourceID
@@ -2405,7 +2411,7 @@ allocateMultiUAVPointers(
       AMDILAS::InstrResEnc curRes;
       getAsmPrinterFlags(*miBegin, curRes);
       curRes.bits.ResourceID = curUAV;
-      if (isAtomicInst(*miBegin)) {
+      if (isAtomicInst(ATM->getInstrInfo(), *miBegin)) {
         (*miBegin)->getOperand((*miBegin)->getNumOperands()-1)
           .setImm(curRes.bits.ResourceID);
         if (curRes.bits.ResourceID
@@ -2470,7 +2476,7 @@ allocateMultiUAVPointers(
       AMDILAS::InstrResEnc curRes;
       getAsmPrinterFlags(*miBegin, curRes);
       curRes.bits.ResourceID = curUAV;
-      if (isAtomicInst(*miBegin)) {
+      if (isAtomicInst(ATM->getInstrInfo(), *miBegin)) {
         (*miBegin)->getOperand((*miBegin)->getNumOperands()-1)
           .setImm(curRes.bits.ResourceID);
         if (curRes.bits.ResourceID
@@ -2516,9 +2522,9 @@ allocateDefaultIDs(
     for (MachineBasicBlock::iterator mbb = MB->begin(), mbe = MB->end();
         mbb != mbe; ++mbb) {
       MachineInstr *MI = mbb;
-      if (isLoadInst(MI) 
-          || isStoreInst(MI)
-          || isAtomicInst(MI)) {
+      if (isLoadInst(ATM->getInstrInfo(), MI) 
+          || isStoreInst(ATM->getInstrInfo(), MI)
+          || isAtomicInst(ATM->getInstrInfo(), MI)) {
         AMDILAS::InstrResEnc curRes;
         getAsmPrinterFlags(MI, curRes);
         allocateDefaultID(ATM, curRes, MI, mDebug);

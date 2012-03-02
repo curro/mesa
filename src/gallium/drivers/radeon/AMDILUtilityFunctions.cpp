@@ -66,6 +66,16 @@
 #include <cstdio>
 #include <queue>
 #include <list>
+
+#if LLVM_VERSION <= 3000
+#define GET_OPCODE_NAME(TII, MI) \
+  MI->getDesc().getName()
+#else
+#define GET_OPCODE_NAME(TII, MI) \
+  TII->getName(MI->getOpcode())
+#endif
+
+
 using namespace llvm;
 int64_t GET_SCALAR_SIZE(llvm::Type *A) {
   return A->getScalarSizeInBits();
@@ -562,11 +572,11 @@ bool commaPrint(int i, OSTREAM_TYPE &O) {
   return false;
 }
 
-bool isLoadInst(MachineInstr *MI) {
-  if (strstr(MI->getDesc().getName(), "LOADCONST")) {
+bool isLoadInst(const llvm::TargetInstrInfo * TII, MachineInstr *MI) {
+  if (strstr(GET_OPCODE_NAME(TII, MI), "LOADCONST")) {
     return false;
   }
-  return strstr(MI->getDesc().getName(), "LOAD");
+  return strstr(GET_OPCODE_NAME(TII, MI), "LOAD");
 }
 
 bool isSWSExtLoadInst(MachineInstr *MI)
@@ -585,35 +595,35 @@ switch (MI->getOpcode()) {
   return false;
 }
 
-bool isExtLoadInst(MachineInstr *MI) {
-  return strstr(MI->getDesc().getName(), "EXTLOAD");
+bool isExtLoadInst(const llvm::TargetInstrInfo * TII, MachineInstr *MI) {
+  return strstr(GET_OPCODE_NAME(TII, MI), "EXTLOAD");
 }
 
-bool isSExtLoadInst(MachineInstr *MI) {
-  return strstr(MI->getDesc().getName(), "SEXTLOAD");
+bool isSExtLoadInst(const llvm::TargetInstrInfo * TII, MachineInstr *MI) {
+  return strstr(GET_OPCODE_NAME(TII, MI), "SEXTLOAD");
 }
 
-bool isAExtLoadInst(MachineInstr *MI) {
-  return strstr(MI->getDesc().getName(), "AEXTLOAD");
+bool isAExtLoadInst(const llvm::TargetInstrInfo * TII, MachineInstr *MI) {
+  return strstr(GET_OPCODE_NAME(TII, MI), "AEXTLOAD");
 }
 
-bool isZExtLoadInst(MachineInstr *MI) {
-  return strstr(MI->getDesc().getName(), "ZEXTLOAD");
+bool isZExtLoadInst(const llvm::TargetInstrInfo * TII, MachineInstr *MI) {
+  return strstr(GET_OPCODE_NAME(TII, MI), "ZEXTLOAD");
 }
 
-bool isStoreInst(MachineInstr *MI) {
-  return strstr(MI->getDesc().getName(), "STORE");
+bool isStoreInst(const llvm::TargetInstrInfo * TII, MachineInstr *MI) {
+  return strstr(GET_OPCODE_NAME(TII, MI), "STORE");
 }
 
-bool isTruncStoreInst(MachineInstr *MI) {
-  return strstr(MI->getDesc().getName(), "TRUNCSTORE");
+bool isTruncStoreInst(const llvm::TargetInstrInfo * TII, MachineInstr *MI) {
+  return strstr(GET_OPCODE_NAME(TII, MI), "TRUNCSTORE");
 }
 
-bool isAtomicInst(MachineInstr *MI) {
-  return strstr(MI->getDesc().getName(), "ATOM");
+bool isAtomicInst(const llvm::TargetInstrInfo * TII, MachineInstr *MI) {
+  return strstr(GET_OPCODE_NAME(TII, MI), "ATOM");
 }
 
-bool isVolatileInst(MachineInstr *MI) {
+bool isVolatileInst(const llvm::TargetInstrInfo * TII, MachineInstr *MI) {
   if (!MI->memoperands_empty()) {
     for (MachineInstr::mmo_iterator mob = MI->memoperands_begin(),
         moe = MI->memoperands_end(); mob != moe; ++mob) {
@@ -625,51 +635,51 @@ bool isVolatileInst(MachineInstr *MI) {
   }
   return false;
 }
-bool isGlobalInst(llvm::MachineInstr *MI)
+bool isGlobalInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI)
 {
-  return strstr(MI->getDesc().getName(), "GLOBAL");
+  return strstr(GET_OPCODE_NAME(TII, MI), "GLOBAL");
 }
-bool isPrivateInst(llvm::MachineInstr *MI)
+bool isPrivateInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI)
 {
-  return strstr(MI->getDesc().getName(), "PRIVATE");
+  return strstr(GET_OPCODE_NAME(TII, MI), "PRIVATE");
 }
-bool isConstantInst(llvm::MachineInstr *MI)
+bool isConstantInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI)
 {
-  return strstr(MI->getDesc().getName(), "CONSTANT")
-    || strstr(MI->getDesc().getName(), "CPOOL");
+  return strstr(GET_OPCODE_NAME(TII, MI), "CONSTANT")
+    || strstr(GET_OPCODE_NAME(TII, MI), "CPOOL");
 }
-bool isRegionInst(llvm::MachineInstr *MI)
+bool isRegionInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI)
 {
-  return strstr(MI->getDesc().getName(), "REGION");
+  return strstr(GET_OPCODE_NAME(TII, MI), "REGION");
 }
-bool isLocalInst(llvm::MachineInstr *MI)
+bool isLocalInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI)
 {
-  return strstr(MI->getDesc().getName(), "LOCAL");
+  return strstr(GET_OPCODE_NAME(TII, MI), "LOCAL");
 }
-bool isImageInst(llvm::MachineInstr *MI)
+bool isImageInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI)
 {
-  return strstr(MI->getDesc().getName(), "IMAGE");
+  return strstr(GET_OPCODE_NAME(TII, MI), "IMAGE");
 }
-bool isAppendInst(llvm::MachineInstr *MI)
+bool isAppendInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI)
 {
-  return strstr(MI->getDesc().getName(), "APPEND");
+  return strstr(GET_OPCODE_NAME(TII, MI), "APPEND");
 }
-bool isRegionAtomic(llvm::MachineInstr *MI)
+bool isRegionAtomic(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI)
 {
-  return strstr(MI->getDesc().getName(), "ATOM_R");
+  return strstr(GET_OPCODE_NAME(TII, MI), "ATOM_R");
 }
-bool isLocalAtomic(llvm::MachineInstr *MI)
+bool isLocalAtomic(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI)
 {
-  return strstr(MI->getDesc().getName(), "ATOM_L");
+  return strstr(GET_OPCODE_NAME(TII, MI), "ATOM_L");
 }
-bool isGlobalAtomic(llvm::MachineInstr *MI)
+bool isGlobalAtomic(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI)
 {
-  return strstr(MI->getDesc().getName(), "ATOM_G")
-    || isArenaAtomic(MI);
+  return strstr(GET_OPCODE_NAME(TII, MI), "ATOM_G")
+    || isArenaAtomic(TII, MI);
 }
-bool isArenaAtomic(llvm::MachineInstr *MI)
+bool isArenaAtomic(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI)
 {
-  return strstr(MI->getDesc().getName(), "ATOM_A");
+  return strstr(GET_OPCODE_NAME(TII, MI), "ATOM_A");
 }
 
 const char* getSrcSwizzle(unsigned idx) {

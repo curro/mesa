@@ -169,18 +169,22 @@ AMDILIntrinsicInfo::lookupName(const char *Name, unsigned int Len) const
 }
 
 bool 
-AMDILIntrinsicInfo::isOverloaded(unsigned IntrID) const 
+AMDILIntrinsicInfo::isOverloaded(unsigned id) const 
 {
   // Overload Table
+#if LLVM_VERSION <= 3000
   const bool OTable[] = {
+#endif
 #define GET_INTRINSIC_OVERLOAD_TABLE
 #include "AMDILGenIntrinsics.inc"
 #undef GET_INTRINSIC_OVERLOAD_TABLE
+#if LLVM_VERSION <= 3000
   };
-  if (!IntrID) {
+  if (!id) {
     return false;
   }
-  return OTable[IntrID - Intrinsic::num_intrinsics];
+  return OTable[id - Intrinsic::num_intrinsics];
+#endif
 }
 
 /// This defines the "getAttributes(ID id)" method.

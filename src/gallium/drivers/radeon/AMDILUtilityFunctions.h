@@ -210,27 +210,27 @@ const llvm::Value *getBasePointerValue(const llvm::MachineInstr *MI);
 int64_t GET_SCALAR_SIZE(llvm::Type* A);
 
 // Helper functions that check the opcode for status information
-bool isLoadInst(llvm::MachineInstr *MI);
-bool isExtLoadInst(llvm::MachineInstr *MI);
+bool isLoadInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isExtLoadInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
 bool isSWSExtLoadInst(llvm::MachineInstr *MI);
-bool isSExtLoadInst(llvm::MachineInstr *MI);
-bool isZExtLoadInst(llvm::MachineInstr *MI);
-bool isAExtLoadInst(llvm::MachineInstr *MI);
-bool isStoreInst(llvm::MachineInstr *MI);
-bool isTruncStoreInst(llvm::MachineInstr *MI);
-bool isAtomicInst(llvm::MachineInstr *MI);
-bool isVolatileInst(llvm::MachineInstr *MI);
-bool isGlobalInst(llvm::MachineInstr *MI);
-bool isPrivateInst(llvm::MachineInstr *MI);
-bool isConstantInst(llvm::MachineInstr *MI);
-bool isRegionInst(llvm::MachineInstr *MI);
-bool isLocalInst(llvm::MachineInstr *MI);
-bool isImageInst(llvm::MachineInstr *MI);
-bool isAppendInst(llvm::MachineInstr *MI);
-bool isRegionAtomic(llvm::MachineInstr *MI);
-bool isLocalAtomic(llvm::MachineInstr *MI);
-bool isGlobalAtomic(llvm::MachineInstr *MI);
-bool isArenaAtomic(llvm::MachineInstr *MI);
+bool isSExtLoadInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isZExtLoadInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isAExtLoadInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isStoreInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isTruncStoreInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isAtomicInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isVolatileInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isGlobalInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isPrivateInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isConstantInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isRegionInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isLocalInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isImageInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isAppendInst(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isRegionAtomic(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isLocalAtomic(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isGlobalAtomic(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
+bool isArenaAtomic(const llvm::TargetInstrInfo * TII, llvm::MachineInstr *MI);
 
 
 // Macros that are used to help with switch statements for various data types

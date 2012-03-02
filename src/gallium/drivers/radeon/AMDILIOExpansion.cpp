@@ -288,7 +288,9 @@ AMDILIOExpansion::isAddrCalcInstr(MachineInstr *MI)
   bool
 AMDILIOExpansion::isExtendLoad(MachineInstr *MI)
 {
-  return isSExtLoadInst(MI) || isZExtLoadInst(MI) || isAExtLoadInst(MI)
+  return isSExtLoadInst(TM.getInstrInfo(), MI) ||
+         isZExtLoadInst(TM.getInstrInfo(), MI) ||
+         isAExtLoadInst(TM.getInstrInfo(), MI)
     || isSWSExtLoadInst(MI);
 }
 
@@ -331,7 +333,7 @@ AMDILIOExpansion::isPackedData(MachineInstr *MI)
 {
   switch(MI->getOpcode()) {
     default:
-      if (isTruncStoreInst(MI)) {
+      if (isTruncStoreInst(TM.getInstrInfo(), MI)) {
         switch (MI->getDesc().OpInfo[0].RegClass) {
           default:
             break;
@@ -760,7 +762,7 @@ AMDILIOExpansion::expandExtendLoad(MachineInstr *MI)
   }
   unsigned opcode = 0;
   DebugLoc DL = MI->getDebugLoc();
-  if (isZExtLoadInst(MI) || isAExtLoadInst(MI) || isSExtLoadInst(MI)) {
+  if (isZExtLoadInst(TM.getInstrInfo(), MI) || isAExtLoadInst(TM.getInstrInfo(), MI) || isSExtLoadInst(TM.getInstrInfo(), MI)) {
     switch(MI->getDesc().OpInfo[0].RegClass) {
       default:
         assert(0 && "Found an extending load that we don't handle!");
@@ -768,29 +770,29 @@ AMDILIOExpansion::expandExtendLoad(MachineInstr *MI)
       case AMDIL::GPRI16RegClassID:
         if (!isHardwareLocal(MI)
             || mSTM->device()->usesSoftware(AMDILDeviceInfo::ByteLDSOps)) {
-          opcode = isSExtLoadInst(MI) ? AMDIL::SHRVEC_i16 : AMDIL::USHRVEC_i16;
+          opcode = isSExtLoadInst(TM.getInstrInfo(), MI) ? AMDIL::SHRVEC_i16 : AMDIL::USHRVEC_i16;
           expandIntegerExtend(MI, AMDIL::SHL_i16, opcode, 24);
         }
         break;
       case AMDIL::GPRV2I16RegClassID:
-        opcode = isSExtLoadInst(MI) ? AMDIL::SHRVEC_v2i16 : AMDIL::USHRVEC_v2i16;
+        opcode = isSExtLoadInst(TM.getInstrInfo(), MI) ? AMDIL::SHRVEC_v2i16 : AMDIL::USHRVEC_v2i16;
         expandIntegerExtend(MI, AMDIL::SHL_v2i16, opcode, 24);
         break;
       case AMDIL::GPRV4I8RegClassID:        
-        opcode = isSExtLoadInst(MI) ? AMDIL::SHRVEC_v4i8 : AMDIL::USHRVEC_v4i8;
+        opcode = isSExtLoadInst(TM.getInstrInfo(), MI) ? AMDIL::SHRVEC_v4i8 : AMDIL::USHRVEC_v4i8;
         expandIntegerExtend(MI, AMDIL::SHL_v4i8, opcode, 24);
         break;
       case AMDIL::GPRV4I16RegClassID:
-        opcode = isSExtLoadInst(MI) ? AMDIL::SHRVEC_v4i16 : AMDIL::USHRVEC_v4i16;
+        opcode = isSExtLoadInst(TM.getInstrInfo(), MI) ? AMDIL::SHRVEC_v4i16 : AMDIL::USHRVEC_v4i16;
         expandIntegerExtend(MI, AMDIL::SHL_v4i16, opcode, 24);
         break;
       case AMDIL::GPRI32RegClassID:
         // We can be a i8 or i16 bit sign extended value
         if (isNbitType(mType, 8) || getMemorySize(MI) == 1) {
-          opcode = isSExtLoadInst(MI) ? AMDIL::SHRVEC_i32 : AMDIL::USHRVEC_i32;
+          opcode = isSExtLoadInst(TM.getInstrInfo(), MI) ? AMDIL::SHRVEC_i32 : AMDIL::USHRVEC_i32;
           expandIntegerExtend(MI, AMDIL::SHL_i32, opcode, 24);
         } else if (isNbitType(mType, 16) || getMemorySize(MI) == 2) {
-          opcode = isSExtLoadInst(MI) ? AMDIL::SHRVEC_i32 : AMDIL::USHRVEC_i32;
+          opcode = isSExtLoadInst(TM.getInstrInfo(), MI) ? AMDIL::SHRVEC_i32 : AMDIL::USHRVEC_i32;
           expandIntegerExtend(MI, AMDIL::SHL_i32, opcode, 16);
         } else {
           assert(0 && "Found an extending load that we don't handle!");
@@ -799,10 +801,10 @@ AMDILIOExpansion::expandExtendLoad(MachineInstr *MI)
       case AMDIL::GPRV2I32RegClassID:
         // We can be a v2i8 or v2i16 bit sign extended value
         if (isNbitType(mType, 8, false) || getMemorySize(MI) == 2) {
-          opcode = isSExtLoadInst(MI) ? AMDIL::SHRVEC_v2i32 : AMDIL::USHRVEC_v2i32;
+          opcode = isSExtLoadInst(TM.getInstrInfo(), MI) ? AMDIL::SHRVEC_v2i32 : AMDIL::USHRVEC_v2i32;
           expandIntegerExtend(MI, AMDIL::SHL_v2i32, opcode, 24);
         } else if (isNbitType(mType, 16, false) || getMemorySize(MI) == 4) {
-          opcode = isSExtLoadInst(MI) ? AMDIL::SHRVEC_v2i32 : AMDIL::USHRVEC_v2i32;
+          opcode = isSExtLoadInst(TM.getInstrInfo(), MI) ? AMDIL::SHRVEC_v2i32 : AMDIL::USHRVEC_v2i32;
           expandIntegerExtend(MI, AMDIL::SHL_v2i32, opcode, 16);
         } else {
           assert(0 && "Found an extending load that we don't handle!");
@@ -811,10 +813,10 @@ AMDILIOExpansion::expandExtendLoad(MachineInstr *MI)
       case AMDIL::GPRV4I32RegClassID:
         // We can be a v4i8 or v4i16 bit sign extended value
         if (isNbitType(mType, 8, false) || getMemorySize(MI) == 4) {
-          opcode = isSExtLoadInst(MI) ? AMDIL::SHRVEC_v4i32 : AMDIL::USHRVEC_v4i32;
+          opcode = isSExtLoadInst(TM.getInstrInfo(), MI) ? AMDIL::SHRVEC_v4i32 : AMDIL::USHRVEC_v4i32;
           expandIntegerExtend(MI, AMDIL::SHL_v4i32, opcode, 24);
         } else if (isNbitType(mType, 16, false) || getMemorySize(MI) == 8) {
-          opcode = isSExtLoadInst(MI) ? AMDIL::SHRVEC_v4i32 : AMDIL::USHRVEC_v4i32;
+          opcode = isSExtLoadInst(TM.getInstrInfo(), MI) ? AMDIL::SHRVEC_v4i32 : AMDIL::USHRVEC_v4i32;
           expandIntegerExtend(MI, AMDIL::SHL_v4i32, opcode, 16);
         } else {
           assert(0 && "Found an extending load that we don't handle!");
@@ -823,11 +825,11 @@ AMDILIOExpansion::expandExtendLoad(MachineInstr *MI)
       case AMDIL::GPRI64RegClassID:
         // We can be a i8, i16 or i32 bit sign extended value
         if (isNbitType(mType, 8) || getMemorySize(MI) == 1) {
-          expandLongExtend(MI, 1, 8, isSExtLoadInst(MI));
+          expandLongExtend(MI, 1, 8, isSExtLoadInst(TM.getInstrInfo(), MI));
         } else if (isNbitType(mType, 16) || getMemorySize(MI) == 2) {
-          expandLongExtend(MI, 1, 16, isSExtLoadInst(MI));
+          expandLongExtend(MI, 1, 16, isSExtLoadInst(TM.getInstrInfo(), MI));
         } else if (isNbitType(mType, 32) || getMemorySize(MI) == 4) {
-          expandLongExtend(MI, 1, 32, isSExtLoadInst(MI));
+          expandLongExtend(MI, 1, 32, isSExtLoadInst(TM.getInstrInfo(), MI));
         } else {
           assert(0 && "Found an extending load that we don't handle!");
         }
@@ -835,11 +837,11 @@ AMDILIOExpansion::expandExtendLoad(MachineInstr *MI)
       case AMDIL::GPRV2I64RegClassID:
         // We can be a v2i8, v2i16 or v2i32 bit sign extended value
         if (isNbitType(mType, 8, false) || getMemorySize(MI) == 2) {
-          expandLongExtend(MI, 2, 8, isSExtLoadInst(MI));
+          expandLongExtend(MI, 2, 8, isSExtLoadInst(TM.getInstrInfo(), MI));
         } else if (isNbitType(mType, 16, false) || getMemorySize(MI) == 4) {
-          expandLongExtend(MI, 2, 16, isSExtLoadInst(MI));
+          expandLongExtend(MI, 2, 16, isSExtLoadInst(TM.getInstrInfo(), MI));
         } else if (isNbitType(mType, 32, false) || getMemorySize(MI) == 8) {
-          expandLongExtend(MI, 2, 32, isSExtLoadInst(MI));
+          expandLongExtend(MI, 2, 32, isSExtLoadInst(TM.getInstrInfo(), MI));
         } else {
           assert(0 && "Found an extending load that we don't handle!");
         }
@@ -914,7 +916,7 @@ AMDILIOExpansion::expandExtendLoad(MachineInstr *MI)
 AMDILIOExpansion::expandTruncData(MachineInstr *MI)
 {
   MachineBasicBlock::iterator I = *MI;
-  if (!isTruncStoreInst(MI)) {
+  if (!isTruncStoreInst(TM.getInstrInfo(), MI)) {
     return;
   }
   DebugLoc DL = MI->getDebugLoc();

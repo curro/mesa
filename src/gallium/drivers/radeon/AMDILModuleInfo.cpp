@@ -322,7 +322,11 @@ AMDILKernelAttr AMDILModuleInfo::parseSGV(const GlobalValue *G) {
     return nArg;
   }
   const Constant *CV = GV->getInitializer();
+#if LLVM_VERSION <= 3000
   const ConstantArray *CA = dyn_cast_or_null<ConstantArray>(CV);
+#else
+  const ConstantDataArray *CA = dyn_cast_or_null<ConstantDataArray>(CV);
+#endif
   if (!CA || !CA->isString()) {
     return nArg;
   }
@@ -398,8 +402,13 @@ void AMDILModuleInfo::parseConstantPtrAnnotate(const GlobalValue *G) {
     assert(sizeField && "There must be a constant size field");
     const GlobalVariable *nameGV =
       dyn_cast<GlobalVariable>(nameField->getOperand(0));
+#if LLVM_VERSION <= 3000
     const ConstantArray *nameArray =
       dyn_cast<ConstantArray>(nameGV->getInitializer());
+#else
+    const ConstantDataArray *nameArray =
+      dyn_cast<ConstantDataArray>(nameGV->getInitializer());
+#endif
     // Lets add this string to the set of strings we should ignore processing
     mIgnoreStr.insert(nameGV->getName());
     if (mConstMems.find(nameGV->getName())

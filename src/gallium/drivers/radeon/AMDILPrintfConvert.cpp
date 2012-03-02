@@ -157,8 +157,13 @@ AMDILPrintfConvert::expandPrintf(BasicBlock::iterator *bbb)
             = dyn_cast<GlobalVariable>(GEPinst->getOperand(0));
         std::string str = "unknown";
         if (GVar && GVar->hasInitializer()) {
+#if LLVM_VERSION <= 3000
           ConstantArray *CA
               = dyn_cast<ConstantArray>(GVar->getInitializer());
+#else
+          ConstantDataArray *CA
+              = dyn_cast<ConstantDataArray>(GVar->getInitializer());
+#endif
           str = (CA->isString() ? CA->getAsString() : "unknown");
         }
         uint64_t id = (uint64_t)mMFI->addPrintfString(str, 

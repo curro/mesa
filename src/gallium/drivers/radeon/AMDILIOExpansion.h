@@ -80,6 +80,7 @@ namespace llvm {
   class MachineInstr;
   class Constant;
   class TargetInstrInfo;
+  class Type;
   typedef enum {
     NO_PACKING = 0,
     PACK_V2I8,
@@ -101,6 +102,7 @@ namespace llvm {
       static char ID;
     protected:
       AMDILIOExpansion(TargetMachine &tm AMDIL_OPT_LEVEL_DECL);
+      TargetMachine &TM;
       //
       // @param MI Machine instruction to check.
       // @brief checks to see if the machine instruction
@@ -195,7 +197,6 @@ namespace llvm {
       void
         emitStaticCPLoad(MachineInstr* MI, int swizzle, int id,
             bool ExtFPLoad);
-      TargetMachine &TM;
   }; // class AMDILIOExpansion
 
   // Intermediate class that holds I/O code expansion that is common to the

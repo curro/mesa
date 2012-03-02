@@ -165,7 +165,7 @@ AMDILRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     if (!MI.getOperand(x).isFI()) {
       continue;
     }
-    bool def = isStoreInst(&MI);
+    bool def = isStoreInst(TM.getInstrInfo(), &MI);
     int FrameIndex = MI.getOperand(x).getIndex();
     int64_t Offset = MFI->getObjectOffset(FrameIndex);
     //int64_t Size = MF.getFrameInfo()->getObjectSize(FrameIndex);

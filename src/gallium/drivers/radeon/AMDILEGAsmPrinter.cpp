@@ -151,7 +151,12 @@ AMDILEGAsmPrinter::EmitInstruction(const MachineInstr *II)
     return;
   }
   if (isMacroCall(II)) {
-    const char *name = II->getDesc().getName() + 5;
+    const char *name;
+#if LLVM_VERSION <= 3000
+    name = II->getDesc().getName() + 5;
+#else
+    name = mTM->getInstrInfo()->getName(II->getOpcode()) + 5;
+#endif
     if (!::strncmp(name, "__fma_f32", 9)
         && curTarget->device()->usesHardware(
           AMDILDeviceInfo::FMA)) {

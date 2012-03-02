@@ -92,9 +92,8 @@ namespace
         AMDILInlineCallIfPossible(CallSite CS,
             const TargetData *TD,
             InlinedArrayAllocasTy &InlinedArrayAllocas);
-#if LLVM_VERSION <= 3000
+
       CodeGenOpt::Level OptLevel;
-#endif
   };
   char AMDILInlinePass::ID = 0;
 } // anonymouse namespace

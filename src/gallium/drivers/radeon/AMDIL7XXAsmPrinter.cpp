@@ -153,7 +153,12 @@ AMDIL7XXAsmPrinter::EmitInstruction(const MachineInstr *II)
     return;
   }
   if (isMacroCall(II)) {
-    const char *name = II->getDesc().getName() + 5;
+    const char *name;
+#if LLVM_VERSION <= 3000
+    name = II->getDesc().getName() + 5;
+#else
+    name = mTM->getInstrInfo()->getName(II->getOpcode()) + 5;
+#endif
     int macronum = amd::MacroDBFindMacro(name);
     O << "\t;"<< name<<"\n";
     O << "\tmcall("<<macronum<<")";

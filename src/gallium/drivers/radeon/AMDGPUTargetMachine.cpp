@@ -72,11 +72,11 @@ AMDGPUTargetMachine::AMDGPUTargetMachine(const Target &T, StringRef TT,
 )
 :
   AMDILTargetMachine(T, TT, CPU, FS,
-#if LLVM_VERSOIN > 3000
+#if LLVM_VERSION > 3000
                      Options,
 #endif
                      RM, CM
-#if LLVM_VERSOIN > 3000
+#if LLVM_VERSION > 3000
                      ,OptLevel
 #endif
 ),

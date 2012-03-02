@@ -67,7 +67,7 @@ public:
                        TargetOptions Options,
 #endif
                        Reloc::Model RM, CodeModel::Model CM
-#if LLVM_VERSON > 3000
+#if LLVM_VERSION > 3000
                        ,CodeGenOpt::Level OL
 #endif
 );
