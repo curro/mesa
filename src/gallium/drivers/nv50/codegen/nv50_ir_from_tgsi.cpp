@@ -1747,6 +1747,34 @@ Converter::handleLIT(Value *dst0[4])
    }
 }
 
+static inline bool
+isResourceSpecial(const struct tgsi::Source *code, int r)
+{
+   return (r == TGSI_RESOURCE_GLOBAL ||
+           r == TGSI_RESOURCE_LOCAL ||
+           r == TGSI_RESOURCE_PRIVATE ||
+           r == TGSI_RESOURCE_INPUT);
+}
+
+static inline bool
+isResourceRaw(const struct tgsi::Source *code, int r)
+{
+   return isResourceSpecial(code, r) || code->resources[r].raw;
+}
+
+static inline bool
+isResourceConstbuf(const struct tgsi::Source *code, int r)
+{
+   return !isResourceSpecial(code, r) && code->resources[r].constbuf;
+}
+
+static inline nv50_ir::TexTarget
+getResourceTarget(const struct tgsi::Source *code, int r)
+{
+   return (isResourceSpecial(code, r) ? nv50_ir::TEX_TARGET_BUFFER :
+           tgsi::translateTexture(code->resources[r].target));
+}
+
 Symbol *
 Converter::getResourceBase(int r)
 {
@@ -1769,8 +1797,8 @@ Converter::getResourceBase(int r)
       sym->reg.data.offset = info->prop.cp.inputOffset;
       break;
    default:
-      assert(r >= 0);
-      if (code->resources[r].constbuf)
+      assert((unsigned)r < code->resourceCount);
+      if (isResourceConstbuf(code, r))
          sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_CONST,
                           code->resources[r].idx);
       else
@@ -1788,13 +1816,13 @@ Converter::getResourceOffset(int r, int s)
    std::vector<Value *> off;
 
    off.push_back(fetchSrc(s, 0));
-   if (r >= 0 && code->resources[r].target == TGSI_TEXTURE_2D)
+   if (getResourceTarget(code, r) == nv50_ir::TEX_TARGET_2D)
       off.push_back(fetchSrc(s, 1));
 
    if (r == TGSI_RESOURCE_LOCAL ||
        r == TGSI_RESOURCE_PRIVATE ||
        r == TGSI_RESOURCE_INPUT ||
-       (r >= 0 && code->resources[r].constbuf))
+       isResourceConstbuf(code, r))
       off[0] = mkOp1v(OP_MOV, TYPE_U32, getScratch(4, FILE_ADDRESS), off[0]);
 
    return off;
@@ -1815,21 +1843,21 @@ Converter::handleLOAD(Value *dst0[4])
    std::vector<Value *> off = getResourceOffset(r, 1);
    std::vector<Value *> src = off;
 
-   if (r < 0 || code->resources[r].raw) {
+   if (isResourceRaw(code, r)) {
       FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
          int i = tgsi.getSrc(0).getSwizzle(c);
 
          src[0] = mkOp2v(OP_ADD, TYPE_U32, getSSA(4, off[0]->reg.file),
                          off[0], mkImm(4 * i));
 
-         if (r < 0 || code->resources[r].constbuf) {
+         if (isResourceSpecial(code, r) || isResourceConstbuf(code, r)) {
             dst0[c] = mkLoadv(TYPE_U32, base, src[0], ridx);
+
          } else {
             std::vector<Value *> def(1, dst0[c]);
 
-            mkTex(OP_SULDB, tgsi::translateTexture(code->resources[r].target),
-                  code->resources[r].idx, -1, def, src)
-               ->setIndirectR(ridx);
+            mkTex(OP_SULDB, getResourceTarget(code, r),
+                  code->resources[r].idx, -1, def, src)->setIndirectR(ridx);
          }
       }
 
@@ -1841,9 +1869,8 @@ Converter::handleLOAD(Value *dst0[4])
          def[i] = dst0[c];
       }
 
-      mkTex(OP_SULDP, tgsi::translateTexture(code->resources[r].target),
-            code->resources[r].idx, -1, def, src)
-         ->setIndirectR(ridx);
+      mkTex(OP_SULDP, getResourceTarget(code, r), code->resources[r].idx,
+            -1, def, src)->setIndirectR(ridx);
    }
 }
 
@@ -1858,20 +1885,20 @@ Converter::handleSTORE()
    std::vector<Value *> def;
    int s = off.size();
 
-   if (r < 0 || code->resources[r].raw) {
+   if (isResourceRaw(code, r)) {
       FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
          src[0] = mkOp2v(OP_ADD, TYPE_U32, getSSA(4, off[0]->reg.file),
                          off[0], mkImm(4 * c));
 
-         if (r < 0 || code->resources[r].constbuf) {
+         if (isResourceSpecial(code, r) || isResourceConstbuf(code, r)) {
             mkStore(OP_STORE, TYPE_U32, base, src[0], fetchSrc(1, c), ridx);
+
          } else {
             src.resize(s + 1);
             src[s] = fetchSrc(1, c);
 
-            mkTex(OP_SUSTB, tgsi::translateTexture(code->resources[r].target),
-                  code->resources[r].idx, -1, def, src)
-               ->setIndirectR(ridx);
+            mkTex(OP_SUSTB, getResourceTarget(code, r),
+                  code->resources[r].idx, -1, def, src)->setIndirectR(ridx);
          }
       }
 
@@ -1881,9 +1908,8 @@ Converter::handleSTORE()
          src[s + c] = fetchSrc(1, c);
       }
 
-      mkTex(OP_SUSTP, tgsi::translateTexture(code->resources[r].target),
-            code->resources[r].idx, -1, def, src)
-         ->setIndirectR(ridx);
+      mkTex(OP_SUSTP, getResourceTarget(code, r), code->resources[r].idx,
+            -1, def, src)->setIndirectR(ridx);
    }
 }
 
