@@ -559,7 +559,7 @@ BuildUtil::DataArray::load(ValueMap &m, int i, int c, Value *ptr)
       if (!sym)
          sym = insert(m, i, c, mkSymbol(i, c));
 
-      return up->mkLoad(typeOfSize(eltSize), static_cast<Symbol *>(sym), ptr);
+      return up->mkLoadv(typeOfSize(eltSize), static_cast<Symbol *>(sym), ptr);
    }
 }
 
