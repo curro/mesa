@@ -24,6 +24,7 @@
 #include "nv50/codegen/nv50_ir_build_util.h"
 
 #include "nv50_ir_target_nv50.h"
+#include "nv50_ir_surface.h"
 
 namespace nv50_ir {
 
@@ -1140,11 +1141,14 @@ NV50LoweringPreSSA::visit(Instruction *i)
 bool
 TargetNV50::runLegalizePass(Program *prog, CGStage stage) const
 {
-   bool ret = false;
+   bool ret = true;
 
    if (stage == CG_STAGE_PRE_SSA) {
-      NV50LoweringPreSSA pass(prog);
-      ret = pass.run(prog, false, true);
+      if (!NV50SurfaceLowering().run(prog, false, true))
+         return false;
+
+      if (!NV50LoweringPreSSA(prog).run(prog, false, true))
+         return false;
    } else
    if (stage == CG_STAGE_SSA) {
       if (!prog->targetPriv)
