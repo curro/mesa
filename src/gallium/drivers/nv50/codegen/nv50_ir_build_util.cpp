@@ -457,6 +457,57 @@ BuildUtil::mkSysVal(SVSemantic svName, uint32_t svIndex)
    return sym;
 }
 
+BasicBlock *BuildUtil::split()
+{
+   if (pos) {
+      if (tail) {
+         bb = bb->splitAfter(pos, false);
+         pos = NULL;
+         tail = false;
+      } else {
+         bb = bb->splitBefore(pos, false);
+      }
+   } else {
+      if (tail)
+         bb = bb->splitAfter(NULL, false);
+      else
+         bb = bb->splitBefore(NULL, false);
+   }
+
+   return bb;
+}
+
+void
+BuildUtil::mkIfBlock(CondCode cc, DataType ty, Value *a, Value *b,
+                     BasicBlock **bbTrue, BasicBlock **bbFalse)
+{
+   Value *p = getScratch(1, FILE_FLAGS);
+   BasicBlock *entry = bb;
+   BasicBlock *exit = split();
+   BasicBlock *bbt = new BasicBlock(func);
+   BasicBlock *bbf = new BasicBlock(func);
+
+   entry->cfg.attach(&bbt->cfg, Graph::Edge::TREE);
+   bbt->cfg.attach(&exit->cfg, Graph::Edge::FORWARD);
+   entry->cfg.attach(&bbf->cfg, Graph::Edge::TREE);
+   bbf->cfg.attach(&exit->cfg, Graph::Edge::FORWARD);
+
+   setPosition(entry, true);
+   mkCmp(OP_SET, cc, ty, p, a, b);
+   mkFlow(OP_BRA, bbf, CC_EQ, p);
+   mkFlow(OP_BRA, bbt, CC_ALWAYS, NULL);
+
+   setPosition(bbt->splitAfter(NULL), true);
+   mkFlow(OP_BRA, exit, CC_ALWAYS, NULL);
+
+   setPosition(exit, false);
+
+   if (bbTrue)
+      *bbTrue = bbt;
+   if (bbFalse)
+      *bbFalse = bbf;
+}
+
 void
 BuildUtil::DataArray::setup(unsigned array, unsigned arrayIdx,
                             uint32_t base, int len, int vecDim, int eltSize,

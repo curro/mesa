@@ -44,6 +44,7 @@ public:
 
    inline void insert(Instruction *);
    inline void remove(Instruction *i) { assert(i->bb == bb); bb->remove(i); }
+   BasicBlock *split();
 
    inline LValue *getScratch(int size = 4, DataFile = FILE_GPR);
    inline std::vector<Value *> getScratchv(int n, int size = 4,
@@ -101,6 +102,9 @@ public:
    Value *loadImm(Value *dst, uint64_t);
 
    Value *loadImm(Value *dst, int i) { return loadImm(dst, (uint32_t)i); }
+
+   void mkIfBlock(CondCode cc, DataType ty, Value *a, Value *b,
+                  BasicBlock **bbTrue, BasicBlock **bbFalse);
 
    struct Location
    {
