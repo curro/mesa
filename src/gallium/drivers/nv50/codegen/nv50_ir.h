@@ -134,6 +134,7 @@ enum operation
    OP_INSBF,  // insert first src1[8:15] bits of src0 into src2 at src1[0:7]
    OP_EXTBF,
    OP_TEXBAR,
+   OP_BAR,
    OP_LAST
 };
 

@@ -33,7 +33,8 @@ namespace nv50_ir {
 bool
 Instruction::isNop() const
 {
-   if (op == OP_PHI || op == OP_SPLIT || op == OP_MERGE || op == OP_CONSTRAINT)
+   if (op == OP_PHI || op == OP_SPLIT || op == OP_MERGE ||
+       op == OP_CONSTRAINT || op == OP_MEMBAR)
       return true;
    if (terminator || join) // XXX: should terminator imply flow ?
       return false;
@@ -1727,7 +1728,8 @@ MemoryOpt::runOpt(BasicBlock *bb)
          isLoad = false;
       } else {
          // TODO: maybe have all fixed ops act as barrier ?
-         if (ldst->op == OP_CALL) {
+         if (ldst->op == OP_CALL || ldst->op == OP_BAR ||
+             ldst->op == OP_MEMBAR) {
             purgeRecords(NULL, FILE_MEMORY_LOCAL);
             purgeRecords(NULL, FILE_MEMORY_GLOBAL);
             purgeRecords(NULL, FILE_MEMORY_SHARED);

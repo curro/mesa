@@ -2458,6 +2458,14 @@ Converter::handleInstruction(const struct tgsi_full_instruction *insn)
    case TGSI_OPCODE_STORE:
       handleSTORE();
       break;
+   case TGSI_OPCODE_BARRIER:
+      mkOp1(OP_BAR, TYPE_U32, NULL, mkImm(0))->fixed = 1;
+      break;
+   case TGSI_OPCODE_MFENCE:
+   case TGSI_OPCODE_LFENCE:
+   case TGSI_OPCODE_SFENCE:
+      mkOp(OP_MEMBAR, TYPE_NONE, NULL)->fixed = 1;
+      break;
    default:
       ERROR("unhandled TGSI opcode: %u\n", tgsi.getOpcode());
       assert(0);

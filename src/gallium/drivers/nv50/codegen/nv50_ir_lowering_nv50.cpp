@@ -229,7 +229,7 @@ NV50LegalizePostRA::visit(BasicBlock *bb)
       if (i->op == OP_PRERET && prog->getTarget()->getChipset() < 0xa0) {
          handlePRERET(i->asFlow());
       } else {
-         if (i->op != OP_MOV && i->op != OP_PFETCH &&
+         if (i->op != OP_MOV && i->op != OP_PFETCH && i->op != OP_BAR &&
              (!i->defExists(0) || i->def(0).getFile() != FILE_ADDRESS))
             replaceZero(i);
          if (typeSizeof(i->dType) == 8)

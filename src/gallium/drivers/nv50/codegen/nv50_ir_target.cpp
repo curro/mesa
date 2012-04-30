@@ -48,7 +48,7 @@ const uint8_t Target::operationSrcNr[OP_LAST + 1] =
    1, 2, 1, 2,             // SULDB, SUSTB, SULDP, SUSTP
    1, 1,                   // DFDX, DFDY
    1, 2, 2, 2, 0, 0,       // RDSV, WRSV, PIXLD, QUADOP, QUADON, QUADPOP
-   2, 3, 2, 0,             // POPCNT, INSBF, EXTBF, TEXBAR
+   2, 3, 2, 0, 1,          // POPCNT, INSBF, EXTBF, TEXBAR, BAR
    0
 };
 

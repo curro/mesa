@@ -138,7 +138,7 @@ const char *operationStr[OP_LAST + 1] =
    "join",
    "discard",
    "exit",
-   "barrier",
+   "membar",
    "vfetch",
    "pfetch",
    "export",
@@ -170,6 +170,7 @@ const char *operationStr[OP_LAST + 1] =
    "insbf",
    "extbf",
    "texbar",
+   "bar",
    "(invalid)"
 };
 

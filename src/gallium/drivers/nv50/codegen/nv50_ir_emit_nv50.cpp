@@ -121,6 +121,7 @@ private:
 
    void emitFlow(const Instruction *, uint8_t flowOp);
    void emitPRERETEmu(const FlowInstruction *);
+   void emitBAR(const Instruction *);
 };
 
 #define SDATA(a) ((a).rep()->reg.data)
@@ -1511,6 +1512,16 @@ CodeEmitterNV50::emitFlow(const Instruction *i, uint8_t flowOp)
    }
 }
 
+void
+CodeEmitterNV50::emitBAR(const Instruction *i)
+{
+   const ImmediateValue *barId = i->src(0).get()->asImm();
+   assert(barId);
+
+   code[0] = 0x86000003 | barId->reg.data.u32 << 21;
+   code[1] = 0x00004000;
+}
+
 bool
 CodeEmitterNV50::emitInstruction(Instruction *insn)
 {
@@ -1687,6 +1698,9 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
       break;
    case OP_DFDY:
       emitQUADOP(insn, 5, insn->src(0).mod.neg() ? 0x5a : 0xa5);
+      break;
+   case OP_BAR:
+      emitBAR(insn);
       break;
    case OP_PHI:
    case OP_UNION:
