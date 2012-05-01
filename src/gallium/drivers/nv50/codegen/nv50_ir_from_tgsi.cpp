@@ -544,7 +544,6 @@ static nv50_ir::operation translateOpcode(uint opcode)
    NV50_IR_OPCODE_CASE(USLT, SET);
    NV50_IR_OPCODE_CASE(USNE, SET);
 
-   NV50_IR_OPCODE_CASE(LOAD, TXF);
    NV50_IR_OPCODE_CASE(SAMPLE, TEX);
    NV50_IR_OPCODE_CASE(SAMPLE_B, TXB);
    NV50_IR_OPCODE_CASE(SAMPLE_C, TEX);
@@ -604,6 +603,12 @@ public:
    uint8_t *samplerViewTargets; // TGSI_TEXTURE_*
    unsigned samplerViewCount;
 
+   uint8_t *resourceTargets;
+   unsigned resourceCount;
+
+   unsigned surfCount;
+   unsigned constCount;
+
 private:
    int inferSysValDirection(unsigned sn) const;
    bool scanDeclaration(const struct tgsi_full_declaration *);
@@ -622,6 +627,7 @@ Source::Source(struct nv50_ir_prog_info *prog) : info(prog)
       tgsi_dump(tokens, 0);
 
    samplerViewTargets = NULL;
+   resourceTargets = NULL;
 
    mainTempsInLMem = FALSE;
 }
@@ -636,8 +642,8 @@ Source::~Source()
    if (info->immd.type)
       FREE(info->immd.type);
 
-   if (samplerViewTargets)
-      delete[] samplerViewTargets;
+   delete[] samplerViewTargets;
+   delete[] resourceTargets;
 }
 
 bool Source::scanSource()
@@ -656,6 +662,9 @@ bool Source::scanSource()
 
    samplerViewCount = scan.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
    samplerViewTargets = new uint8_t[samplerViewCount];
+
+   resourceCount = scan.file_max[TGSI_FILE_RESOURCE] + 1;
+   resourceTargets = new uint8_t[resourceCount];
 
    info->immd.bufSize = 0;
    tempArrayCount = 0;
@@ -878,6 +887,10 @@ bool Source::scanDeclaration(const struct tgsi_full_declaration *decl)
          info->sv[i].input = inferSysValDirection(sn);
       }
       break;
+   case TGSI_FILE_RESOURCE:
+      for (i = first; i <= last; ++i)
+         resourceTargets[i] = decl->Resource.Resource;
+      break;
    case TGSI_FILE_SAMPLER_VIEW:
       for (i = first; i <= last; ++i)
          samplerViewTargets[i] = decl->SamplerView.Resource;
@@ -1005,6 +1018,12 @@ nv50_ir::TexInstruction::Target
 Instruction::getTexture(const tgsi::Source *code, int s) const
 {
    switch (getSrc(s).getFile()) {
+   case TGSI_FILE_RESOURCE: {
+      // XXX: indirect access
+      unsigned int r = getSrc(s).getIndex(0);
+      assert(r < code->resourceCount);
+      return translateTexture(code->resourceTargets[r]);
+   }
    case TGSI_FILE_SAMPLER_VIEW: {
       // XXX: indirect access
       unsigned int r = getSrc(s).getIndex(0);
@@ -1069,6 +1088,11 @@ private:
    void handleTXQ(Value *dst0[4], enum TexQuery);
    void handleLIT(Value *dst0[4]);
    void handleUserClipPlanes();
+
+   Symbol *getResourceBase(int r);
+   Value *getResourceOffset(int r, int s);
+   void handleLOAD(Value *dst0[4]);
+   void handleSTORE();
 
    Value *interpolate(tgsi::Instruction::SrcRegister, int c, Value *ptr);
 
@@ -1689,6 +1713,90 @@ Converter::handleLIT(Value *dst0[4])
    }
 }
 
+Symbol *
+Converter::getResourceBase(int r)
+{
+   Symbol *sym;
+
+   if (r >= 0) {
+      sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_GLOBAL, r);
+   } else {
+      switch (r) {
+      case TGSI_RESOURCE_GLOBAL:
+         sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_GLOBAL, 15);
+         break;
+      case TGSI_RESOURCE_LOCAL:
+         sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_SHARED);
+         sym->reg.data.offset = info->prop.cp.localOffset;
+         break;
+      case TGSI_RESOURCE_PRIVATE:
+         sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_LOCAL);
+         sym->reg.data.offset = info->bin.tlsSpace;
+         break;
+      case TGSI_RESOURCE_INPUT:
+         sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_SHARED);
+         sym->reg.data.offset = info->prop.cp.inputOffset;
+         break;
+      default:
+         assert(0);
+         break;
+      }
+   }
+
+   return sym;
+}
+
+Value *
+Converter::getResourceOffset(int r, int s)
+{
+   Value *off;
+
+   if (r >= 0 && code->resourceTargets[r] == TGSI_TEXTURE_2D) {
+      off = getSSA();
+      mkOp2(OP_SHL, TYPE_U32, off, fetchSrc(s, 1), mkImm(16));
+      mkOp2(OP_OR, TYPE_U32, off, off, fetchSrc(s, 0));
+   } else {
+      off = fetchSrc(s, 0);
+      if (r == TGSI_RESOURCE_LOCAL ||
+          r == TGSI_RESOURCE_PRIVATE ||
+          r == TGSI_RESOURCE_INPUT)
+         off = mkOp1v(OP_MOV, TYPE_U32, getScratch(4, FILE_ADDRESS), off);
+   }
+
+   return off;
+}
+
+void
+Converter::handleLOAD(Value *dst0[4])
+{
+   int c, r = tgsi.getSrc(0).getIndex(0);
+   Symbol *base = getResourceBase(r);
+   Value *off = getResourceOffset(r, 1);
+
+   FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
+      int i = tgsi.getSrc(0).getSwizzle(c);
+      Value *ptr = mkOp2v(OP_ADD, TYPE_U32, getSSA(4, off->reg.file),
+                          off, mkImm(4 * i));
+
+      dst0[c] = mkLoad(TYPE_U32, base, ptr);
+   }
+}
+
+void
+Converter::handleSTORE()
+{
+   int c, r = tgsi.getDst(0).getIndex(0);
+   Symbol *base = getResourceBase(r);
+   Value *off = getResourceOffset(r, 0);
+
+   FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
+      Value *ptr = mkOp2v(OP_ADD, TYPE_U32, getSSA(4, off->reg.file),
+                          off, mkImm(4 * c));
+
+      mkStore(OP_STORE, TYPE_U32, base, ptr, fetchSrc(1, c));
+   }
+}
+
 Converter::Subroutine *
 Converter::getSubroutine(unsigned ip)
 {
@@ -2044,7 +2152,6 @@ Converter::handleInstruction(const struct tgsi_full_instruction *insn)
       handleTEX(dst0, 1, 2, 0x30, 0x31, 0x40, 0x50);
       break;
    case TGSI_OPCODE_TXF:
-   case TGSI_OPCODE_LOAD:
       handleTXF(dst0, 1);
       break;
    case TGSI_OPCODE_TXQ:
@@ -2228,6 +2335,12 @@ Converter::handleInstruction(const struct tgsi_full_instruction *insn)
    case TGSI_OPCODE_CASE:
       ERROR("switch/case opcode encountered, should have been lowered\n");
       abort();
+      break;
+   case TGSI_OPCODE_LOAD:
+      handleLOAD(dst0);
+      break;
+   case TGSI_OPCODE_STORE:
+      handleSTORE();
       break;
    default:
       ERROR("unhandled TGSI opcode: %u\n", tgsi.getOpcode());

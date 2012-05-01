@@ -331,6 +331,11 @@ nv50_program_translate(struct nv50_program *prog, uint16_t chipset)
    prog->vp.psiz = map_undef;
    prog->gp.primid = 0x80;
 
+   if (prog->type == PIPE_SHADER_COMPUTE) {
+      info->prop.cp.inputOffset = 0x10;
+      info->prop.cp.localOffset = 0x10 + prog->cp.input_size;
+   }
+
    info->driverPriv = prog;
 
 #ifdef DEBUG
