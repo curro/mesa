@@ -608,9 +608,15 @@ public:
    uint8_t *samplerViewTargets; // TGSI_TEXTURE_*
    unsigned samplerViewCount;
 
-   uint8_t *resourceTargets;
-   unsigned resourceCount;
+   struct Resource {
+      uint8_t target;
+      uint8_t idx;
+      bool constbuf;
+      bool raw;
+   };
 
+   Resource *resources;
+   unsigned resourceCount;
    unsigned surfCount;
    unsigned constCount;
 
@@ -632,7 +638,7 @@ Source::Source(struct nv50_ir_prog_info *prog) : info(prog)
       tgsi_dump(tokens, 0);
 
    samplerViewTargets = NULL;
-   resourceTargets = NULL;
+   resources = NULL;
 
    mainTempsInLMem = FALSE;
 }
@@ -648,7 +654,7 @@ Source::~Source()
       FREE(info->immd.type);
 
    delete[] samplerViewTargets;
-   delete[] resourceTargets;
+   delete[] resources;
 }
 
 bool Source::scanSource()
@@ -668,8 +674,10 @@ bool Source::scanSource()
    samplerViewCount = scan.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
    samplerViewTargets = new uint8_t[samplerViewCount];
 
+   surfCount = 0;
+   constCount = 0;
    resourceCount = scan.file_max[TGSI_FILE_RESOURCE] + 1;
-   resourceTargets = new uint8_t[resourceCount];
+   resources = new Resource[resourceCount];
 
    info->immd.bufSize = 0;
    tempArrayCount = 0;
@@ -902,8 +910,18 @@ bool Source::scanDeclaration(const struct tgsi_full_declaration *decl)
       }
       break;
    case TGSI_FILE_RESOURCE:
-      for (i = first; i <= last; ++i)
-         resourceTargets[i] = decl->Resource.Resource;
+      for (i = first; i <= last; ++i) {
+         resources[i].target = decl->Resource.Resource;
+         resources[i].constbuf = (!decl->Resource.Writable &&
+                                  decl->Resource.Raw &&
+                                  decl->Resource.Resource == TGSI_BUFFER);
+         resources[i].raw = decl->Resource.Raw;
+
+         if (resources[i].constbuf)
+            resources[i].idx = constCount++;
+         else
+            resources[i].idx = surfCount++;
+      }
       break;
    case TGSI_FILE_SAMPLER_VIEW:
       for (i = first; i <= last; ++i)
@@ -1034,7 +1052,7 @@ Instruction::getTexture(const tgsi::Source *code, int s) const
       // XXX: indirect access
       unsigned int r = getSrc(s).getIndex(0);
       assert(r < code->resourceCount);
-      return translateTexture(code->resourceTargets[r]);
+      return translateTexture(code->resources[r].target);
    }
    case TGSI_FILE_SAMPLER_VIEW: {
       // XXX: indirect access
@@ -1102,7 +1120,7 @@ private:
    void handleUserClipPlanes();
 
    Symbol *getResourceBase(int r);
-   Value *getResourceOffset(int r, int s);
+   std::vector<Value *> getResourceOffset(int r, int s);
    void handleLOAD(Value *dst0[4]);
    void handleSTORE();
 
@@ -1731,52 +1749,52 @@ Converter::handleLIT(Value *dst0[4])
 Symbol *
 Converter::getResourceBase(int r)
 {
-   Symbol *sym;
+   Symbol *sym = NULL;
 
-   if (r >= 0) {
-      sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_GLOBAL, r);
-   } else {
-      switch (r) {
-      case TGSI_RESOURCE_GLOBAL:
-         sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_GLOBAL, 15);
-         break;
-      case TGSI_RESOURCE_LOCAL:
-         sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_SHARED);
-         sym->reg.data.offset = info->prop.cp.localOffset;
-         break;
-      case TGSI_RESOURCE_PRIVATE:
-         sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_LOCAL);
-         sym->reg.data.offset = info->bin.tlsSpace;
-         break;
-      case TGSI_RESOURCE_INPUT:
-         sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_SHARED);
-         sym->reg.data.offset = info->prop.cp.inputOffset;
-         break;
-      default:
-         assert(0);
-         break;
-      }
+   switch (r) {
+   case TGSI_RESOURCE_GLOBAL:
+      sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_GLOBAL, 15);
+      break;
+   case TGSI_RESOURCE_LOCAL:
+      sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_SHARED);
+      sym->reg.data.offset = info->prop.cp.localOffset;
+      break;
+   case TGSI_RESOURCE_PRIVATE:
+      sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_LOCAL);
+      sym->reg.data.offset = info->bin.tlsSpace;
+      break;
+   case TGSI_RESOURCE_INPUT:
+      sym = new_Symbol(prog, nv50_ir::FILE_SHADER_INPUT);
+      sym->reg.data.offset = info->prop.cp.inputOffset;
+      break;
+   default:
+      assert(r >= 0);
+      if (code->resources[r].constbuf)
+         sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_CONST,
+                          code->resources[r].idx);
+      else
+         sym = new_Symbol(prog, nv50_ir::FILE_MEMORY_GLOBAL,
+                          code->resources[r].idx);
+      break;
    }
 
    return sym;
 }
 
-Value *
+std::vector<Value *>
 Converter::getResourceOffset(int r, int s)
 {
-   Value *off;
+   std::vector<Value *> off;
 
-   if (r >= 0 && code->resourceTargets[r] == TGSI_TEXTURE_2D) {
-      off = getSSA();
-      mkOp2(OP_SHL, TYPE_U32, off, fetchSrc(s, 1), mkImm(16));
-      mkOp2(OP_OR, TYPE_U32, off, off, fetchSrc(s, 0));
-   } else {
-      off = fetchSrc(s, 0);
-      if (r == TGSI_RESOURCE_LOCAL ||
-          r == TGSI_RESOURCE_PRIVATE ||
-          r == TGSI_RESOURCE_INPUT)
-         off = mkOp1v(OP_MOV, TYPE_U32, getScratch(4, FILE_ADDRESS), off);
-   }
+   off.push_back(fetchSrc(s, 0));
+   if (r >= 0 && code->resources[r].target == TGSI_TEXTURE_2D)
+      off.push_back(fetchSrc(s, 1));
+
+   if (r == TGSI_RESOURCE_LOCAL ||
+       r == TGSI_RESOURCE_PRIVATE ||
+       r == TGSI_RESOURCE_INPUT ||
+       (r >= 0 && code->resources[r].constbuf))
+      off[0] = mkOp1v(OP_MOV, TYPE_U32, getScratch(4, FILE_ADDRESS), off[0]);
 
    return off;
 }
@@ -1786,14 +1804,36 @@ Converter::handleLOAD(Value *dst0[4])
 {
    int c, r = tgsi.getSrc(0).getIndex(0);
    Symbol *base = getResourceBase(r);
-   Value *off = getResourceOffset(r, 1);
+   std::vector<Value *> off = getResourceOffset(r, 1);
+   std::vector<Value *> src = off;
 
-   FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
-      int i = tgsi.getSrc(0).getSwizzle(c);
-      Value *ptr = mkOp2v(OP_ADD, TYPE_U32, getSSA(4, off->reg.file),
-                          off, mkImm(4 * i));
+   if (r < 0 || code->resources[r].raw) {
+      FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
+         int i = tgsi.getSrc(0).getSwizzle(c);
 
-      dst0[c] = mkLoad(TYPE_U32, base, ptr);
+         src[0] = mkOp2v(OP_ADD, TYPE_U32, getSSA(4, off[0]->reg.file),
+                         off[0], mkImm(4 * i));
+
+         if (r < 0 || code->resources[r].constbuf) {
+            dst0[c] = mkLoadv(TYPE_U32, base, src[0]);
+         } else {
+            std::vector<Value *> def(1, dst0[c]);
+
+            mkTex(OP_SULDB, tgsi::translateTexture(code->resources[r].target),
+                  code->resources[r].idx, -1, def, src);
+         }
+      }
+
+   } else {
+      std::vector<Value *> def(4);
+
+      FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
+         int i = tgsi.getSrc(0).getSwizzle(c);
+         def[i] = dst0[c];
+      }
+
+      mkTex(OP_SULDP, tgsi::translateTexture(code->resources[r].target),
+            code->resources[r].idx, -1, def, src);
    }
 }
 
@@ -1802,13 +1842,35 @@ Converter::handleSTORE()
 {
    int c, r = tgsi.getDst(0).getIndex(0);
    Symbol *base = getResourceBase(r);
-   Value *off = getResourceOffset(r, 0);
+   std::vector<Value *> off = getResourceOffset(r, 0);
+   std::vector<Value *> src = off;
+   std::vector<Value *> def;
+   int s = off.size();
 
-   FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
-      Value *ptr = mkOp2v(OP_ADD, TYPE_U32, getSSA(4, off->reg.file),
-                          off, mkImm(4 * c));
+   if (r < 0 || code->resources[r].raw) {
+      FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
+         src[0] = mkOp2v(OP_ADD, TYPE_U32, getSSA(4, off[0]->reg.file),
+                         off[0], mkImm(4 * c));
 
-      mkStore(OP_STORE, TYPE_U32, base, ptr, fetchSrc(1, c));
+         if (r < 0 || code->resources[r].constbuf) {
+            mkStore(OP_STORE, TYPE_U32, base, src[0], fetchSrc(1, c));
+         } else {
+            src.resize(s + 1);
+            src[s] = fetchSrc(1, c);
+
+            mkTex(OP_SUSTB, tgsi::translateTexture(code->resources[r].target),
+                  code->resources[r].idx, -1, def, src);
+         }
+      }
+
+   } else {
+      FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi) {
+         src.resize(s + c + 1);
+         src[s + c] = fetchSrc(1, c);
+      }
+
+      mkTex(OP_SUSTP, tgsi::translateTexture(code->resources[r].target),
+            code->resources[r].idx, -1, def, src);
    }
 }
 
@@ -2546,6 +2608,9 @@ Converter::run()
 
    prog->main->setEntry(entry);
    prog->main->setExit(leave);
+
+   prog->maxCB = code->constCount;
+   prog->maxSurf = code->surfCount;
 
    setPosition(entry, true);
    sub.cur = getSubroutine(prog->main);

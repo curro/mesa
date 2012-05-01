@@ -118,8 +118,10 @@ enum operation
    OP_TXD, // texture derivatives
    OP_TXG, // texture gather
    OP_TEXCSAA,
-   OP_SULD, // surface load
-   OP_SUST, // surface store
+   OP_SULDB, // surface load (raw)
+   OP_SUSTB, // surface store (raw)
+   OP_SULDP, // surface load (formatted)
+   OP_SUSTP, // surface store (formatted)
    OP_DFDX,
    OP_DFDY,
    OP_RDSV, // read system value
@@ -1059,6 +1061,8 @@ public:
    uint32_t tlsSize; // size required for FILE_MEMORY_LOCAL
 
    int maxGPR;
+   int maxCB;
+   int maxSurf;
 
    MemoryPool mem_Instruction;
    MemoryPool mem_CmpInstruction;

@@ -45,7 +45,7 @@ const uint8_t Target::operationSrcNr[OP_LAST + 1] =
    1, 1,                   // EMIT, RESTART
    1, 1, 1,                // TEX, TXB, TXL,
    1, 1, 1, 1, 1,          // TXF, TXQ, TXD, TXG, TEXCSAA
-   1, 2,                   // SULD, SUST
+   1, 2, 1, 2,             // SULDB, SUSTB, SULDP, SUSTP
    1, 1,                   // DFDX, DFDY
    1, 2, 2, 2, 0, 0,       // RDSV, WRSV, PIXLD, QUADOP, QUADON, QUADPOP
    2, 3, 2, 0,             // POPCNT, INSBF, EXTBF, TEXBAR

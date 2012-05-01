@@ -279,14 +279,14 @@ const FlowInstruction *Instruction::asFlow() const
 
 TexInstruction *Instruction::asTex()
 {
-   if (op >= OP_TEX && op <= OP_TEXCSAA)
+   if (op >= OP_TEX && op <= OP_SUSTP)
       return static_cast<TexInstruction *>(this);
    return NULL;
 }
 
 const TexInstruction *Instruction::asTex() const
 {
-   if (op >= OP_TEX && op <= OP_TEXCSAA)
+   if (op >= OP_TEX && op <= OP_SUSTP)
       return static_cast<const TexInstruction *>(this);
    return NULL;
 }

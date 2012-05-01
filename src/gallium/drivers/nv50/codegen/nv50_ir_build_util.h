@@ -73,8 +73,10 @@ public:
    CmpInstruction *mkCmp(operation, CondCode, DataType,
 			 Value *,
 			 Value *, Value *, Value * = NULL);
-   Instruction *mkTex(operation, TexTarget, uint8_t tic, uint8_t tsc,
-                      Value **def, Value **src);
+   TexInstruction *mkTex(operation, TexInstruction::Target targ,
+                         uint8_t tic, uint8_t tsc,
+                         const std::vector<Value *> &def,
+                         const std::vector<Value *> &src);
    Instruction *mkQuadop(uint8_t qop, Value *, uint8_t l, Value *, Value *);
 
    FlowInstruction *mkFlow(operation, void *target, CondCode, Value *pred);
