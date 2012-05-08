@@ -94,6 +94,18 @@ struct nv50_program {
       uint8_t prim_type; /* point, line strip or tri strip */
    } gp;
 
+   struct {
+      struct nouveau_mm_allocation *mm;
+      struct nouveau_bo *bo;
+      uint32_t offset;
+
+      unsigned local_size;
+      unsigned private_size;
+      unsigned input_size;
+   } cp;
+
+   struct nv50_ir_prog_symbol *syms;
+   unsigned sym_count;
    void *fixups; /* relocation records */
 
    struct nouveau_heap *mem;

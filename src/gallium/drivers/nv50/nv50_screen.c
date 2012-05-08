@@ -158,6 +158,8 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
    case PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY:
       return 0;
+   case PIPE_CAP_COMPUTE:
+      return 1;
    default:
       NOUVEAU_ERR("unknown PIPE_CAP %d\n", param);
       return 0;
@@ -213,6 +215,8 @@ nv50_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
       return 1;
    case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
       return 32;
+   case PIPE_SHADER_CAP_PREFERRED_IR:
+      return PIPE_SHADER_IR_TGSI;
    default:
       NOUVEAU_ERR("unknown PIPE_SHADER_CAP %d\n", param);
       return 0;
@@ -239,6 +243,38 @@ nv50_screen_get_paramf(struct pipe_screen *pscreen, enum pipe_capf param)
    }
 }
 
+static int
+nv50_screen_get_compute_param(struct pipe_screen *pscreen,
+                              enum pipe_compute_cap param,
+                              void *ret)
+{
+#define RET(xs) do {                            \
+      if (ret)                                  \
+         memcpy(ret, xs, sizeof(xs));           \
+      return sizeof(xs);                        \
+   } while (0)
+
+   switch (param) {
+   case PIPE_COMPUTE_CAP_GRID_DIMENSION:
+      RET((uint64_t []) { 3 });
+   case PIPE_COMPUTE_CAP_MAX_GRID_SIZE:
+      RET(((uint64_t []) { 65535, 65535, 1 }));
+   case PIPE_COMPUTE_CAP_MAX_BLOCK_SIZE:
+      RET(((uint64_t []) { 512, 512, 64 }));
+   case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
+      RET((uint64_t []) { 1ull << 40 });
+   case PIPE_COMPUTE_CAP_MAX_LOCAL_SIZE:
+      RET((uint64_t []) { 16384 });
+   case PIPE_COMPUTE_CAP_MAX_INPUT_SIZE:
+      RET((uint64_t []) { 256 });
+   default:
+      NOUVEAU_ERR("unknown PIPE_COMPUTE_CAP %d\n", param);
+      return 0;
+   }
+
+#undef RET
+}
+
 static void
 nv50_screen_destroy(struct pipe_screen *pscreen)
 {
@@ -253,6 +289,8 @@ nv50_screen_destroy(struct pipe_screen *pscreen)
 
    if (screen->blitctx)
       FREE(screen->blitctx);
+
+   nv50_compute_deinit(screen);
 
    nouveau_bo_ref(NULL, &screen->code);
    nouveau_bo_ref(NULL, &screen->tls_bo);
@@ -532,6 +570,9 @@ nv50_screen_create(struct nouveau_device *dev)
    pscreen = &screen->base.base;
 
    screen->base.sysmem_bindings = PIPE_BIND_CONSTANT_BUFFER;
+   screen->base.vram_bindings = (PIPE_BIND_SAMPLER_VIEW |
+                                 PIPE_BIND_COMPUTE_RESOURCE);
+   screen->base.lvram_bindings = PIPE_BIND_GLOBAL;
 
    ret = nouveau_screen_init(&screen->base, dev);
    if (ret)
@@ -548,6 +589,7 @@ nv50_screen_create(struct nouveau_device *dev)
    pscreen->get_param = nv50_screen_get_param;
    pscreen->get_shader_param = nv50_screen_get_shader_param;
    pscreen->get_paramf = nv50_screen_get_paramf;
+   pscreen->get_compute_param = nv50_screen_get_compute_param;
 
    nv50_screen_init_resource_functions(pscreen);
 
@@ -669,6 +711,10 @@ nv50_screen_create(struct nouveau_device *dev)
 
    if (nv50_screen_init_hwctx(screen, tls_space))
       goto fail;
+
+   ret = nv50_compute_init(screen);
+   if (ret)
+      FAIL_SCREEN_INIT("Error initializing the compute context: %d\n", ret);
 
    nouveau_fence_new(&screen->base, &screen->base.fence.current, FALSE);
 

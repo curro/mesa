@@ -241,6 +241,8 @@ nv50_program_assign_varying_slots(struct nv50_ir_prog_info *info)
       return nv50_vertprog_assign_slots(info);
    case PIPE_SHADER_FRAGMENT:
       return nv50_fragprog_assign_slots(info);
+   case PIPE_SHADER_COMPUTE:
+      return 0;
    default:
       return -1;
    }
@@ -347,6 +349,8 @@ nv50_program_translate(struct nv50_program *prog, uint16_t chipset)
    prog->code_size = info->bin.codeSize;
    prog->fixups = info->bin.relocData;
    prog->max_gpr = MAX2(4, (info->bin.maxGPR >> 1) + 1);
+   prog->syms = info->bin.syms;
+   prog->sym_count = info->bin.numSyms;
 
    if (prog->type == PIPE_SHADER_FRAGMENT) {
       if (info->prop.fp.writesDepth) {
@@ -423,6 +427,12 @@ nv50_program_destroy(struct nv50_context *nv50, struct nv50_program *p)
 
    if (p->fixups)
       FREE(p->fixups);
+
+   if (p->cp.mm) {
+      nouveau_fence_work(nv50->screen->base.fence.current,
+                         nouveau_mm_free_work, p->cp.mm);
+      nouveau_bo_ref(NULL, &p->cp.bo);
+   }
 
    memset(p, 0, sizeof(*p));
 

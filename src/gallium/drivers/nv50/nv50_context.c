@@ -132,7 +132,7 @@ nv50_create(struct pipe_screen *pscreen, void *priv)
    ret = nouveau_bufctx_new(screen->base.client, NV50_BIND_COUNT,
                             &nv50->bufctx_3d);
    if (!ret)
-      ret = nouveau_bufctx_new(screen->base.client, 2, &nv50->bufctx);
+      ret = nouveau_bufctx_new(screen->base.client, 3, &nv50->bufctx);
    if (ret)
       goto out_err;
 
@@ -157,6 +157,7 @@ nv50_create(struct pipe_screen *pscreen, void *priv)
       nouveau_pushbuf_bufctx(screen->base.pushbuf, nv50->bufctx);
    }
 
+   nv50_init_compute_functions(nv50);
    nv50_init_query_functions(nv50);
    nv50_init_surface_functions(nv50);
    nv50_init_state_functions(nv50);
@@ -177,6 +178,7 @@ nv50_create(struct pipe_screen *pscreen, void *priv)
    BCTX_REFN_bo(nv50->bufctx_3d, SCREEN, flags, screen->uniforms);
    BCTX_REFN_bo(nv50->bufctx_3d, SCREEN, flags, screen->txc);
    BCTX_REFN_bo(nv50->bufctx_3d, SCREEN, flags, screen->stack_bo);
+   BCTX_REFN_bo(nv50->bufctx_3d, SCREEN, flags, screen->surf_cfg);
 
    flags = NOUVEAU_BO_GART | NOUVEAU_BO_WR;
 

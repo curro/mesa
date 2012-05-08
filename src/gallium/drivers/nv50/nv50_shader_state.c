@@ -27,6 +27,7 @@
 #include "util/u_inlines.h"
 
 #include "nv50_context.h"
+#include "codegen/nv50_ir_driver.h"
 
 void
 nv50_constbufs_validate(struct nv50_context *nv50)
@@ -618,4 +619,65 @@ nv50_stream_output_validate(struct nv50_context *nv50)
    PUSH_DATA (push, 1);
    BEGIN_NV04(push, NV50_3D(STRMOUT_ENABLE), 1);
    PUSH_DATA (push, 1);
+}
+
+static void
+nv50_program_dump(struct nv50_program *prog)
+{
+   unsigned pos;
+
+   debug_printf("shader binary code (0x%x bytes):", prog->code_size);
+   for (pos = 0; pos < prog->code_size / 4; ++pos) {
+      if ((pos % 8) == 0)
+         debug_printf("\n");
+      debug_printf("%08x ", prog->code[pos]);
+   }
+   debug_printf("\n");
+}
+
+void
+nv50_compprog_validate(struct nv50_context *nv50)
+{
+   struct nouveau_pushbuf *push = nv50->base.pushbuf;
+   struct nv50_program *prog = nv50->compprog;
+
+   if (!prog)
+      return;
+
+   if (!prog->translated) {
+      prog->translated = nv50_program_translate(prog, nv50->screen->base
+                                                .device->chipset);
+      if (!prog->translated)
+         return;
+
+      if (prog->fixups)
+         nv50_ir_relocate_code(prog->fixups, prog->code, prog->code_base, 0, 0);
+
+      nv50_program_dump(prog);
+
+      prog->cp.mm = nouveau_mm_allocate(nv50->screen->base.mm_VRAM,
+                                        align(prog->code_size, 0x100),
+                                        &prog->cp.bo, &prog->cp.offset);
+      assert(prog->cp.mm);
+
+      nv50_sifc_linear_u8(&nv50->base, prog->cp.bo, prog->cp.offset,
+                          NOUVEAU_BO_VRAM, prog->code_size, prog->code);
+   }
+
+   nouveau_bufctx_reset(nv50->bufctx_3d, NV50_BIND_COMPUTE);
+   BCTX_REFN_bo(nv50->bufctx_3d, COMPUTE,
+                NOUVEAU_BO_VRAM | NOUVEAU_BO_RD, prog->cp.bo);
+
+   BEGIN_NV04(push, NV50_COMPUTE(CP_ADDRESS_HIGH), 2);
+   PUSH_DATAh(push, prog->cp.bo->offset + prog->cp.offset);
+   PUSH_DATA (push, prog->cp.bo->offset + prog->cp.offset);
+   BEGIN_NV04(push, NV50_COMPUTE(CODE_CB_FLUSH), 1);
+   PUSH_DATA (push, 0);
+
+   BEGIN_NV04(push, NV50_COMPUTE(CP_REG_ALLOC_TEMP), 1);
+   PUSH_DATA (push, prog->max_gpr);
+
+   BEGIN_NV04(push, NV50_COMPUTE(SHARED_SIZE), 1);
+   PUSH_DATA (push, align(prog->cp.local_size +
+                          prog->cp.input_size + 0x10, 0x40));
 }

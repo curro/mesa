@@ -559,22 +559,21 @@ nv50_sampler_state_delete(struct pipe_context *pipe, void *hwcso)
 
 static INLINE void
 nv50_stage_sampler_states_bind(struct nv50_context *nv50, int s,
-                               unsigned nr, void **hwcso)
+                               unsigned start, unsigned nr,
+                               void **hwcso)
 {
    unsigned i;
 
-   for (i = 0; i < nr; ++i) {
+   for (i = start; i < start + nr; ++i) {
       struct nv50_tsc_entry *old = nv50->samplers[s][i];
 
-      nv50->samplers[s][i] = nv50_tsc_entry(hwcso[i]);
+      nv50->samplers[s][i] = nv50_tsc_entry(hwcso ? hwcso[i] : NULL);
       if (old)
          nv50_screen_tsc_unlock(nv50->screen, old);
    }
-   for (; i < nv50->num_samplers[s]; ++i)
-      if (nv50->samplers[s][i])
-         nv50_screen_tsc_unlock(nv50->screen, nv50->samplers[s][i]);
 
-   nv50->num_samplers[s] = nr;
+   nv50->num_samplers[s] = (hwcso ? MAX2(nv50->num_samplers[s], start + nr) :
+                            MIN2(nv50->num_samplers[s], start));
 
    nv50->dirty |= NV50_NEW_SAMPLERS;
 }
@@ -582,19 +581,35 @@ nv50_stage_sampler_states_bind(struct nv50_context *nv50, int s,
 static void
 nv50_vp_sampler_states_bind(struct pipe_context *pipe, unsigned nr, void **s)
 {
-   nv50_stage_sampler_states_bind(nv50_context(pipe), 0, nr, s);
+   struct nv50_context *nv50 = nv50_context(pipe);
+
+   nv50_stage_sampler_states_bind(nv50, 0, 0, nr, s);
+   nv50_stage_sampler_states_bind(nv50, 0, nr, nv50->num_samplers[0], NULL);
 }
 
 static void
 nv50_fp_sampler_states_bind(struct pipe_context *pipe, unsigned nr, void **s)
 {
-   nv50_stage_sampler_states_bind(nv50_context(pipe), 2, nr, s);
+   struct nv50_context *nv50 = nv50_context(pipe);
+
+   nv50_stage_sampler_states_bind(nv50, 2, 0, nr, s);
+   nv50_stage_sampler_states_bind(nv50, 2, nr, nv50->num_samplers[0], NULL);
 }
 
 static void
 nv50_gp_sampler_states_bind(struct pipe_context *pipe, unsigned nr, void **s)
 {
-   nv50_stage_sampler_states_bind(nv50_context(pipe), 1, nr, s);
+   struct nv50_context *nv50 = nv50_context(pipe);
+
+   nv50_stage_sampler_states_bind(nv50, 1, 0, nr, s);
+   nv50_stage_sampler_states_bind(nv50, 1, nr, nv50->num_samplers[0], NULL);
+}
+
+static void
+nv50_cp_sampler_states_bind(struct pipe_context *pipe, unsigned start,
+                            unsigned nr, void **s)
+{
+   nv50_stage_sampler_states_bind(nv50_context(pipe), 3, start, nr, s);
 }
 
 /* NOTE: only called when not referenced anywhere, won't be bound */
@@ -611,32 +626,24 @@ nv50_sampler_view_destroy(struct pipe_context *pipe,
 
 static INLINE void
 nv50_stage_set_sampler_views(struct nv50_context *nv50, int s,
-                             unsigned nr,
+                             unsigned start, unsigned nr,
                              struct pipe_sampler_view **views)
 {
    unsigned i;
 
-   for (i = 0; i < nr; ++i) {
-      struct nv50_tic_entry *old = nv50_tic_entry(nv50->textures[s][i]);
+   for (i = start; i < start + nr; ++i) {
+      struct pipe_sampler_view *old = nv50->textures[s][i];
+      struct pipe_sampler_view *new = (views ? views[i] : NULL);
+
       if (old)
-         nv50_screen_tic_unlock(nv50->screen, old);
-
-      pipe_sampler_view_reference(&nv50->textures[s][i], views[i]);
+         nv50_screen_tic_unlock(nv50->screen, nv50_tic_entry(old));
+      pipe_sampler_view_reference(&nv50->textures[s][i], new);
    }
 
-   for (i = nr; i < nv50->num_textures[s]; ++i) {
-      struct nv50_tic_entry *old = nv50_tic_entry(nv50->textures[s][i]);
-      if (!old)
-         continue;
-      nv50_screen_tic_unlock(nv50->screen, old);
-
-      pipe_sampler_view_reference(&nv50->textures[s][i], NULL);
-   }
-
-   nv50->num_textures[s] = nr;
+   nv50->num_textures[s] = (views ? MAX2(nv50->num_textures[s], start + nr) :
+                            MIN2(nv50->num_textures[s], start));
 
    nouveau_bufctx_reset(nv50->bufctx_3d, NV50_BIND_TEXTURES);
-
    nv50->dirty |= NV50_NEW_TEXTURES;
 }
 
@@ -645,7 +652,10 @@ nv50_vp_set_sampler_views(struct pipe_context *pipe,
                           unsigned nr,
                           struct pipe_sampler_view **views)
 {
-   nv50_stage_set_sampler_views(nv50_context(pipe), 0, nr, views);
+   struct nv50_context *nv50 = nv50_context(pipe);
+
+   nv50_stage_set_sampler_views(nv50, 0, 0, nr, views);
+   nv50_stage_set_sampler_views(nv50, 0, nr, nv50->num_textures[0], NULL);
 }
 
 static void
@@ -653,7 +663,10 @@ nv50_fp_set_sampler_views(struct pipe_context *pipe,
                           unsigned nr,
                           struct pipe_sampler_view **views)
 {
-   nv50_stage_set_sampler_views(nv50_context(pipe), 2, nr, views);
+   struct nv50_context *nv50 = nv50_context(pipe);
+
+   nv50_stage_set_sampler_views(nv50, 2, 0, nr, views);
+   nv50_stage_set_sampler_views(nv50, 2, nr, nv50->num_textures[2], NULL);
 }
 
 static void
@@ -661,7 +674,19 @@ nv50_gp_set_sampler_views(struct pipe_context *pipe,
                           unsigned nr,
                           struct pipe_sampler_view **views)
 {
-   nv50_stage_set_sampler_views(nv50_context(pipe), 1, nr, views);
+   struct nv50_context *nv50 = nv50_context(pipe);
+
+   nv50_stage_set_sampler_views(nv50, 1, 0, nr, views);
+   nv50_stage_set_sampler_views(nv50, 1, nr, nv50->num_textures[1], NULL);
+}
+
+static void
+nv50_cp_set_sampler_views(struct pipe_context *pipe,
+                          unsigned start, unsigned nr,
+                          struct pipe_sampler_view **views)
+{
+   nv50_stage_set_sampler_views(nv50_context(pipe), 3,
+                                start, nr, views);
 }
 
 /* ============================= SHADERS =======================================
@@ -743,6 +768,34 @@ nv50_gp_state_bind(struct pipe_context *pipe, void *hwcso)
 
     nv50->gmtyprog = hwcso;
     nv50->dirty |= NV50_NEW_GMTYPROG;
+}
+
+static void *
+nv50_cp_state_create(struct pipe_context *pipe,
+                     const struct pipe_compute_state *cso)
+{
+   struct nv50_program *prog;
+
+   prog = CALLOC_STRUCT(nv50_program);
+   if (!prog)
+      return NULL;
+
+   prog->type = PIPE_SHADER_COMPUTE;
+   prog->pipe.tokens = tgsi_dup_tokens(cso->prog);
+   prog->cp.local_size = cso->req_local_mem;
+   prog->cp.private_size = cso->req_private_mem;
+   prog->cp.input_size = cso->req_input_mem;
+
+   return prog;
+}
+
+static void
+nv50_cp_state_bind(struct pipe_context *pipe, void *hwcso)
+{
+    struct nv50_context *nv50 = nv50_context(pipe);
+
+    nv50->compprog = hwcso;
+    nv50->dirty |= NV50_NEW_COMPPROG;
 }
 
 static void
@@ -1018,22 +1071,27 @@ nv50_init_state_functions(struct nv50_context *nv50)
    pipe->bind_vertex_sampler_states   = nv50_vp_sampler_states_bind;
    pipe->bind_fragment_sampler_states = nv50_fp_sampler_states_bind;
    pipe->bind_geometry_sampler_states = nv50_gp_sampler_states_bind;
+   pipe->bind_compute_sampler_states = nv50_cp_sampler_states_bind;
 
    pipe->create_sampler_view = nv50_create_sampler_view;
    pipe->sampler_view_destroy = nv50_sampler_view_destroy;
    pipe->set_vertex_sampler_views   = nv50_vp_set_sampler_views;
    pipe->set_fragment_sampler_views = nv50_fp_set_sampler_views;
    pipe->set_geometry_sampler_views = nv50_gp_set_sampler_views;
- 
+   pipe->set_compute_sampler_views = nv50_cp_set_sampler_views;
+
    pipe->create_vs_state = nv50_vp_state_create;
    pipe->create_fs_state = nv50_fp_state_create;
    pipe->create_gs_state = nv50_gp_state_create;
+   pipe->create_compute_state = nv50_cp_state_create;
    pipe->bind_vs_state = nv50_vp_state_bind;
    pipe->bind_fs_state = nv50_fp_state_bind;
    pipe->bind_gs_state = nv50_gp_state_bind;
+   pipe->bind_compute_state = nv50_cp_state_bind;
    pipe->delete_vs_state = nv50_sp_state_delete;
    pipe->delete_fs_state = nv50_sp_state_delete;
    pipe->delete_gs_state = nv50_sp_state_delete;
+   pipe->delete_compute_state = nv50_sp_state_delete;
 
    pipe->set_blend_color = nv50_set_blend_color;
    pipe->set_stencil_ref = nv50_set_stencil_ref;

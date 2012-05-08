@@ -196,8 +196,34 @@ nv50_create_sampler_view(struct pipe_context *pipe,
    return &view->pipe;
 }
 
+static void
+nv50_bind_tic_3d(struct nouveau_pushbuf *push, int s, int tex, int tic)
+{
+   if (tic >= 0) {
+      BEGIN_NV04(push, NV50_3D(BIND_TIC(s)), 1);
+      PUSH_DATA (push, (tic << 9) | (tex << 1) | 1);
+   } else {
+      BEGIN_NV04(push, NV50_3D(BIND_TIC(s)), 1);
+      PUSH_DATA (push, (tex << 1) | 0);
+   }
+}
+
+static void
+nv50_bind_tic_cp(struct nouveau_pushbuf *push, int s, int tex, int tic)
+{
+   if (tic >= 0) {
+      BEGIN_NV04(push, NV50_COMPUTE(BIND_TIC), 1);
+      PUSH_DATA (push, (tic << 9) | (tex << 1) | 1);
+   } else {
+      BEGIN_NV04(push, NV50_COMPUTE(BIND_TIC), 1);
+      PUSH_DATA (push, (tex << 1) | 0);
+   }
+}
+
 static boolean
-nv50_validate_tic(struct nv50_context *nv50, int s)
+nv50_validate_tic(struct nv50_context *nv50,
+                  void (*bind)(struct nouveau_pushbuf *, int, int, int),
+                  int s)
 {
    struct nouveau_pushbuf *push = nv50->base.pushbuf;
    struct nouveau_bo *txc = nv50->screen->txc;
@@ -209,8 +235,7 @@ nv50_validate_tic(struct nv50_context *nv50, int s)
       struct nv04_resource *res;
 
       if (!tic) {
-         BEGIN_NV04(push, NV50_3D(BIND_TIC(s)), 1);
-         PUSH_DATA (push, (i << 1) | 0);
+         bind(push, s, i, -1);
          continue;
       }
       res = &nv50_miptree(tic->pipe.texture)->base;
@@ -249,6 +274,8 @@ nv50_validate_tic(struct nv50_context *nv50, int s)
       if (res->status & NOUVEAU_BUFFER_STATUS_GPU_WRITING) {
          BEGIN_NV04(push, NV50_3D(TEX_CACHE_CTL), 1);
          PUSH_DATA (push, 0x20);
+         BEGIN_NV04(push, NV50_COMPUTE(TEX_CACHE_CTL), 1);
+         PUSH_DATA (push, 0x20);
       }
 
       nv50->screen->tic.lock[tic->id / 32] |= 1 << (tic->id % 32);
@@ -257,14 +284,11 @@ nv50_validate_tic(struct nv50_context *nv50, int s)
       res->status |= NOUVEAU_BUFFER_STATUS_GPU_READING;
 
       BCTX_REFN(nv50->bufctx_3d, TEXTURES, res, RD);
+      bind(push, s, i, tic->id);
+   }
+   for (; i < nv50->state.num_textures[s]; ++i)
+      bind(push, s, i, -1);
 
-      BEGIN_NV04(push, NV50_3D(BIND_TIC(s)), 1);
-      PUSH_DATA (push, (tic->id << 9) | (i << 1) | 1);
-   }
-   for (; i < nv50->state.num_textures[s]; ++i) {
-      BEGIN_NV04(push, NV50_3D(BIND_TIC(s)), 1);
-      PUSH_DATA (push, (i << 1) | 0);
-   }
    nv50->state.num_textures[s] = nv50->num_textures[s];
 
    return need_flush;
@@ -272,19 +296,51 @@ nv50_validate_tic(struct nv50_context *nv50, int s)
 
 void nv50_validate_textures(struct nv50_context *nv50)
 {
+   struct nouveau_pushbuf *push = nv50->base.pushbuf;
    boolean need_flush;
 
-   need_flush  = nv50_validate_tic(nv50, 0);
-   need_flush |= nv50_validate_tic(nv50, 2);
-
+   need_flush  = nv50_validate_tic(nv50, nv50_bind_tic_3d, 0);
+   need_flush |= nv50_validate_tic(nv50, nv50_bind_tic_3d, 2);
    if (need_flush) {
       BEGIN_NV04(nv50->base.pushbuf, NV50_3D(TIC_FLUSH), 1);
       PUSH_DATA (nv50->base.pushbuf, 0);
    }
+
+   need_flush = nv50_validate_tic(nv50, nv50_bind_tic_cp, 3);
+   if (need_flush) {
+      BEGIN_NV04(push, NV50_COMPUTE(TIC_FLUSH), 1);
+      PUSH_DATA (push, 0);
+   }
+}
+
+static void
+nv50_bind_tsc_3d(struct nouveau_pushbuf *push, int s, int smp, int tsc)
+{
+   if (tsc >= 0) {
+      BEGIN_NV04(push, NV50_3D(BIND_TSC(s)), 1);
+      PUSH_DATA (push, (tsc << 12) | (smp << 4) | 1);
+   } else {
+      BEGIN_NV04(push, NV50_3D(BIND_TSC(s)), 1);
+      PUSH_DATA (push, (smp << 4) | 0);
+   }
+}
+
+static void
+nv50_bind_tsc_cp(struct nouveau_pushbuf *push, int s, int smp, int tsc)
+{
+   if (tsc >= 0) {
+      BEGIN_NV04(push, NV50_COMPUTE(BIND_TSC), 1);
+      PUSH_DATA (push, (tsc << 12) | (smp << 4) | 1);
+   } else {
+      BEGIN_NV04(push, NV50_COMPUTE(BIND_TSC), 1);
+      PUSH_DATA (push, (smp << 4) | 0);
+   }
 }
 
 static boolean
-nv50_validate_tsc(struct nv50_context *nv50, int s)
+nv50_validate_tsc(struct nv50_context *nv50,
+                  void (*bind)(struct nouveau_pushbuf *, int, int, int),
+                  int s)
 {
    struct nouveau_pushbuf *push = nv50->base.pushbuf;
    unsigned i;
@@ -294,8 +350,7 @@ nv50_validate_tsc(struct nv50_context *nv50, int s)
       struct nv50_tsc_entry *tsc = nv50_tsc_entry(nv50->samplers[s][i]);
 
       if (!tsc) {
-         BEGIN_NV04(push, NV50_3D(BIND_TSC(s)), 1);
-         PUSH_DATA (push, (i << 4) | 0);
+         bind(push, s, i, -1);
          continue;
       }
       if (tsc->id < 0) {
@@ -308,13 +363,11 @@ nv50_validate_tsc(struct nv50_context *nv50, int s)
       }
       nv50->screen->tsc.lock[tsc->id / 32] |= 1 << (tsc->id % 32);
 
-      BEGIN_NV04(push, NV50_3D(BIND_TSC(s)), 1);
-      PUSH_DATA (push, (tsc->id << 12) | (i << 4) | 1);
+      bind(push, s, i, tsc->id);
    }
-   for (; i < nv50->state.num_samplers[s]; ++i) {
-      BEGIN_NV04(push, NV50_3D(BIND_TSC(s)), 1);
-      PUSH_DATA (push, (i << 4) | 0);
-   }
+   for (; i < nv50->state.num_samplers[s]; ++i)
+      bind(push, s, i, -1);
+
    nv50->state.num_samplers[s] = nv50->num_samplers[s];
 
    return need_flush;
@@ -322,13 +375,21 @@ nv50_validate_tsc(struct nv50_context *nv50, int s)
 
 void nv50_validate_samplers(struct nv50_context *nv50)
 {
+   struct nouveau_pushbuf *push = nv50->base.pushbuf;
    boolean need_flush;
 
-   need_flush  = nv50_validate_tsc(nv50, 0);
-   need_flush |= nv50_validate_tsc(nv50, 2);
+   need_flush  = nv50_validate_tsc(nv50, nv50_bind_tsc_3d, 0);
+   need_flush |= nv50_validate_tsc(nv50, nv50_bind_tsc_3d, 2);
 
    if (need_flush) {
       BEGIN_NV04(nv50->base.pushbuf, NV50_3D(TSC_FLUSH), 1);
       PUSH_DATA (nv50->base.pushbuf, 0);
+   }
+
+   need_flush = nv50_validate_tsc(nv50, nv50_bind_tsc_cp, 3);
+
+   if (need_flush) {
+      BEGIN_NV04(push, NV50_COMPUTE(TSC_FLUSH), 1);
+      PUSH_DATA (push, 0);
    }
 }

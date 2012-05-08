@@ -30,6 +30,7 @@ struct nv50_screen {
    struct nouveau_bo *txc; /* TIC (offset 0) and TSC (65536) */
    struct nouveau_bo *stack_bo;
    struct nouveau_bo *tls_bo;
+   struct nouveau_bo *surf_cfg;
 
    uint64_t tls_size;
 
@@ -59,6 +60,7 @@ struct nv50_screen {
    struct nouveau_object *sync;
 
    struct nouveau_object *tesla;
+   struct nouveau_object *compute;
    struct nouveau_object *eng2d;
    struct nouveau_object *m2mf;
 };

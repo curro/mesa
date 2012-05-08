@@ -382,6 +382,7 @@ nv50_surface_from_miptree(struct nv50_miptree *mt,
    ps->u.tex.level = templ->u.tex.level;
    ps->u.tex.first_layer = templ->u.tex.first_layer;
    ps->u.tex.last_layer = templ->u.tex.last_layer;
+   ps->writable = templ->writable;
 
    ns->width = u_minify(mt->base.base.width0, ps->u.tex.level);
    ns->height = u_minify(mt->base.base.height0, ps->u.tex.level);

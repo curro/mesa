@@ -154,6 +154,10 @@ nouveau_screen_init(struct nouveau_screen *screen, struct nouveau_device *dev)
 					    NOUVEAU_BO_GART | NOUVEAU_BO_MAP,
 					    &mm_config);
 	screen->mm_VRAM = nouveau_mm_create(dev, NOUVEAU_BO_VRAM, &mm_config);
+	screen->mm_VRAM = nouveau_mm_create(dev, NOUVEAU_BO_VRAM, &mm_config);
+	screen->mm_LVRAM = nouveau_mm_create(dev, NOUVEAU_BO_VRAM |
+                                             NOUVEAU_BO_LOW32, &mm_config);
+
 	return 0;
 }
 
@@ -162,6 +166,7 @@ nouveau_screen_fini(struct nouveau_screen *screen)
 {
 	nouveau_mm_destroy(screen->mm_GART);
 	nouveau_mm_destroy(screen->mm_VRAM);
+	nouveau_mm_destroy(screen->mm_LVRAM);
 
 	nouveau_pushbuf_del(&screen->pushbuf);
 

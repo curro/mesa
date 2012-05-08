@@ -26,12 +26,17 @@ nouveau_buffer_allocate(struct nouveau_screen *screen,
 {
    uint32_t size = buf->base.width0;
 
-   if (buf->base.bind & PIPE_BIND_CONSTANT_BUFFER)
+   if (buf->base.bind & (PIPE_BIND_CONSTANT_BUFFER |
+                         PIPE_BIND_COMPUTE_RESOURCE))
       size = align(size, 0x100);
 
    if (domain == NOUVEAU_BO_VRAM) {
-      buf->mm = nouveau_mm_allocate(screen->mm_VRAM, size,
-                                    &buf->bo, &buf->offset);
+      if (buf->base.bind & screen->lvram_bindings)
+         buf->mm = nouveau_mm_allocate(screen->mm_LVRAM, size,
+                                       &buf->bo, &buf->offset);
+      else
+         buf->mm = nouveau_mm_allocate(screen->mm_VRAM, size,
+                                       &buf->bo, &buf->offset);
       if (!buf->bo)
          return nouveau_buffer_allocate(screen, buf, NOUVEAU_BO_GART);
    } else
@@ -365,6 +370,8 @@ nouveau_buffer_create(struct pipe_screen *pscreen,
 
    if ((buffer->base.bind & screen->sysmem_bindings) == screen->sysmem_bindings)
       ret = nouveau_buffer_allocate(screen, buffer, 0);
+   else if (buffer->base.bind & screen->vram_bindings)
+      ret = nouveau_buffer_allocate(screen, buffer, NOUVEAU_BO_VRAM);
    else
       ret = nouveau_buffer_allocate(screen, buffer, NOUVEAU_BO_GART);
 

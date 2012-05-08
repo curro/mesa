@@ -13,7 +13,8 @@ C_SOURCES := \
 	nv50_program.c \
 	nv50_shader_state.c \
 	nv50_push.c \
-	nv50_query.c
+	nv50_query.c \
+	nv50_compute.c
 
 CPP_SOURCES := \
 	codegen/nv50_ir.cpp \

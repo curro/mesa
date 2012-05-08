@@ -18,6 +18,8 @@ struct nouveau_screen {
 	struct nouveau_pushbuf *pushbuf;
 
 	unsigned sysmem_bindings;
+	unsigned vram_bindings;
+	unsigned lvram_bindings;
 
 	uint16_t class_3d;
 
@@ -32,6 +34,7 @@ struct nouveau_screen {
 	} fence;
 
 	struct nouveau_mman *mm_VRAM;
+	struct nouveau_mman *mm_LVRAM;
 	struct nouveau_mman *mm_GART;
 };
 

@@ -28,6 +28,7 @@
 #include "nv50_3ddefs.xml.h"
 #include "nv50_3d.xml.h"
 #include "nv50_2d.xml.h"
+#include "nv50_compute.xml.h"
 
 #define NV50_NEW_BLEND        (1 << 0)
 #define NV50_NEW_RASTERIZER   (1 << 1)
@@ -35,20 +36,22 @@
 #define NV50_NEW_VERTPROG     (1 << 3)
 #define NV50_NEW_GMTYPROG     (1 << 6)
 #define NV50_NEW_FRAGPROG     (1 << 7)
-#define NV50_NEW_BLEND_COLOUR (1 << 8)
-#define NV50_NEW_STENCIL_REF  (1 << 9)
-#define NV50_NEW_CLIP         (1 << 10)
-#define NV50_NEW_SAMPLE_MASK  (1 << 11)
-#define NV50_NEW_FRAMEBUFFER  (1 << 12)
-#define NV50_NEW_STIPPLE      (1 << 13)
-#define NV50_NEW_SCISSOR      (1 << 14)
-#define NV50_NEW_VIEWPORT     (1 << 15)
-#define NV50_NEW_ARRAYS       (1 << 16)
-#define NV50_NEW_VERTEX       (1 << 17)
-#define NV50_NEW_CONSTBUF     (1 << 18)
-#define NV50_NEW_TEXTURES     (1 << 19)
-#define NV50_NEW_SAMPLERS     (1 << 20)
-#define NV50_NEW_STRMOUT      (1 << 21)
+#define NV50_NEW_COMPPROG     (1 << 8)
+#define NV50_NEW_BLEND_COLOUR (1 << 9)
+#define NV50_NEW_STENCIL_REF  (1 << 10)
+#define NV50_NEW_CLIP         (1 << 11)
+#define NV50_NEW_SAMPLE_MASK  (1 << 12)
+#define NV50_NEW_FRAMEBUFFER  (1 << 13)
+#define NV50_NEW_STIPPLE      (1 << 14)
+#define NV50_NEW_SCISSOR      (1 << 15)
+#define NV50_NEW_VIEWPORT     (1 << 16)
+#define NV50_NEW_ARRAYS       (1 << 17)
+#define NV50_NEW_VERTEX       (1 << 18)
+#define NV50_NEW_CONSTBUF     (1 << 19)
+#define NV50_NEW_TEXTURES     (1 << 20)
+#define NV50_NEW_SAMPLERS     (1 << 21)
+#define NV50_NEW_STRMOUT      (1 << 22)
+#define NV50_NEW_RESOURCES    (1 << 23)
 #define NV50_NEW_CONTEXT      (1 << 31)
 
 #define NV50_BIND_FB          0
@@ -60,7 +63,10 @@
 #define NV50_BIND_SO         53
 #define NV50_BIND_SCREEN     54
 #define NV50_BIND_TLS        55
-#define NV50_BIND_COUNT      56
+#define NV50_BIND_COMPUTE    56
+#define NV50_BIND_GLOBALS    57
+#define NV50_BIND_RESOURCES  58
+#define NV50_BIND_COUNT      59
 #define NV50_BIND_2D          0
 #define NV50_BIND_M2MF        0
 #define NV50_BIND_FENCE       1
@@ -98,8 +104,8 @@ struct nv50_context {
       uint8_t tls_required;
       uint8_t num_vtxbufs;
       uint8_t num_vtxelts;
-      uint8_t num_textures[3];
-      uint8_t num_samplers[3];
+      uint8_t num_textures[4];
+      uint8_t num_samplers[4];
       uint8_t prim_size;
       uint16_t scissor;
    } state;
@@ -112,10 +118,11 @@ struct nv50_context {
    struct nv50_program *vertprog;
    struct nv50_program *gmtyprog;
    struct nv50_program *fragprog;
+   struct nv50_program *compprog;
 
-   struct pipe_resource *constbuf[3][16];
-   uint16_t constbuf_dirty[3];
-   uint16_t constbuf_valid[3];
+   struct pipe_resource *constbuf[4][16];
+   uint16_t constbuf_dirty[4];
+   uint16_t constbuf_valid[4];
 
    struct pipe_vertex_buffer vtxbuf[PIPE_MAX_ATTRIBS];
    unsigned num_vtxbufs;
@@ -125,10 +132,18 @@ struct nv50_context {
    uint32_t vb_elt_first; /* from pipe_draw_info, for vertex upload */
    uint32_t vb_elt_limit; /* max - min element (count - 1) */
 
-   struct pipe_sampler_view *textures[3][PIPE_MAX_SAMPLERS];
-   unsigned num_textures[3];
-   struct nv50_tsc_entry *samplers[3][PIPE_MAX_SAMPLERS];
-   unsigned num_samplers[3];
+   struct pipe_sampler_view *textures[4][PIPE_MAX_SAMPLERS];
+   unsigned num_textures[4];
+   struct nv50_tsc_entry *samplers[4][PIPE_MAX_SAMPLERS];
+   unsigned num_samplers[4];
+
+   struct pipe_surface *resources[PIPE_MAX_SHADER_RESOURCES];
+   unsigned num_resources;
+
+   struct {
+      struct pipe_resource *r;
+      uint32_t *handle;
+   } globals[PIPE_MAX_SHADER_RESOURCES];
 
    uint8_t num_so_targets;
    uint8_t so_targets_dirty;
@@ -189,6 +204,7 @@ void nva0_so_target_save_offset(struct pipe_context *,
 void nv50_vertprog_validate(struct nv50_context *);
 void nv50_gmtyprog_validate(struct nv50_context *);
 void nv50_fragprog_validate(struct nv50_context *);
+void nv50_compprog_validate(struct nv50_context *);
 void nv50_fp_linkage_validate(struct nv50_context *);
 void nv50_gp_linkage_validate(struct nv50_context *);
 void nv50_constbufs_validate(struct nv50_context *);
@@ -253,5 +269,11 @@ void nv50_vertex_arrays_validate(struct nv50_context *nv50);
 
 /* nv50_push.c */
 void nv50_push_vbo(struct nv50_context *, const struct pipe_draw_info *);
+
+/* nv50_compute.c */
+int nv50_compute_init(struct nv50_screen *screen);
+void nv50_compute_deinit(struct nv50_screen *screen);
+void nv50_compute_validate_resources(struct nv50_context *nv50);
+void nv50_init_compute_functions(struct nv50_context *nv50);
 
 #endif
