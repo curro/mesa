@@ -91,6 +91,9 @@ public:
 
    Instruction *mkSplit(Value *half[2], uint8_t halfSize, Value *);
 
+   Instruction *mkAtom(operation op, DataType ty, Value *dst, Symbol *mem,
+                       Value *ptr, Value *a, Value *b);
+
    void mkClobber(DataFile file, uint32_t regMask, int regUnitLog2);
 
    ImmediateValue *mkImm(float);

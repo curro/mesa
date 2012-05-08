@@ -135,6 +135,16 @@ enum operation
    OP_EXTBF,
    OP_TEXBAR,
    OP_BAR,
+   OP_ATOMINC,
+   OP_ATOMDEC,
+   OP_ATOMADD,
+   OP_ATOMMAX,
+   OP_ATOMMIN,
+   OP_ATOMAND,
+   OP_ATOMOR,
+   OP_ATOMXOR,
+   OP_ATOMXCHG,
+   OP_ATOMCAS,
    OP_LAST
 };
 

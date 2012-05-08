@@ -382,6 +382,13 @@ nv50_ir::DataType Instruction::inferSrcType() const
    case TGSI_OPCODE_USNE:
    case TGSI_OPCODE_USHR:
    case TGSI_OPCODE_UCMP:
+   case TGSI_OPCODE_ATOMUADD:
+   case TGSI_OPCODE_ATOMXCHG:
+   case TGSI_OPCODE_ATOMAND:
+   case TGSI_OPCODE_ATOMOR:
+   case TGSI_OPCODE_ATOMXOR:
+   case TGSI_OPCODE_ATOMUMIN:
+   case TGSI_OPCODE_ATOMUMAX:
       return nv50_ir::TYPE_U32;
    case TGSI_OPCODE_I2F:
    case TGSI_OPCODE_IDIV:
@@ -396,6 +403,8 @@ nv50_ir::DataType Instruction::inferSrcType() const
    case TGSI_OPCODE_SAD: // not sure about SAD, but no one has a float version
    case TGSI_OPCODE_MOD:
    case TGSI_OPCODE_UARL:
+   case TGSI_OPCODE_ATOMIMIN:
+   case TGSI_OPCODE_ATOMIMAX:
       return nv50_ir::TYPE_S32;
    default:
       return nv50_ir::TYPE_F32;
@@ -556,6 +565,17 @@ static nv50_ir::operation translateOpcode(uint opcode)
    NV50_IR_OPCODE_CASE(SVIEWINFO, TXQ);
 
    NV50_IR_OPCODE_CASE(END, EXIT);
+
+   NV50_IR_OPCODE_CASE(ATOMUADD, ATOMADD);
+   NV50_IR_OPCODE_CASE(ATOMXCHG, ATOMXCHG);
+   NV50_IR_OPCODE_CASE(ATOMCAS, ATOMCAS);
+   NV50_IR_OPCODE_CASE(ATOMAND, ATOMAND);
+   NV50_IR_OPCODE_CASE(ATOMOR, ATOMOR);
+   NV50_IR_OPCODE_CASE(ATOMXOR, ATOMXOR);
+   NV50_IR_OPCODE_CASE(ATOMUMIN, ATOMMIN);
+   NV50_IR_OPCODE_CASE(ATOMUMAX, ATOMMAX);
+   NV50_IR_OPCODE_CASE(ATOMIMIN, ATOMMIN);
+   NV50_IR_OPCODE_CASE(ATOMIMAX, ATOMMAX);
 
    default:
       return nv50_ir::OP_NOP;
@@ -2466,6 +2486,30 @@ Converter::handleInstruction(const struct tgsi_full_instruction *insn)
    case TGSI_OPCODE_SFENCE:
       mkOp(OP_MEMBAR, TYPE_NONE, NULL)->fixed = 1;
       break;
+   case TGSI_OPCODE_ATOMUADD:
+   case TGSI_OPCODE_ATOMXCHG:
+   case TGSI_OPCODE_ATOMAND:
+   case TGSI_OPCODE_ATOMOR:
+   case TGSI_OPCODE_ATOMXOR:
+   case TGSI_OPCODE_ATOMUMIN:
+   case TGSI_OPCODE_ATOMUMAX:
+   case TGSI_OPCODE_ATOMIMIN:
+   case TGSI_OPCODE_ATOMIMAX:
+   case TGSI_OPCODE_ATOMCAS: {
+      int r = tgsi.getSrc(0).getIndex(0);
+
+      val0 = getScratch();
+      mkAtom(op, dstTy, val0,
+             getResourceBase(r),
+             getResourceOffset(r, 1)[0],
+             fetchSrc(2, 0),
+             (tgsi.getOpcode() == TGSI_OPCODE_ATOMCAS ?
+              fetchSrc(3, 0) : NULL));
+
+      FOR_EACH_DST_ENABLED_CHANNEL(0, c, tgsi)
+         mkMov(dst0[c], val0);
+      break;
+   }
    default:
       ERROR("unhandled TGSI opcode: %u\n", tgsi.getOpcode());
       assert(0);

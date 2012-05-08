@@ -171,6 +171,16 @@ const char *operationStr[OP_LAST + 1] =
    "extbf",
    "texbar",
    "bar",
+   "atominc",
+   "atomdec",
+   "atomadd",
+   "atommax",
+   "atommin",
+   "atomand",
+   "atomor",
+   "atomxor",
+   "atomxchg",
+   "atomcas",
    "(invalid)"
 };
 

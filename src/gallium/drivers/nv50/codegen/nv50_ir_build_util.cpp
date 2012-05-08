@@ -310,6 +310,25 @@ BuildUtil::mkSplit(Value *h[2], uint8_t halfSize, Value *val)
    return insn;
 }
 
+Instruction *
+BuildUtil::mkAtom(operation op, DataType ty, Value *dst, Symbol *mem,
+                  Value *ptr, Value *a, Value *b)
+{
+   Instruction *insn = new_Instruction(func, op, ty);
+
+   insn->setDef(0, dst);
+   insn->setSrc(0, mem);
+   insn->setSrc(1, a);
+   if (b)
+      insn->setSrc(2, b);
+   insn->setIndirect(0, 0, ptr);
+   insn->atomic = 1;
+   insn->fixed = 1;
+
+   insert(insn);
+   return insn;
+}
+
 FlowInstruction *
 BuildUtil::mkFlow(operation op, void *targ, CondCode cc, Value *pred)
 {

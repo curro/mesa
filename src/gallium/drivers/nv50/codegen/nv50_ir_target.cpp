@@ -49,6 +49,9 @@ const uint8_t Target::operationSrcNr[OP_LAST + 1] =
    1, 1,                   // DFDX, DFDY
    1, 2, 2, 2, 0, 0,       // RDSV, WRSV, PIXLD, QUADOP, QUADON, QUADPOP
    2, 3, 2, 0, 1,          // POPCNT, INSBF, EXTBF, TEXBAR, BAR
+   1, 1, 2, 2, 2,          // ATOMINC, ATOMDEC, ATOMADD, ATOMMAX, ATOMMIN
+   2, 2, 2,                // ATOMAND, ATOMOR, ATOMXOR
+   2, 3,                   // ATOMXCHG, ATOMCAS
    0
 };
 

@@ -36,7 +36,7 @@ Instruction::isNop() const
    if (op == OP_PHI || op == OP_SPLIT || op == OP_MERGE ||
        op == OP_CONSTRAINT || op == OP_MEMBAR)
       return true;
-   if (terminator || join) // XXX: should terminator imply flow ?
+   if (terminator || join || atomic) // XXX: should terminator imply flow ?
       return false;
    if (!fixed && op == OP_NOP)
       return true;
@@ -64,7 +64,8 @@ bool Instruction::isDead() const
 {
    if (op == OP_STORE ||
        op == OP_EXPORT ||
-       op == OP_WRSV)
+       op == OP_WRSV ||
+       atomic)
       return false;
 
    for (int d = 0; defExists(d); ++d)
@@ -1717,6 +1718,21 @@ MemoryOpt::runOpt(BasicBlock *bb)
       bool isLoad = true;
       next = ldst->next;
 
+      // TODO: maybe have all fixed ops act as barrier ?
+      if (ldst->op == OP_CALL || ldst->op == OP_BAR ||
+          ldst->op == OP_MEMBAR || ldst->atomic) {
+         purgeRecords(NULL, FILE_MEMORY_LOCAL);
+         purgeRecords(NULL, FILE_MEMORY_GLOBAL);
+         purgeRecords(NULL, FILE_MEMORY_SHARED);
+         purgeRecords(NULL, FILE_SHADER_OUTPUT);
+         continue;
+      }
+
+      if (ldst->op == OP_EMIT || ldst->op == OP_RESTART) {
+         purgeRecords(NULL, FILE_SHADER_OUTPUT);
+         continue;
+      }
+
       if (ldst->op == OP_LOAD || ldst->op == OP_VFETCH) {
          if (ldst->isDead()) {
             // might have been produced by earlier optimization
@@ -1727,19 +1743,9 @@ MemoryOpt::runOpt(BasicBlock *bb)
       if (ldst->op == OP_STORE || ldst->op == OP_EXPORT) {
          isLoad = false;
       } else {
-         // TODO: maybe have all fixed ops act as barrier ?
-         if (ldst->op == OP_CALL || ldst->op == OP_BAR ||
-             ldst->op == OP_MEMBAR) {
-            purgeRecords(NULL, FILE_MEMORY_LOCAL);
-            purgeRecords(NULL, FILE_MEMORY_GLOBAL);
-            purgeRecords(NULL, FILE_MEMORY_SHARED);
-            purgeRecords(NULL, FILE_SHADER_OUTPUT);
-         } else
-         if (ldst->op == OP_EMIT || ldst->op == OP_RESTART) {
-            purgeRecords(NULL, FILE_SHADER_OUTPUT);
-         }
          continue;
       }
+
       if (ldst->getPredicate()) // TODO: handle predicated ld/st
          continue;
 

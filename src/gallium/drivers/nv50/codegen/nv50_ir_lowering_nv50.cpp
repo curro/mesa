@@ -255,6 +255,7 @@ private:
    void handleMOD(Instruction *);
    void handleMUL(Instruction *);
    void handleAddrDef(Instruction *);
+   void handleAtomic(Instruction *);
 
    inline bool isARL(const Instruction *) const;
 
@@ -475,6 +476,15 @@ NV50LegalizeSSA::handleMOD(Instruction *mod)
    mod->setSrc(1, m);
 }
 
+void
+NV50LegalizeSSA::handleAtomic(Instruction *i)
+{
+   if (!i->getDef(0)->refCount()) {
+      bld.setPosition(i, true);
+      bld.mkOp1(OP_NOP, TYPE_U32, NULL, i->getDef(0));
+   }
+}
+
 bool
 NV50LegalizeSSA::visit(BasicBlock *bb)
 {
@@ -504,6 +514,8 @@ NV50LegalizeSSA::visit(BasicBlock *bb)
 
       if (insn->defExists(0) && insn->getDef(0)->reg.file == FILE_ADDRESS)
          handleAddrDef(insn);
+      if (insn->atomic)
+         handleAtomic(insn);
    }
    return true;
 }

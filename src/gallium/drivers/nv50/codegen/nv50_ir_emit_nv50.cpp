@@ -122,6 +122,8 @@ private:
    void emitFlow(const Instruction *, uint8_t flowOp);
    void emitPRERETEmu(const FlowInstruction *);
    void emitBAR(const Instruction *);
+
+   void emitATOM(const Instruction *, uint8_t subOp);
 };
 
 #define SDATA(a) ((a).rep()->reg.data)
@@ -1522,6 +1524,38 @@ CodeEmitterNV50::emitBAR(const Instruction *i)
    code[1] = 0x00004000;
 }
 
+void
+CodeEmitterNV50::emitATOM(const Instruction *i, uint8_t subOp)
+{
+   code[0] = 0xd0000001;
+   code[1] = 0xe0000000 | (subOp << 2);
+
+   // data type
+   switch (i->op) {
+   case OP_ATOMADD:
+   case OP_ATOMMAX:
+   case OP_ATOMMIN:
+      if (isSignedType(i->sType))
+         code[1] |= 0x00e00000;
+      else
+         code[1] |= 0x00c00000;
+      break;
+   default:
+      code[1] |= 0x00c00000;
+      break;
+   }
+
+   // args
+   emitFlagsRd(i);
+   setDst(i, 0);
+   setSrc(i, 1, 1);
+   setSrc(i, 2, 2);
+
+   // g[] pointer
+   srcId(i->src(0).getIndirect(0), 9);
+   srcId(i->src(0), 23);
+}
+
 bool
 CodeEmitterNV50::emitInstruction(Instruction *insn)
 {
@@ -1701,6 +1735,36 @@ CodeEmitterNV50::emitInstruction(Instruction *insn)
       break;
    case OP_BAR:
       emitBAR(insn);
+      break;
+   case OP_ATOMADD:
+      emitATOM(insn, 0x0);
+      break;
+   case OP_ATOMINC:
+      emitATOM(insn, 0x4);
+      break;
+   case OP_ATOMDEC:
+      emitATOM(insn, 0x5);
+      break;
+   case OP_ATOMMAX:
+      emitATOM(insn, 0x6);
+      break;
+   case OP_ATOMMIN:
+      emitATOM(insn, 0x7);
+      break;
+   case OP_ATOMAND:
+      emitATOM(insn, 0xa);
+      break;
+   case OP_ATOMOR:
+      emitATOM(insn, 0xb);
+      break;
+   case OP_ATOMXOR:
+      emitATOM(insn, 0xc);
+      break;
+   case OP_ATOMXCHG:
+      emitATOM(insn, 0x1);
+      break;
+   case OP_ATOMCAS:
+      emitATOM(insn, 0x2);
       break;
    case OP_PHI:
    case OP_UNION:
